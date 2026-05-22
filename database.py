@@ -541,12 +541,94 @@ class Database:
                 FROM Transacoes t
                 LEFT JOIN Divisoes_Transacao d ON t.id = d.transacao_id
                 LEFT JOIN Usuarios_Familia u ON d.usuario_id = u.id
-                WHERE substr(t.data, 4, 2) = ? AND substr(t.data, 7, 4) = ?
-                GROUP BY t.categoria_id
             """
-            cursor.execute(query, (perfil_nome, perfil_nome, mes_num, str(ano)))
+            
+            if mes:
+                query += " WHERE substr(t.data, 4, 2) = ? AND substr(t.data, 7, 4) = ? GROUP BY t.categoria_id"
+                cursor.execute(query, (perfil_nome, perfil_nome, mes_num, str(ano)))
+            else:
+                query += " WHERE substr(t.data, 7, 4) = ? GROUP BY t.categoria_id"
+                cursor.execute(query, (perfil_nome, perfil_nome, str(ano)))
+                
             somas = dict(cursor.fetchall())
             return cats, somas
+
+    def get_evolucao_anual(self, ano, perfil_nome="Eu"):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Agrupar Receitas e Despesas por mês do ano
+            query = """
+                SELECT substr(t.data, 4, 2) as mes, c.tipo,
+                       SUM(CASE 
+                            WHEN u.nome = ? THEN d.valor_cota 
+                            WHEN d.id IS NULL AND ? = 'Eu' THEN t.valor_total
+                            ELSE 0 
+                           END)
+                FROM Transacoes t
+                JOIN Categorias c ON t.categoria_id = c.id
+                LEFT JOIN Divisoes_Transacao d ON t.id = d.transacao_id
+                LEFT JOIN Usuarios_Familia u ON d.usuario_id = u.id
+                WHERE substr(t.data, 7, 4) = ?
+                GROUP BY substr(t.data, 4, 2), c.tipo
+            """
+            cursor.execute(query, (perfil_nome, perfil_nome, str(ano)))
+            resultados = cursor.fetchall()
+            
+            # Estruturar o retorno { "01": {"Receitas": 0, "Despesas": 0}, ... }
+            evolucao = {str(i).zfill(2): {"Receitas": 0.0, "Despesas": 0.0} for i in range(1, 13)}
+            
+            for mes, tipo, valor in resultados:
+                if valor is None: valor = 0.0
+                if "Receita" in tipo:
+                    evolucao[mes]["Receitas"] += valor
+                elif "Despesa" in tipo:
+                    evolucao[mes]["Despesas"] += valor
+                    
+            return evolucao
+
+    def get_gastos_diarios_mes(self, mes, ano, perfil_nome="Eu"):
+        months_map = {"Janeiro":"01","Fevereiro":"02","Março":"03","Abril":"04","Maio":"05","Junho":"06",
+                      "Julho":"07","Agosto":"08","Setembro":"09","Outubro":"10","Novembro":"11","Dezembro":"12"}
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            
+            query = """
+                SELECT substr(t.data, 1, 2) as dia, c.tipo,
+                       SUM(CASE 
+                            WHEN u.nome = ? THEN d.valor_cota 
+                            WHEN d.id IS NULL AND ? = 'Eu' THEN t.valor_total
+                            ELSE 0 
+                           END)
+                FROM Transacoes t
+                JOIN Categorias c ON t.categoria_id = c.id
+                LEFT JOIN Divisoes_Transacao d ON t.id = d.transacao_id
+                LEFT JOIN Usuarios_Familia u ON d.usuario_id = u.id
+            """
+            
+            if mes:
+                mes_num = months_map.get(mes, "01")
+                query += " WHERE substr(t.data, 4, 2) = ? AND substr(t.data, 7, 4) = ?"
+                params = (perfil_nome, perfil_nome, mes_num, str(ano))
+            else:
+                query += " WHERE substr(t.data, 7, 4) = ?"
+                params = (perfil_nome, perfil_nome, str(ano))
+                
+            query += " GROUP BY substr(t.data, 1, 2), c.tipo"
+            
+            cursor.execute(query, params)
+            resultados = cursor.fetchall()
+            
+            diario = {}
+            for dia, tipo, valor in resultados:
+                if valor is None: valor = 0.0
+                if dia not in diario: diario[dia] = {"Receitas": 0.0, "Despesas": 0.0}
+                if "Receita" in tipo:
+                    diario[dia]["Receitas"] += valor
+                elif "Despesa" in tipo:
+                    diario[dia]["Despesas"] += valor
+                    
+            return diario
 
 if __name__ == "__main__":
     db = Database()

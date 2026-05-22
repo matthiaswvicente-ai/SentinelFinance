@@ -4,7 +4,10 @@ import datetime
 import os
 import ctypes
 from PIL import Image, ImageTk
-
+import matplotlib
+matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 class NovaTransacaoForm(ctk.CTkFrame):
     def __init__(self, parent, db, app_ui, is_integrated=False, edit_id=None):
         super().__init__(parent, fg_color="#1e222b", corner_radius=10)
@@ -426,11 +429,11 @@ class DashboardPanel(ctk.CTkFrame):
         
         todas_opcoes = [
             "Vazio",
-            "📊 Gráfico: Composição de Gastos",
-            "📊 Gráfico: Composição de Receitas",
-            "📊 Gráfico: Top 5 Categorias",
-            "📊 Gráfico: Top 5 Subcategorias",
-            "📊 Gráfico: Donut",
+            "📉 Fluxo de Gastos Mensal",
+            "🍩 Despesas por Categoria",
+            "📊 Ranking de Gastos",
+            "🚥 Resumo do Mês",
+            "📊 Gráfico: Comparação Anual",
             "📊 Gráfico: Tipos de Pagamento",
             "📊 Gráfico: Uso de Cartões",
             "📋 Lista: Transações",
@@ -475,16 +478,16 @@ class DashboardPanel(ctk.CTkFrame):
             
         if "Transações" in selecao:
             self.app_ui.build_widget_transacoes(self.body_frame)
-        elif "Composição de Gastos" in selecao:
-            self.app_ui.build_widget_grafico(self.body_frame)
-        elif "Composição de Receitas" in selecao:
-            self.app_ui.build_widget_receitas(self.body_frame)
-        elif "Top 5 Categorias" in selecao:
-            self.app_ui.build_widget_top_despesas(self.body_frame)
-        elif "Top 5 Subcategorias" in selecao:
-            self.app_ui.build_widget_top_subcategorias(self.body_frame)
-        elif "Donut" in selecao:
-            self.app_ui.build_widget_pizza(self.body_frame)
+        elif "Fluxo de Gastos Mensal" in selecao:
+            self.app_ui.build_widget_fluxo_mensal(self.body_frame)
+        elif "Despesas por Categoria" in selecao:
+            self.app_ui.build_widget_donut_categorias(self.body_frame)
+        elif "Ranking de Gastos" in selecao:
+            self.app_ui.build_widget_ranking(self.body_frame)
+        elif "Resumo do Mês" in selecao:
+            self.app_ui.build_widget_resumo_mes(self.body_frame)
+        elif "Comparação Anual" in selecao:
+            self.app_ui.build_widget_comparacao_anual(self.body_frame)
         elif "Pagamento" in selecao:
             self.app_ui.build_widget_pagamentos(self.body_frame)
         elif "Cartões" in selecao:
@@ -1058,7 +1061,9 @@ class AppUI(ctk.CTk):
         chart_container = ctk.CTkFrame(parent, fg_color="transparent")
         chart_container.pack(fill="both", expand=True, padx=15, pady=15)
         
-        mes, ano, perfil = self.var_mes.get(), self.var_ano.get(), self.var_perfil.get()
+        modo_val = self.var_view_mode.get()
+        mes = self.var_mes.get() if modo_val == "Mensal" else None
+        ano, perfil = self.var_ano.get(), self.var_perfil.get()
         resumo = self.db.get_resumo_financeiro(mes, ano, perfil)
         
         data = [
@@ -1099,7 +1104,9 @@ class AppUI(ctk.CTk):
         chart_container = ctk.CTkFrame(parent, fg_color="transparent")
         chart_container.pack(fill="both", expand=True, padx=15, pady=15)
         
-        mes, ano, perfil = self.var_mes.get(), self.var_ano.get(), self.var_perfil.get()
+        modo_val = self.var_view_mode.get()
+        mes = self.var_mes.get() if modo_val == "Mensal" else None
+        ano, perfil = self.var_ano.get(), self.var_perfil.get()
         resumo = self.db.get_resumo_financeiro(mes, ano, perfil)
         
         data = [
@@ -1130,16 +1137,53 @@ class AppUI(ctk.CTk):
         leg = ctk.CTkFrame(chart_container, fg_color="transparent")
         leg.pack(fill="x", pady=10)
         for d in data:
-            f = ctk.CTkFrame(leg, fg_color="transparent")
             f.pack(side="left", expand=True)
             ctk.CTkFrame(f, width=10, height=10, fg_color=d["color"], corner_radius=3).pack(side="left", padx=4)
             ctk.CTkLabel(f, text=f"{d['label']}: R$ {d['val']:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), font=ctk.CTkFont(size=10)).pack(side="left")
+
+    def build_widget_comparacao_anual(self, parent):
+        chart_container = ctk.CTkFrame(parent, fg_color="transparent")
+        chart_container.pack(fill="both", expand=True, padx=5, pady=5)
+        
+        ano, perfil = self.var_ano.get(), self.var_perfil.get()
+        evolucao = self.db.get_evolucao_anual(ano, perfil)
+        
+        meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
+        val_rec = [evolucao[str(i).zfill(2)]["Receitas"] for i in range(1, 13)]
+        val_des = [evolucao[str(i).zfill(2)]["Despesas"] for i in range(1, 13)]
+        
+        fig, ax = plt.subplots(figsize=(5, 3), dpi=100)
+        fig.patch.set_facecolor('#1e293b')
+        ax.set_facecolor('#1e293b')
+        
+        x = range(len(meses))
+        width = 0.35
+        
+        ax.bar([i - width/2 for i in x], val_rec, width, label='Receitas', color='#22c55e')
+        ax.bar([i + width/2 for i in x], val_des, width, label='Despesas', color='#f43f5e')
+        
+        ax.set_xticks(x)
+        ax.set_xticklabels(meses, color='white', fontsize=8)
+        ax.tick_params(axis='y', colors='white', labelsize=8)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['left'].set_color('#334155')
+        ax.spines['bottom'].set_color('#334155')
+        
+        leg = ax.legend(facecolor='#1e293b', edgecolor='#334155', labelcolor='white', fontsize=8, loc='upper center', bbox_to_anchor=(0.5, 1.15), ncol=2)
+        fig.tight_layout()
+        
+        canvas = FigureCanvasTkAgg(fig, master=chart_container)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill="both", expand=True)
 
     def build_widget_top_despesas(self, parent):
         chart_container = ctk.CTkFrame(parent, fg_color="transparent")
         chart_container.pack(fill="both", expand=True, padx=10, pady=10)
         
-        mes, ano, perfil = self.var_mes.get(), self.var_ano.get(), self.var_perfil.get()
+        modo_val = self.var_view_mode.get()
+        mes = self.var_mes.get() if modo_val == "Mensal" else None
+        ano, perfil = self.var_ano.get(), self.var_perfil.get()
         cats, somas_raw = self.db.get_resumo_estruturado(mes, ano, perfil)
         
         # Agregação: Somar filhos nos pais
@@ -1177,7 +1221,9 @@ class AppUI(ctk.CTk):
     def build_widget_top_subcategorias(self, parent):
         chart_container = ctk.CTkFrame(parent, fg_color="transparent")
         chart_container.pack(fill="both", expand=True, padx=10, pady=10)
-        mes, ano, perfil = self.var_mes.get(), self.var_ano.get(), self.var_perfil.get()
+        modo_val = self.var_view_mode.get()
+        mes = self.var_mes.get() if modo_val == "Mensal" else None
+        ano, perfil = self.var_ano.get(), self.var_perfil.get()
         cats, somas = self.db.get_resumo_estruturado(mes, ano, perfil)
         subdespesas = []
         for c_id, nome, tipo, p_id in cats:
@@ -1217,7 +1263,9 @@ class AppUI(ctk.CTk):
         canvas = tk.Canvas(parent, bg="#1e222b", highlightthickness=0)
         canvas.pack(fill="both", expand=True, padx=10, pady=5)
         
-        mes, ano, perfil = self.var_mes.get(), self.var_ano.get(), self.var_perfil.get()
+        modo_val = self.var_view_mode.get()
+        mes = self.var_mes.get() if modo_val == "Mensal" else None
+        ano, perfil = self.var_ano.get(), self.var_perfil.get()
         resumo = self.db.get_resumo_financeiro(mes, ano, perfil)
         
         data = [
@@ -1255,93 +1303,93 @@ class AppUI(ctk.CTk):
         canvas.create_oval(center_x-inner_r, center_y-inner_r, center_x+inner_r, center_y+inner_r, fill="#1e222b", outline="")
 
     def build_widget_pagamentos(self, parent):
-        for w in parent.winfo_children(): w.destroy()
+        chart_container = ctk.CTkFrame(parent, fg_color="transparent")
+        chart_container.pack(fill="both", expand=True, padx=5, pady=5)
         
-        container = ctk.CTkFrame(parent, fg_color="transparent")
-        container.pack(fill="both", expand=True, padx=15, pady=15)
-        
-        mes, ano, perfil = self.var_mes.get(), self.var_ano.get(), self.var_perfil.get()
+        modo_val = self.var_view_mode.get()
+        mes = self.var_mes.get() if modo_val == "Mensal" else None
+        ano, perfil = self.var_ano.get(), self.var_perfil.get()
         trans = self.db.get_transacoes(mes, ano, perfil)
         
         dist = {}
-        total_p = 0
         for t in trans:
-            # t indices: 3:valor, 8:metodo_pagamento
             metodo = t[8] or "Não Informado"
-            valor = t[3]
-            dist[metodo] = dist.get(metodo, 0) + valor
-            total_p += valor
+            dist[metodo] = dist.get(metodo, 0) + t[3]
             
-        if not dist or total_p == 0:
-            ctk.CTkLabel(container, text="Sem dados de pagamento", text_color="#64748b").place(relx=0.5, rely=0.5, anchor="center")
+        if not dist or sum(dist.values()) == 0:
+            ctk.CTkLabel(chart_container, text="Sem dados de pagamento", text_color="#64748b").pack(expand=True)
             return
             
-        canvas = tk.Canvas(container, bg="#1e222b", highlightthickness=0)
-        canvas.pack(fill="both", expand=True)
+        dados = sorted(dist.items(), key=lambda x: x[1], reverse=False)
+        labels = [d[0] for d in dados]
+        valores = [d[1] for d in dados]
         
-        colors = ['#f43f5e', '#3b82f6', '#10b981', '#fbbf24', '#8b5cf6', '#ef4444', '#f97316', '#14b8a6']
+        fig, ax = plt.subplots(figsize=(5, 3), dpi=100)
+        fig.patch.set_facecolor('#1e293b')
         
-        start_ang = 90
-        center_x, center_y = 90, 90
-        radius = 65
+        colors = plt.cm.Set3.colors + plt.cm.Pastel1.colors
+        wedges, texts = ax.pie(valores, startangle=90, colors=colors, 
+                               wedgeprops=dict(width=0.4, edgecolor='#1e293b'))
         
-        for i, (met, val) in enumerate(sorted(dist.items(), key=lambda x: x[1], reverse=True)):
-            color = colors[i % len(colors)]
-            extent = (val / total_p) * 359.9
-            canvas.create_arc(center_x-radius, center_y-radius, center_x+radius, center_y+radius, start=start_ang, extent=-extent, fill=color, outline=color)
+        legend_labels = [f"{l} - {v/sum(valores)*100:.1f}%" for l, v in zip(labels, valores)]
+        leg = ax.legend(wedges, legend_labels, title="Pagamentos", loc="center left", bbox_to_anchor=(1, 0, 0.5, 1),
+                  facecolor='#1e293b', edgecolor='#334155', labelcolor='white', fontsize=7)
+        leg.get_title().set_color("white")
+        leg.get_title().set_weight("bold")
             
-            # Legenda lateral
-            y_pos = 10 + (i * 25)
-            canvas.create_rectangle(190, y_pos, 205, y_pos+15, fill=color, outline="")
-            canvas.create_text(215, y_pos+7, text=f"{met} ({val/total_p*100:.0f}%)", fill="white", font=("Segoe UI", 9, "bold"), anchor="w")
-            start_ang -= extent
-            
-        # Efeito Donut
-        inner_r = 30
-        canvas.create_oval(center_x-inner_r, center_y-inner_r, center_x+inner_r, center_y+inner_r, fill="#1e222b", outline="")
+        ax.set_title("Meios de Pagamento", color="white", fontsize=10, weight='bold')
+        fig.tight_layout()
+        canvas = FigureCanvasTkAgg(fig, master=chart_container)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill="both", expand=True)
 
     def build_widget_cartoes(self, parent):
-        container = ctk.CTkFrame(parent, fg_color="transparent")
-        container.pack(fill="both", expand=True, padx=15, pady=15)
+        chart_container = ctk.CTkFrame(parent, fg_color="transparent")
+        chart_container.pack(fill="both", expand=True, padx=5, pady=5)
         
-        mes, ano, perfil = self.var_mes.get(), self.var_ano.get(), self.var_perfil.get()
+        modo_val = self.var_view_mode.get()
+        mes = self.var_mes.get() if modo_val == "Mensal" else None
+        ano, perfil = self.var_ano.get(), self.var_perfil.get()
         trans = self.db.get_transacoes(mes, ano, perfil)
         
         dist = {}
-        total_c = 0
         for t in trans:
-            # t indices: 3:valor, 8:metodo, 9:cartao_nome, 10:cartao_bandeira
             if t[8] and "Cartão" in t[8]:
                 bandeira = t[10] or "Outra"
-                # Exibe Bandeira (Nome do Cartão) e Dono
-                label = f"💳 {bandeira} - 👤 {t[9] or 'N/I'}"
-                valor = t[13] # Usa o valor_total da compra, e não apenas a cota do usuário
-                dist[label] = dist.get(label, 0) + valor
-                total_c += valor
+                label = f"{bandeira} ({t[9] or 'N/I'})"
+                dist[label] = dist.get(label, 0) + t[13]
                 
-        if not dist or total_c == 0:
-            ctk.CTkLabel(container, text="Sem uso de cartões no período", text_color="#64748b").pack(expand=True)
+        if not dist or sum(dist.values()) == 0:
+            ctk.CTkLabel(chart_container, text="Sem uso de cartões no período", text_color="#64748b").pack(expand=True)
             return
             
-        scroll = ctk.CTkScrollableFrame(container, fg_color="transparent")
-        scroll.pack(fill="both", expand=True)
+        dados = sorted(dist.items(), key=lambda x: x[1], reverse=False)
+        labels = [d[0] for d in dados]
+        valores = [d[1] for d in dados]
         
-        max_v = max(dist.values())
-        for cart, val in sorted(dist.items(), key=lambda x: x[1], reverse=True):
-            pct = (val / total_c) * 100
-            row = ctk.CTkFrame(scroll, fg_color="transparent", height=35)
-            row.pack(fill="x", pady=2)
-            ctk.CTkLabel(row, text=cart, font=ctk.CTkFont(size=11), width=120, anchor="w", wraplength=110).pack(side="left")
-            bar_bg = ctk.CTkFrame(row, fg_color="#1e293b", height=10, corner_radius=5)
-            bar_bg.pack(side="left", fill="x", expand=True, padx=10)
+        fig, ax = plt.subplots(figsize=(5, 3), dpi=100)
+        fig.patch.set_facecolor('#1e293b')
+        
+        colors = plt.cm.Set3.colors + plt.cm.Pastel1.colors
+        wedges, texts = ax.pie(valores, startangle=90, colors=colors, 
+                               wedgeprops=dict(width=0.4, edgecolor='#1e293b'))
+        
+        legend_labels = [f"{l} - {v/sum(valores)*100:.1f}%" for l, v in zip(labels, valores)]
+        leg = ax.legend(wedges, legend_labels, title="Cartões", loc="center left", bbox_to_anchor=(1, 0, 0.5, 1),
+                  facecolor='#1e293b', edgecolor='#334155', labelcolor='white', fontsize=7)
+        leg.get_title().set_color("white")
+        leg.get_title().set_weight("bold")
             
-            bar_pct = val / max_v
-            ctk.CTkFrame(bar_bg, fg_color="#ec4899", width=1, height=10, corner_radius=5).place(relx=0, rely=0, relwidth=bar_pct, relheight=1)
-            
-            ctk.CTkLabel(row, text=f"{pct:.0f}% • R$ {val:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), font=ctk.CTkFont(size=11, weight="bold"), width=110, anchor="e").pack(side="right")
+        ax.set_title("Uso de Cartões", color="white", fontsize=10, weight='bold')
+        fig.tight_layout()
+        canvas = FigureCanvasTkAgg(fig, master=chart_container)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill="both", expand=True)
 
     def build_widget_resumo_estruturado(self, parent, panel=None, subperfil_view=None):
-        mes, ano, base_perfil = self.var_mes.get(), self.var_ano.get(), self.var_perfil.get()
+        modo_val = self.var_view_mode.get()
+        mes = self.var_mes.get() if modo_val == "Mensal" else None
+        ano, base_perfil = self.var_ano.get(), self.var_perfil.get()
         perfil = subperfil_view if subperfil_view else base_perfil
         
         # OTIMIZAÇÃO: Usa cache
@@ -1923,7 +1971,9 @@ class AppUI(ctk.CTk):
         self._refresh_cache = None
         
         # OTIMIZAÇÃO: Cache de dados para evitar múltiplas queries idênticas
-        mes, ano, perfil = self.var_mes.get(), self.var_ano.get(), self.var_perfil.get()
+        modo_val = self.var_view_mode.get()
+        mes = self.var_mes.get() if modo_val == "Mensal" else None
+        ano, perfil = self.var_ano.get(), self.var_perfil.get()
         self._refresh_cache = {
             "resumo_financeiro": self.db.get_resumo_financeiro(mes, ano, perfil),
             "resumo_estruturado": self.db.get_resumo_estruturado(mes, ano, perfil),
@@ -2444,6 +2494,187 @@ class AppUI(ctk.CTk):
             
         except Exception as e:
             self.adicionar_msg_chat("Sistema", f"Erro crítico de interface na caixa de seleção: {str(e)}")
+
+    def build_widget_fluxo_mensal(self, parent):
+        chart_container = ctk.CTkFrame(parent, fg_color="transparent")
+        chart_container.pack(fill="both", expand=True, padx=5, pady=5)
+        
+        modo_val = self.var_view_mode.get()
+        mes = self.var_mes.get() if modo_val == "Mensal" else None
+        ano, perfil = self.var_ano.get(), self.var_perfil.get()
+        
+        diario = self.db.get_gastos_diarios_mes(mes, ano, perfil)
+        
+        dias = sorted(list(diario.keys()))
+        if not dias:
+            ctk.CTkLabel(chart_container, text="Sem transações no período.", text_color="#64748b").pack(expand=True)
+            return
+            
+        acumulados = []
+        soma = 0
+        for dia in dias:
+            soma += diario[dia]["Despesas"]
+            acumulados.append(soma)
+            
+        fig, ax = plt.subplots(figsize=(5, 3), dpi=100)
+        fig.patch.set_facecolor('#1e293b')
+        ax.set_facecolor('#1e293b')
+        
+        ax.plot(dias, acumulados, color='#f43f5e', marker='o', markersize=4, linewidth=2)
+        ax.fill_between(dias, acumulados, color='#f43f5e', alpha=0.1)
+        
+        ax.set_title("Evolução de Despesas Diárias", color="white", fontsize=10, weight='bold')
+        ax.tick_params(axis='x', colors='white', labelsize=8)
+        ax.tick_params(axis='y', colors='white', labelsize=8)
+        
+        # Oculta bordas
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['left'].set_color('#334155')
+        ax.spines['bottom'].set_color('#334155')
+        
+        # Mostra apenas alguns rótulos no X
+        if len(dias) > 10:
+            ax.set_xticks(dias[::max(1, len(dias)//5)])
+            
+        fig.tight_layout()
+        
+        canvas = FigureCanvasTkAgg(fig, master=chart_container)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill="both", expand=True)
+
+    def build_widget_donut_categorias(self, parent):
+        chart_container = ctk.CTkFrame(parent, fg_color="transparent")
+        chart_container.pack(fill="both", expand=True, padx=5, pady=5)
+        
+        modo_val = self.var_view_mode.get()
+        mes = self.var_mes.get() if modo_val == "Mensal" else None
+        ano, perfil = self.var_ano.get(), self.var_perfil.get()
+        cats, somas = self.db.get_resumo_estruturado(mes, ano, perfil)
+        
+        dados = []
+        for c_id, nome, tipo, p_id in cats:
+            if p_id is None and "Despesa" in tipo: # Somente pais (macro categorias)
+                # Soma pai + filhos
+                total = somas.get(c_id, 0)
+                for f_id, f_nome, f_tipo, f_pid in cats:
+                    if f_pid == c_id:
+                        total += somas.get(f_id, 0)
+                if total > 0:
+                    dados.append((nome, total))
+                    
+        if not dados:
+            ctk.CTkLabel(chart_container, text="Sem despesas no período.", text_color="#64748b").pack(expand=True)
+            return
+            
+        dados.sort(key=lambda x: x[1], reverse=True)
+        labels = [d[0] for d in dados]
+        valores = [d[1] for d in dados]
+        
+        fig, ax = plt.subplots(figsize=(5, 3), dpi=100)
+        fig.patch.set_facecolor('#1e293b')
+        
+        colors = plt.cm.Set3.colors + plt.cm.Pastel1.colors
+        wedges, texts = ax.pie(valores, startangle=90, colors=colors, 
+                               wedgeprops=dict(width=0.4, edgecolor='#1e293b'))
+        
+        legend_labels = [f"{l} - {v/sum(valores)*100:.1f}%" for l, v in zip(labels, valores)]
+        leg = ax.legend(wedges, legend_labels, title="Categorias", loc="center left", bbox_to_anchor=(1, 0, 0.5, 1),
+                  facecolor='#1e293b', edgecolor='#334155', labelcolor='white', fontsize=7)
+        leg.get_title().set_color("white")
+        leg.get_title().set_weight("bold")
+            
+        ax.set_title("Despesas por Categoria", color="white", fontsize=10, weight='bold')
+        fig.tight_layout()
+        
+        canvas = FigureCanvasTkAgg(fig, master=chart_container)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill="both", expand=True)
+
+    def build_widget_ranking(self, parent):
+        chart_container = ctk.CTkFrame(parent, fg_color="transparent")
+        chart_container.pack(fill="both", expand=True, padx=5, pady=5)
+        
+        modo_val = self.var_view_mode.get()
+        mes = self.var_mes.get() if modo_val == "Mensal" else None
+        ano, perfil = self.var_ano.get(), self.var_perfil.get()
+        cats, somas = self.db.get_resumo_estruturado(mes, ano, perfil)
+        
+        # Pega todas as subcategorias de despesa (ou categoria sem filho)
+        dados = []
+        for c_id, nome, tipo, p_id in cats:
+            if "Despesa" in tipo and (p_id is not None or sum(1 for c in cats if c[3] == c_id) == 0):
+                if somas.get(c_id, 0) > 0:
+                    dados.append((nome, somas.get(c_id, 0)))
+                    
+        if not dados:
+            ctk.CTkLabel(chart_container, text="Sem despesas no período.", text_color="#64748b").pack(expand=True)
+            return
+            
+        dados.sort(key=lambda x: x[1], reverse=False) # Ascending for horizontal bar
+        dados = dados[-5:] # Top 5
+        
+        labels = [d[0] for d in dados]
+        valores = [d[1] for d in dados]
+        
+        fig, ax = plt.subplots(figsize=(5, 3), dpi=100)
+        fig.patch.set_facecolor('#1e293b')
+        ax.set_facecolor('#1e293b')
+        
+        ax.barh(labels, valores, color='#f43f5e', height=0.6)
+        
+        ax.set_title("Top 5 Maiores Despesas", color="white", fontsize=10, weight='bold')
+        ax.tick_params(axis='x', colors='white', labelsize=8)
+        ax.tick_params(axis='y', colors='white', labelsize=8)
+        
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['left'].set_color('#334155')
+        ax.spines['bottom'].set_color('#334155')
+        
+        fig.tight_layout()
+        
+        canvas = FigureCanvasTkAgg(fig, master=chart_container)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill="both", expand=True)
+
+    def build_widget_resumo_mes(self, parent):
+        chart_container = ctk.CTkFrame(parent, fg_color="transparent")
+        chart_container.pack(fill="both", expand=True, padx=20, pady=20)
+        
+        modo_val = self.var_view_mode.get()
+        mes = self.var_mes.get() if modo_val == "Mensal" else None
+        ano, perfil = self.var_ano.get(), self.var_perfil.get()
+        resumo = self.db.get_resumo_financeiro(mes, ano, perfil)
+        
+        receita_total = resumo["Receita Fixa"] + resumo["Receita Variável"]
+        despesa_total = resumo["Despesa Fixa"] + resumo["Despesa Variável"]
+        
+        if receita_total == 0:
+            pct = 1.0 if despesa_total > 0 else 0.0
+        else:
+            pct = despesa_total / receita_total
+            
+        ctk.CTkLabel(chart_container, text="CONSUMO DA RECEITA", font=ctk.CTkFont(size=14, weight="bold"), text_color="#94a3b8").pack(pady=(0, 10))
+        
+        bar_bg = ctk.CTkFrame(chart_container, fg_color="#334155", height=40, corner_radius=20)
+        bar_bg.pack(fill="x", pady=10)
+        
+        color = "#22c55e" if pct < 0.8 else "#eab308" if pct < 1.0 else "#ef4444"
+        width_pct = min(pct, 1.0)
+        
+        if width_pct > 0:
+            seg = ctk.CTkFrame(bar_bg, fg_color=color, corner_radius=20)
+            seg.place(relx=0, rely=0, relwidth=width_pct, relheight=1)
+            
+        texto_pct = f"{pct*100:.1f}%"
+        ctk.CTkLabel(chart_container, text=texto_pct, font=ctk.CTkFont(size=30, weight="bold"), text_color=color).pack(pady=5)
+        
+        saldo = receita_total - despesa_total
+        lbl_saldo = f"Saldo Livre: R$ {saldo:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        ctk.CTkLabel(chart_container, text=lbl_saldo, font=ctk.CTkFont(size=12), text_color="#cbd5e1").pack()
+
+
 if __name__ == "__main__":
     from database import Database
     db = Database()
