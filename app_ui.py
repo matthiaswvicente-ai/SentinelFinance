@@ -266,17 +266,7 @@ class AppUI(ctk.CTk):
         self.lbl_brand = ctk.CTkLabel(self.bottom_sidebar, text="Developed by Taurus Green Studios",
                                       font=ctk.CTkFont(size=9), text_color="#555555")
         self.lbl_brand.pack(pady=(0, 4))
-
-        self.var_demo_mode = ctk.BooleanVar(value=False)
-        self.original_db = self.db
-
-        self.sw_demo = ctk.CTkSwitch(self.bottom_sidebar, text="Modo Simulação 🧪",
-                                     variable=self.var_demo_mode,
-                                     command=self.toggle_demo_mode,
-                                     font=ctk.CTkFont(size=12, weight="bold"),
-                                     progress_color="#fbbf24")
-        self.sw_demo.pack(padx=10)
-
+        
         # Linha separadora entre sidebar e dashboard
         tk.Frame(self, bg="#334155", width=2).grid(row=0, column=1, sticky="nsew")
         self.grid_columnconfigure(1, weight=0, minsize=2)
@@ -356,36 +346,6 @@ class AppUI(ctk.CTk):
         self.mudar_layout(self.var_layout.get())
         self.limpar_arquivos_temporarios()
         self.after(500, self.atualizar_resumo_sidebar)
-
-    def toggle_demo_mode(self):
-        self._is_refreshing = True
-        from database import Database
-        if self.var_demo_mode.get():
-            self.original_db = self.db
-            from demo_data import generate_demo_data
-            try:
-                demo_path = generate_demo_data()
-                self.db = Database(demo_path)
-                self.sidebar_frame.configure(fg_color="#334155")
-                self.main_frame.configure(bg="#1e293b")
-                self.panels_container.configure(bg="#1e293b")
-                self.header_dash.configure(bg="#1e293b")
-            except Exception as e:
-                print(f"Erro ao ativar demo: {e}")
-                self.var_demo_mode.set(False)
-                self._is_refreshing = False
-                return
-        else:
-            self.db = self.original_db
-            self.sidebar_frame.configure(fg_color="#111827")
-            self.main_frame.configure(bg="#0f172a")
-            self.panels_container.configure(bg="#0f172a")
-            self.header_dash.configure(bg="#0f172a")
-        self.var_perfil.set("Eu")
-        # Liberar a thread da UI antes de rodar queries pesadas para não congelar o Switch
-        self.after(50, self.update_db_references_and_refresh)
-        self.after(150, lambda: setattr(self, "_is_refreshing", False))
-
 
     def update_db_references_and_refresh(self):
         # Limpar painéis existentes
@@ -2146,7 +2106,7 @@ class AppUI(ctk.CTk):
                     if isinstance(parsed, list) and len(parsed) > 0 and "acao" in parsed[0]:
                         self.after(0, lambda lbl=lbl_resp: lbl.pack_forget())
                         
-                        if getattr(self, "var_demo_mode", False) and self.var_demo_mode.get():
+                        if False:
                             # MODO DEMO: INSERÇÃO DIRETA
                             def perform_insert(p):
                                 cat_nome = p.get("categoria", "Diversos")
