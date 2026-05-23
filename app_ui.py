@@ -8,576 +8,119 @@ import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-class NovaTransacaoForm(ctk.CTkFrame):
-    def __init__(self, parent, db, app_ui, is_integrated=False, edit_id=None, initial_data=None):
-        super().__init__(parent, fg_color="#1e222b", corner_radius=10)
-        self.db = db
-        self.app_ui = app_ui
-        self.fechar_pos_save = True # Padrão para modal
-        self.is_integrated = is_integrated
-        self.edit_id = edit_id
-        self.initial_data = initial_data
 
-        # Variáveis de Estado
-        self.var_data = ctk.StringVar(value=datetime.datetime.now().strftime("%d/%m/%Y"))
-        self.var_desc = ctk.StringVar()
-        self.var_pilar = ctk.StringVar(value="Despesa Fixa")
-        self.var_categoria = ctk.StringVar()
-        self.var_subcategoria = ctk.StringVar()
-        self.var_valor = ctk.StringVar(value="0,00")
-        self.var_obs = ctk.StringVar()
-        
-        # Pagamento
-        self.metodos = ["Dinheiro", "Pix", "Cartão"]
-        self.var_metodos = {m: tk.BooleanVar(value=False) for m in self.metodos}
-        self.var_parcelas = ctk.StringVar(value="1")
-        self.var_bandeira = ctk.StringVar(value="Visa")
-        self.var_dono_cartao = ctk.StringVar(value="Eu")
-        self.var_inicio_pag = ctk.StringVar(value=datetime.datetime.now().strftime("%m/%Y"))
-        
-        self.var_repetir_meses = ctk.StringVar(value="1 Mês")
-
-        # Compartilhamento
-        self.pessoas = self.db.get_perfis() if hasattr(self.db, 'get_perfis') else ["Eu"]
-        if "Outro..." not in self.pessoas: self.pessoas.append("Outro...")
-        
-        self.var_pessoas = {p: tk.BooleanVar(value=(p=="Eu")) for p in self.pessoas}
-        self.var_divisao_tipo = ctk.StringVar(value="Igualitária") # Igualitária ou Individual
-        self.pessoa_valores = {} # {pessoa: StringVar}
-
-        # Carregar categorias
-        self.cats_data = self.db.get_categorias()
-        self.categorias_por_pilar = {}
-        # Primeiro passo: Criar todos os pais
-        for c in self.cats_data:
-            if c[3] is None:
-                pilar = c[2]
-                if pilar not in self.categorias_por_pilar: self.categorias_por_pilar[pilar] = {}
-                self.categorias_por_pilar[pilar][c[0]] = {"nome": c[1], "subs": []}
-        # Segundo passo: Adicionar os filhos
-        for c in self.cats_data:
-            if c[3] is not None:
-                pilar = c[2]
-                if pilar in self.categorias_por_pilar and c[3] in self.categorias_por_pilar[pilar]:
-                    self.categorias_por_pilar[pilar][c[3]]["subs"].append((c[0], c[1]))
-
-        self.main_container = ctk.CTkScrollableFrame(self, fg_color="transparent")
-        self.main_container.pack(fill="both", expand=True, padx=10, pady=10)
-        
-        if self.edit_id:
-            self.load_edit_data()
-        elif getattr(self, "initial_data", None):
-            self.load_initial_data()
-        else:
-            self.render_step_1()
-
-
-    def load_initial_data(self):
-        t = self.initial_data
-        from datetime import datetime
-        data_str = t.get("data", datetime.now().strftime("%d/%m/%Y"))
-        if data_str.lower() in ["hoje", "today"]: data_str = datetime.now().strftime("%d/%m/%Y")
-        self.var_data.set(data_str)
-        self.var_desc.set(t.get("descricao", "Nova Transação"))
-        self.var_pilar.set(t.get("tipo_transacao", "Despesa Variável"))
-        self.var_categoria.set(t.get("categoria", ""))
-        self.var_subcategoria.set("Geral")
-        self.var_valor.set(f"{float(t.get('valor', 0)):.2f}".replace(".", ","))
-        self.var_obs.set(t.get("observacao", ""))
-        
-        m_ai = t.get("metodo", "Dinheiro")
-        for m in self.metodos:
-            self.var_metodos[m].set(m.lower() in m_ai.lower())
-            
-        self.var_parcelas.set(str(t.get("parcelas", 1)))
-        self.var_bandeira.set(t.get("bandeira", "Visa"))
-        self.var_dono_cartao.set(t.get("dono_cartao", "Eu"))
-        
-        div_ai = t.get("divisao", "Eu")
-        for p in self.pessoas:
-            self.var_pessoas[p].set(p.lower() in div_ai.lower())
-            
-        self.render_step_1()
-    def load_edit_data(self):
-        t = self.db.get_transacao_by_id(self.edit_id)
-        if not t:
-            self.render_step_1()
-            return
-            
-        self.var_data.set(t["data"])
-        self.var_desc.set(t["descricao"])
-        self.var_pilar.set(t["tipo_transacao"])
-        
-        if t["parent_id"] is None:
-            self.var_categoria.set(t["categoria_nome"])
-            self.var_subcategoria.set("Geral")
-        else:
-            parent_nome = next((c[1] for c in self.cats_data if c[0] == t["parent_id"]), "Geral")
-            self.var_categoria.set(parent_nome)
-            self.var_subcategoria.set(t["categoria_nome"])
-            
-        self.var_valor.set(f"{t['valor_total']:.2f}".replace(".", ","))
-        self.var_obs.set(t["observacao"] or "")
-        
-        for m in self.metodos:
-            self.var_metodos[m].set(m in (t["metodo_pagamento"] or ""))
-            
-        self.var_parcelas.set(str(t["total_parcelas"]))
-        self.var_bandeira.set(t["bandeira_cartao"] or "Visa")
-        self.var_dono_cartao.set(t["dono_cartao"] or "Eu")
-        
-        if t["divisoes"]:
-            for p in self.pessoas:
-                self.var_pessoas[p].set(p in t["divisoes"])
-            ativos = len(t["divisoes"])
-            val_total = t["valor_total"]
-            is_equal = all(abs(v - (val_total/ativos)) < 0.01 for v in t["divisoes"].values()) if ativos > 0 else True
-            
-            self.var_divisao_tipo.set("Igualitária" if is_equal else "Individual")
-            if not is_equal:
-                for p, v in t["divisoes"].items():
-                    if p not in self.pessoa_valores: self.pessoa_valores[p] = ctk.StringVar()
-                    self.pessoa_valores[p].set(f"{v:.2f}".replace(".", ","))
-        else:
-            for p in self.pessoas: self.var_pessoas[p].set(p=="Eu")
-            self.var_divisao_tipo.set("Igualitária")
-            
-        self.render_step_1()
-
-    def clean_container(self):
-        for w in self.main_container.winfo_children(): w.destroy()
-
-    def render_step_1(self):
-        self.clean_container()
-        
-        header = ctk.CTkFrame(self.main_container, fg_color="transparent")
-        header.pack(fill="x", pady=10)
-        titulo = "EDITAR TRANSAÇÃO" if self.edit_id else "NOVA TRANSAÇÃO"
-        ctk.CTkLabel(header, text=titulo, font=ctk.CTkFont(weight="bold", size=18)).pack(side="left", padx=20)
-        
-        # Ocultar o X no modelo integrado
-        if not self.is_integrated:
-            ctk.CTkButton(header, text="✕", width=30, fg_color="#F44336", hover_color="#D32F2F", command=self.app_ui.fechar_formulario).pack(side="right", padx=20)
-        
-        ctk.CTkLabel(self.main_container, text="DADOS BÁSICOS", font=ctk.CTkFont(weight="bold", size=14), text_color="#aaaaaa").pack(pady=5)
-        
-        f = ctk.CTkFrame(self.main_container, fg_color="transparent")
-        # Reduzir padx no modelo integrado para economizar espaço
-        f.pack(fill="x", padx=10 if self.is_integrated else 30)
-        
-        ctk.CTkLabel(f, text="Data:").pack(anchor="w")
-        ctk.CTkEntry(f, textvariable=self.var_data).pack(fill="x", pady=(0, 10))
-        
-        ctk.CTkLabel(f, text="Descrição / Tag:").pack(anchor="w")
-        ctk.CTkEntry(f, textvariable=self.var_desc, placeholder_text="Ex: Compras Supermercado").pack(fill="x", pady=(0, 10))
-        
-        ctk.CTkLabel(f, text="Pilar:").pack(anchor="w")
-        pilares = ["Receita Fixa", "Receita Variável", "Despesa Fixa", "Despesa Variável", "Investimento"]
-        ctk.CTkOptionMenu(f, variable=self.var_pilar, values=pilares, command=self.update_cats).pack(fill="x", pady=(0, 10))
-        
-        ctk.CTkLabel(f, text="Categoria:").pack(anchor="w")
-        self.opt_cat = ctk.CTkOptionMenu(f, variable=self.var_categoria, values=[""], command=self.update_subs)
-        self.opt_cat.pack(fill="x", pady=(0, 10))
-        
-        ctk.CTkLabel(f, text="Subcategoria:").pack(anchor="w")
-        self.opt_sub = ctk.CTkOptionMenu(f, variable=self.var_subcategoria, values=[""])
-        self.opt_sub.pack(fill="x", pady=(0, 10))
-
-        ctk.CTkLabel(f, text="Observação (curto):").pack(anchor="w")
-        ctk.CTkEntry(f, textvariable=self.var_obs, placeholder_text="Ex: Compra do mês no Carrefour").pack(fill="x", pady=(0, 10))
-        
-        self.update_cats(self.var_pilar.get())
-        
-        ctk.CTkButton(self.main_container, text="PRÓXIMO ➔", command=self.render_step_2).pack(pady=20)
-
-    def update_cats(self, pilar):
-        cats = self.categorias_por_pilar.get(pilar, {})
-        nomes = [c["nome"] for c in cats.values()]
-        self.opt_cat.configure(values=nomes if nomes else ["Sem Categoria"])
-        
-        curr = self.var_categoria.get()
-        if curr not in nomes and nomes:
-            self.var_categoria.set(nomes[0])
-            
-        self.update_subs(self.var_categoria.get())
-
-    def update_subs(self, cat_nome):
-        pilar = self.var_pilar.get()
-        cats = self.categorias_por_pilar.get(pilar, {})
-        sub_nomes = []
-        for c in cats.values():
-            if c["nome"] == cat_nome:
-                sub_nomes = [s[1] for s in c["subs"]]
-                break
-        self.opt_sub.configure(values=sub_nomes if sub_nomes else ["Geral"])
-        
-        curr = self.var_subcategoria.get()
-        if curr not in sub_nomes:
-            if sub_nomes: self.var_subcategoria.set(sub_nomes[0])
-            else: self.var_subcategoria.set("Geral")
-
-    def render_step_2(self):
-        pilar = self.var_pilar.get()
-        self.clean_container()
-        
-        ctk.CTkLabel(self.main_container, text="VALORES E PAGAMENTO", font=ctk.CTkFont(weight="bold", size=16)).pack(pady=10)
-        
-        f = ctk.CTkFrame(self.main_container, fg_color="transparent")
-        f.pack(fill="x", padx=10 if getattr(self, 'is_integrated', False) else 30)
-        
-        ctk.CTkLabel(f, text="Valor Total:").pack(anchor="w")
-        ctk.CTkEntry(f, textvariable=self.var_valor, placeholder_text="0,00", font=ctk.CTkFont(size=18, weight="bold")).pack(fill="x", pady=5)
-        
-        if "Despesa" in pilar:
-            ctk.CTkLabel(f, text="Método de Pagamento:", font=ctk.CTkFont(weight="bold")).pack(anchor="w", pady=(10, 0))
-            for m in self.metodos:
-                ctk.CTkCheckBox(f, text=m, variable=self.var_metodos[m], command=self.check_parcelado).pack(anchor="w", pady=2)
-            
-            self.parcelado_frame = ctk.CTkFrame(self.main_container, fg_color="#222222")
-            self.render_parcelado_options()
-            
-            self.botoes_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
-            self.botoes_frame.pack(fill="x", pady=20)
-            ctk.CTkButton(self.botoes_frame, text="SALVAR DESPESA", fg_color="#2E7D32", command=self.salvar).pack(pady=(0, 10))
-            ctk.CTkButton(self.botoes_frame, text="⟲ VOLTAR", fg_color="transparent", border_width=1, command=self.render_step_1).pack()
-        else:
-            self.botoes_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
-            self.botoes_frame.pack(fill="x", pady=20)
-            btn_txt = "SALVAR EDIÇÃO" if self.edit_id else "SALVAR " + pilar.upper()
-            ctk.CTkButton(self.botoes_frame, text=btn_txt, fg_color="#2E7D32" if not self.edit_id else "#3b82f6", command=self.salvar).pack(pady=(0, 10))
-            if self.edit_id:
-                ctk.CTkButton(self.botoes_frame, text="CANCELAR", fg_color="#f43f5e", hover_color="#e11d48", command=self.cancelar_edicao).pack(pady=(0, 10))
-            ctk.CTkButton(self.botoes_frame, text="⟲ VOLTAR", fg_color="transparent", border_width=1, command=self.render_step_1).pack()
-
-    def cancelar_edicao(self):
-        # Reinicia o formulário sem o edit_id
-        self.edit_id = None
-        self.var_desc.set("")
-        self.var_valor.set("0,00")
-        self.var_obs.set("")
-        self.render_step_1()
-
-    def check_parcelado(self):
-        if self.var_metodos["Cartão"].get():
-            self.parcelado_frame.pack(fill="x", padx=10 if self.is_integrated else 20, pady=10, before=self.botoes_frame)
-        else:
-            self.parcelado_frame.pack_forget()
-
-    def render_parcelado_options(self):
-        f = self.parcelado_frame
-        for w in f.winfo_children(): w.destroy()
-        
-        ctk.CTkLabel(f, text="DETALHES DO PARCELAMENTO", font=ctk.CTkFont(size=11, weight="bold")).pack(pady=5)
-        
-        row1 = ctk.CTkFrame(f, fg_color="transparent")
-        row1.pack(fill="x", padx=10)
-        ctk.CTkLabel(row1, text="Nº Parcelas:").pack(side="left")
-        ctk.CTkEntry(row1, textvariable=self.var_parcelas, width=50).pack(side="left", padx=5)
-        
-        ctk.CTkLabel(row1, text="Bandeira:").pack(side="left", padx=(10,0))
-        ctk.CTkOptionMenu(row1, variable=self.var_bandeira, values=["Visa", "Master", "Elo", "Itaú", "Outra"], width=90).pack(side="left", padx=5)
-        
-        row2 = ctk.CTkFrame(f, fg_color="transparent")
-        row2.pack(fill="x", padx=10, pady=5)
-        ctk.CTkLabel(row2, text="Início (MM/AAAA):").pack(side="left")
-        ctk.CTkEntry(row2, textvariable=self.var_inicio_pag, width=80).pack(side="left", padx=5)
-        
-        ctk.CTkLabel(row2, text="No cartão de:").pack(side="left", padx=(5,0))
-        ctk.CTkOptionMenu(row2, variable=self.var_dono_cartao, values=self.pessoas, width=80).pack(side="left", padx=5)
-
-        # Divisão Familiar
-        ctk.CTkLabel(f, text="COMPARTILHAMENTO", font=ctk.CTkFont(size=11, weight="bold")).pack(pady=(10, 0))
-        div_p = ctk.CTkFrame(f, fg_color="transparent")
-        div_p.pack(fill="x", padx=10)
-        for p in self.pessoas:
-            ctk.CTkCheckBox(div_p, text=p, variable=self.var_pessoas[p], command=self.update_divisao_ui).pack(side="left", padx=2)
-            
-        ctk.CTkOptionMenu(f, variable=self.var_divisao_tipo, values=["Igualitária", "Individual"], command=self.update_divisao_ui).pack(pady=5)
-        self.div_ui_container = ctk.CTkFrame(f, fg_color="transparent", height=0)
-        self.div_ui_container.pack(fill="x")
-        self.update_divisao_ui() # Forçar atualização inicial para ajustar a altura
-
-    def update_divisao_ui(self, *args):
-        for w in self.div_ui_container.winfo_children(): w.destroy()
-        
-        if self.var_pessoas.get("Outro...", tk.BooleanVar()).get():
-            f_outro = ctk.CTkFrame(self.div_ui_container, fg_color="transparent")
-            f_outro.pack(fill="x", padx=20, pady=(0, 5))
-            ctk.CTkLabel(f_outro, text="Nome do novo perfil:").pack(side="left")
-            if not hasattr(self, 'var_novo_perfil'): self.var_novo_perfil = ctk.StringVar()
-            ctk.CTkEntry(f_outro, textvariable=self.var_novo_perfil, width=150).pack(side="right")
-
-        if self.var_divisao_tipo.get() == "Individual":
-            for p in self.pessoas:
-                if self.var_pessoas[p].get():
-                    row = ctk.CTkFrame(self.div_ui_container, fg_color="transparent")
-                    row.pack(fill="x", padx=20, pady=2)
-                    label_txt = p if p != "Outro..." else "Novo Perfil"
-                    ctk.CTkLabel(row, text=label_txt, width=60).pack(side="left")
-                    if p not in self.pessoa_valores: self.pessoa_valores[p] = ctk.StringVar(value="0,00")
-                    
-                    entry = ctk.CTkEntry(row, textvariable=self.pessoa_valores[p], width=80)
-                    entry.pack(side="right")
-                    self.pessoa_valores[p].trace_add("write", lambda *args: self.atualizar_label_validacao())
-
-            self.lbl_validacao_divisao = ctk.CTkLabel(self.div_ui_container, text="", font=ctk.CTkFont(weight="bold"))
-            self.lbl_validacao_divisao.pack(pady=10)
-            if not hasattr(self, '_valor_trace_id'):
-                self._valor_trace_id = self.var_valor.trace_add("write", lambda *args: self.atualizar_label_validacao())
-            self.atualizar_label_validacao()
-
-    def atualizar_label_validacao(self):
-        if not hasattr(self, 'lbl_validacao_divisao') or not self.lbl_validacao_divisao.winfo_exists(): return
-        try:
-            val_total = float(self.var_valor.get().replace(",", "."))
-        except:
-            val_total = 0.0
-            
-        soma = 0.0
-        for p in self.pessoas:
-            if self.var_pessoas[p].get() and p in self.pessoa_valores:
-                try: soma += float(self.pessoa_valores[p].get().replace(",", "."))
-                except: pass
-                
-        diff = val_total - soma
-        if abs(diff) < 0.05:
-            self.lbl_validacao_divisao.configure(text=f"Status da Divisão: OK! (R$ {soma:.2f} alocados)", text_color="#2E7D32")
-        elif diff > 0:
-            self.lbl_validacao_divisao.configure(text=f"Falta alocar: R$ {diff:.2f}", text_color="#E65100")
-        else:
-            self.lbl_validacao_divisao.configure(text=f"Excesso: R$ {abs(diff):.2f}", text_color="#C62828")
-
-    def salvar(self):
-        try:
-            val_total = float(self.var_valor.get().replace(",", "."))
-            if val_total <= 0: raise ValueError
-        except:
-            return
-
-        # Identificar IDs
-        pilar = self.var_pilar.get()
-        cat_nome = self.var_categoria.get()
-        sub_nome = self.var_subcategoria.get()
-        
-        # Mapear Categoria ID
-        cat_id = None
-        for c in self.cats_data:
-            if c[1] == sub_nome and c[2] == pilar: # Prioridade subcategoria
-                cat_id = c[0]
-                break
-        if not cat_id:
-            for c in self.cats_data:
-                if c[1] == cat_nome and c[2] == pilar:
-                    cat_id = c[0]
-                    break
-
-        metodos_selecionados = [m for m, v in self.var_metodos.items() if v.get()]
-        metodo_str = ", ".join(metodos_selecionados) if metodos_selecionados else "Dinheiro"
-        
-        num_parcelas = int(self.var_parcelas.get()) if self.var_metodos["Cartão"].get() else 1
-        
-        # Lógica de Divisão
-        divisoes = {}
-        novo_nome = self.var_novo_perfil.get().strip() if hasattr(self, 'var_novo_perfil') else ""
-        
-        if self.var_divisao_tipo.get() == "Igualitária":
-            ativos = [p for p in self.pessoas if self.var_pessoas[p].get()]
-            if ativos:
-                val_por_pessoa = val_total / len(ativos)
-                for p in ativos:
-                    nome_final = novo_nome if p == "Outro..." and novo_nome else p
-                    if p == "Outro..." and not novo_nome: nome_final = "Desconhecido"
-                    divisoes[nome_final] = val_por_pessoa
-        else:
-            soma_individual = 0.0
-            for p in self.pessoas:
-                if self.var_pessoas[p].get() and p in self.pessoa_valores:
-                    nome_final = novo_nome if p == "Outro..." and novo_nome else p
-                    if p == "Outro..." and not novo_nome: nome_final = "Desconhecido"
-                    try: val = float(self.pessoa_valores[p].get().replace(",", "."))
-                    except: val = 0.0
-                    divisoes[nome_final] = val
-                    soma_individual += val
-            
-            if abs(soma_individual - val_total) > 0.05:
-                tk.messagebox.showerror("Erro de Validação", f"A soma das divisões (R$ {soma_individual:.2f}) não bate com o Valor Total (R$ {val_total:.2f}).")
-                return
-
-        if self.edit_id:
-            sucesso, msg = self.db.atualizar_transacao(
-                transacao_id=self.edit_id,
-                categoria_id=cat_id, 
-                descricao=self.var_desc.get(), 
-                data=self.var_data.get(),
-                valor_total=val_total,
-                tipo_transacao=pilar,
-                metodo=metodo_str,
-                bandeira=self.var_bandeira.get() if "Cartão" in metodo_str else "",
-                dono=self.var_dono_cartao.get() if "Cartão" in metodo_str else "",
-                observacao=self.var_obs.get(),
-                divisoes=divisoes
-            )
-        else:
-            qtde_meses = int(self.var_repetir_meses.get().split()[0])
-            import datetime
-            from dateutil.relativedelta import relativedelta
-            try: data_base = datetime.datetime.strptime(self.var_data.get(), "%d/%m/%Y")
-            except: data_base = datetime.datetime.now()
-            
-            sucesso = True
-            msg = ""
-            for i in range(qtde_meses):
-                data_lote = (data_base + relativedelta(months=i)).strftime("%d/%m/%Y")
-                s, m = self.db.inserir_transacao(
-                    conta_id=1, 
-                    categoria_id=cat_id, 
-                    descricao=self.var_desc.get() if i == 0 else f"{self.var_desc.get()} ({i+1}/{qtde_meses})" if qtde_meses > 1 else self.var_desc.get(), 
-                    data_ini=data_lote,
-                    valor_total=val_total,
-                    tipo_transacao=pilar,
-                    metodo=metodo_str,
-                    parcelas=num_parcelas,
-                    bandeira=self.var_bandeira.get() if "Cartão" in metodo_str else "",
-                    dono=self.var_dono_cartao.get() if "Cartão" in metodo_str else "",
-                    divisoes=divisoes,
-                    observacao=self.var_obs.get()
-                )
-                if not s:
-                    sucesso = False; msg = m; break
-        
-        if sucesso:
-            if self.fechar_pos_save:
-                if not getattr(self, "is_integrated", True):
-                    self.master.destroy()
-                    self.app_ui.refresh_all_widgets()
-                else:
-                    self.app_ui.fechar_formulario()
-            else:
-                self.edit_id = None
-                self.var_desc.set("")
-                self.var_valor.set("0,00")
-                self.var_obs.set("")
-                if hasattr(self, 'render_step_1'):
-                    self.render_step_1()
-                
-            self.app_ui.after(100, self.app_ui.refresh_all_widgets)
-        else:
-            tk.messagebox.showerror("Erro", f"Falha ao salvar transação: {msg}")
-
-class DashboardPanel(ctk.CTkFrame):
-    def __init__(self, parent, app_ui, default_widget="Vazio", is_fixed=False, compact=False, excluded_widgets=None):
-        super().__init__(parent, fg_color="#1e293b", corner_radius=15, border_width=1, border_color="#334155")
-        self.app_ui = app_ui
-        self.pack_propagate(False)
-        self.grid_propagate(False)
-        
-        self.header_frame = ctk.CTkFrame(self, fg_color="#334155", corner_radius=15, height=40)
-        self.header_frame.pack(fill="x", padx=2, pady=2)
-        self.header_frame.pack_propagate(False)
-        
-        todas_opcoes = [
-            "Vazio",
-            "📉 Fluxo de Gastos Mensal",
-            "🍩 Despesas por Categoria",
-            "📊 Ranking de Gastos",
-            "🚥 Resumo do Mês",
-            "📊 Gráfico: Comparação Anual",
-            "📊 Gráfico: Tipos de Pagamento",
-            "📊 Gráfico: Uso de Cartões",
-            "📋 Lista: Transações",
-            "📋 Lista: Resumo Completo",
-            "⚙️ Config: Categorias",
-            "📝 Formulário: Novo Lançamento"
-        ]
-        
-        if excluded_widgets:
-            self.opcoes_widget = [opt for opt in todas_opcoes if opt not in excluded_widgets]
-        else:
-            self.opcoes_widget = todas_opcoes
-            
-        self.var_selecao = ctk.StringVar(value=default_widget)
-        
-        # Setas de Navegação (Rápida)
-        btn_prev = ctk.CTkButton(self.header_frame, text="<", width=25, height=25, corner_radius=6, 
-                                 fg_color="transparent", hover_color="#444444", 
-                                 command=lambda: self.navegar_widget(-1))
-        btn_prev.pack(side="left", padx=(5, 0))
-
-        self.opt_widget = ctk.CTkOptionMenu(self.header_frame, values=self.opcoes_widget, variable=self.var_selecao, 
-                                            command=self.mudar_widget, height=28, corner_radius=8, width=240, dynamic_resizing=False)
-        self.opt_widget.pack(side="left", padx=5, pady=6)
-        
-        btn_next = ctk.CTkButton(self.header_frame, text=">", width=25, height=25, corner_radius=6, 
-                                 fg_color="transparent", hover_color="#444444", 
-                                 command=lambda: self.navegar_widget(1))
-        btn_next.pack(side="left", padx=(0, 5))
-
-        self.body_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.body_frame.pack(fill="both", expand=True, padx=2 if (is_fixed or compact) else 10, pady=2 if (is_fixed or compact) else 10)
-        
-        if is_fixed:
-            self.header_frame.pack_forget()
-            
-        self.mudar_widget(default_widget)
-        
-    def mudar_widget(self, selecao):
-        for w in self.body_frame.winfo_children():
-            w.destroy()
-            
-        if "Transações" in selecao:
-            self.app_ui.build_widget_transacoes(self.body_frame)
-        elif "Fluxo de Gastos Mensal" in selecao:
-            self.app_ui.build_widget_fluxo_mensal(self.body_frame)
-        elif "Despesas por Categoria" in selecao:
-            self.app_ui.build_widget_donut_categorias(self.body_frame)
-        elif "Ranking de Gastos" in selecao:
-            self.app_ui.build_widget_ranking(self.body_frame)
-        elif "Resumo do Mês" in selecao:
-            self.app_ui.build_widget_resumo_mes(self.body_frame)
-        elif "Comparação Anual" in selecao:
-            self.app_ui.build_widget_comparacao_anual(self.body_frame)
-        elif "Pagamento" in selecao:
-            self.app_ui.build_widget_pagamentos(self.body_frame)
-        elif "Cartões" in selecao:
-            self.app_ui.build_widget_cartoes(self.body_frame)
-        elif "Resumo Completo" in selecao:
-            self.app_ui.build_widget_resumo_estruturado(self.body_frame, panel=self)
-        elif "Categorias" in selecao:
-            self.app_ui.build_widget_categorias(self.body_frame)
-        elif "Lançamento" in selecao:
-            self.app_ui.build_widget_formulario(self.body_frame)
-        else:
-            ctk.CTkLabel(self.body_frame, text="Painel Vazio", text_color="#aaaaaa").pack(expand=True)
-
-    def navegar_widget(self, direcao):
-        try:
-            atual = self.opcoes_widget.index(self.var_selecao.get())
-            novo = (atual + direcao) % len(self.opcoes_widget)
-            self.var_selecao.set(self.opcoes_widget[novo])
-            self.mudar_widget(self.opcoes_widget[novo])
-        except: pass
-
-    def abrir_detalhe_interno(self, cat_id, cat_nome, is_subperfil=False, is_cartao=False):
-        for w in self.body_frame.winfo_children(): w.destroy()
-        
-        # Header de Detalhe Interno
-        header_detalhe = ctk.CTkFrame(self.body_frame, fg_color="#1e222b", height=30)
-        header_detalhe.pack(fill="x", pady=(0, 10))
-        
-        ctk.CTkButton(header_detalhe, text="❮ Voltar", width=60, height=24, fg_color="#334155", 
-                       command=lambda: self.mudar_widget(self.var_selecao.get())).pack(side="left", padx=5)
-        
-        if is_subperfil:
-            ctk.CTkLabel(header_detalhe, text=f"GASTOS DE: {cat_nome.upper()}", font=ctk.CTkFont(weight="bold", size=12)).pack(side="left", padx=10)
-            self.app_ui.build_widget_transacoes(self.body_frame, perfil_override=cat_nome, agrupar_por_subcat=True)
-        elif is_cartao:
-            ctk.CTkLabel(header_detalhe, text=f"USO DO CARTÃO: {cat_nome.upper()}", font=ctk.CTkFont(weight="bold", size=12)).pack(side="left", padx=10)
-            self.app_ui.build_widget_transacoes(self.body_frame, cartao_override=cat_nome, agrupar_por_subcat=True)
-        else:
-            ctk.CTkLabel(header_detalhe, text=cat_nome.upper(), font=ctk.CTkFont(weight="bold", size=12)).pack(side="left", padx=10)
-            self.app_ui.build_widget_transacoes(self.body_frame, categoria_id=cat_id)
+from ui.nova_transacao_form import NovaTransacaoForm
+from ui.dashboard_panel import DashboardPanel
+from logger import logger
+import tkinter.filedialog as filedialog
+import datetime
 
 class AppUI(ctk.CTk):
+
+    def mostrar_dashboard_inicio(self):
+        if hasattr(self, 'config_geral_frame'): self.config_geral_frame.destroy()
+        if hasattr(self, 'config_ia_frame'): self.config_ia_frame.destroy()
+        
+        if hasattr(self, 'header_dash'): self.header_dash.pack(fill="x", padx=20, pady=(20, 10))
+        if hasattr(self, 'panels_container'): self.panels_container.pack(fill="both", expand=True, padx=20, pady=10)
+        self.refresh_all_widgets()
+
+    def abrir_config_geral(self):
+        if hasattr(self, 'header_dash'): self.header_dash.pack_forget()
+        if hasattr(self, 'panels_container'): self.panels_container.pack_forget()
+        if hasattr(self, 'config_geral_frame'): self.config_geral_frame.destroy()
+        if hasattr(self, 'config_ia_frame'): self.config_ia_frame.destroy()
+        if hasattr(self, 'ai_sidebar_frame') and self.ai_sidebar_frame.winfo_ismapped():
+            self.ai_sidebar_frame.grid_remove()
+            
+        self.config_geral_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
+        self.config_geral_frame.pack(fill="both", expand=True)
+
+        header = ctk.CTkFrame(self.config_geral_frame, fg_color="transparent")
+        header.pack(fill="x", pady=(20, 20), padx=30)
+        
+        btn_voltar = ctk.CTkButton(header, text="← Voltar ao Início", width=120, fg_color="#555555", hover_color="#333333", command=self.mostrar_dashboard_inicio)
+        btn_voltar.pack(side="left", padx=(0, 15))
+        
+        ctk.CTkLabel(header, text="⚙️ Configurações", font=ctk.CTkFont(weight="bold", size=24)).pack(side="left")
+        
+        container = ctk.CTkFrame(self.config_geral_frame, fg_color="transparent")
+        container.pack(fill="both", expand=True, padx=30, pady=10)
+        
+        btn_bot = ctk.CTkButton(container, text="🩺 Diagnóstico de Dados", command=self.rodar_diagnostico_real, height=50, font=ctk.CTkFont(size=14))
+        btn_bot.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
+        
+        btn_ia_config = ctk.CTkButton(container, text="🤖 Configurações da IA", command=self.abrir_config_ia, height=50, font=ctk.CTkFont(size=14))
+        btn_ia_config.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
+        
+        btn_export = ctk.CTkButton(container, text="💾 Exportar Backup (.db)", command=self.exportar_bd, height=50, font=ctk.CTkFont(size=14))
+        btn_export.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
+        
+        btn_import = ctk.CTkButton(container, text="📥 Importar Backup (.db)", command=self.importar_bd, height=50, font=ctk.CTkFont(size=14))
+        btn_import.grid(row=1, column=1, padx=10, pady=10, sticky="ew")
+        
+        container.grid_columnconfigure(0, weight=1)
+        container.grid_columnconfigure(1, weight=1)
+
+    def exportar_bd(self):
+        dest = filedialog.asksaveasfilename(
+            defaultextension=".db",
+            filetypes=[("Banco de Dados SQLite", "*.db")],
+            initialfile=f"financas_export_{datetime.datetime.now().strftime('%Y%m%d')}.db",
+            title="Exportar Banco de Dados"
+        )
+        if dest:
+            sucesso, msg = self.db.export_database(dest)
+            from tkinter import messagebox
+            if sucesso:
+                messagebox.showinfo("Sucesso", "Banco de dados exportado com sucesso!")
+            else:
+                messagebox.showerror("Erro", f"Falha ao exportar:\n{msg}")
+
+    def importar_bd(self):
+        from tkinter import messagebox
+        import shutil
+        import sys
+        
+        src = filedialog.askopenfilename(
+            filetypes=[("Banco de Dados SQLite", "*.db")],
+            title="Selecionar Backup para Importar"
+        )
+        if src:
+            resposta = messagebox.askyesno("Confirmar Importação", "Atenção: Importar um backup irá apagar todos os dados atuais e substituí-los pelos do arquivo selecionado.\n\nDeseja continuar?")
+            if resposta:
+                try:
+                    # Tenta copiar o arquivo selecionado para financas.db
+                    shutil.copy2(src, "financas.db")
+                    messagebox.showinfo("Sucesso", "Backup importado com sucesso!\nO aplicativo será fechado para aplicar as alterações. Por favor, abra-o novamente.")
+                    # Como o banco de dados e a interface mantêm estado em memória, o mais seguro é encerrar o processo.
+                    self.destroy()
+                    sys.exit(0)
+                except Exception as e:
+                    messagebox.showerror("Erro", f"Falha ao importar o backup:\n{str(e)}")
+
+    def iniciar_verificacao_update(self):
+        from update_manager import UpdateManager
+        self.updater = UpdateManager(current_version="1.0.0")
+        self.updater.check_for_updates_async(self.mostrar_alerta_atualizacao)
+
+    def mostrar_alerta_atualizacao(self, data):
+        def _show():
+            import webbrowser
+            from tkinter import messagebox
+            versao = data.get("latest_version", "")
+            notas = data.get("release_notes", "")
+            url = data.get("download_url", "")
+            
+            msg = f"Uma nova versão ({versao}) está disponível!\n\nNovidades:\n{notas}\n\nDeseja baixar a nova versão agora?"
+            if messagebox.askyesno("Atualização Disponível", msg):
+                if url:
+                    webbrowser.open(url)
+        
+        # Agenda a exibição do popup para 3 segundos após abrir o app, 
+        # para garantir que a UI já está carregada e não assustar o usuário.
+        self.after(3000, _show)
+
     def __init__(self, db=None):
         super().__init__()
         self.db = db
@@ -630,6 +173,10 @@ class AppUI(ctk.CTk):
         self.grid_columnconfigure(0, minsize=280)
         self.sidebar_frame.grid_propagate(False)
         self.ai_sidebar_frame.grid_propagate(False)
+
+        # Verificar Atualizações (Silencioso em background)
+        self.iniciar_verificacao_update()
+        
         # Carregar Logo Oficial
         base_path = os.path.dirname(os.path.abspath(__file__))
         logo_path = os.path.join(base_path, "Logo 1.png")
@@ -709,11 +256,8 @@ class AppUI(ctk.CTk):
         self.btn_bot_rapido = create_nav_btn("⚡ Lançamento Rápido", self.abrir_bot_chat)
         self.btn_bot_rapido.pack(fill="x", pady=2, padx=10)
 
-        self.btn_bot = create_nav_btn("► Bot de Integridade", self.rodar_bot_integridade)
-        self.btn_bot.pack(fill="x", pady=2, padx=10)
-        
-        self.btn_ia_config = create_nav_btn("⚙️ Configurações da IA", self.abrir_config_ia)
-        self.btn_ia_config.pack(fill="x", pady=2, padx=10)
+        self.btn_config_geral = create_nav_btn("⚙️ Configurações", self.abrir_config_geral)
+        self.btn_config_geral.pack(fill="x", pady=2, padx=10)
         
         # Rodapé da sidebar (Branding + Demo) - pure pack, sem grid
         self.bottom_sidebar = ctk.CTkFrame(self.sidebar_frame, fg_color="transparent")
@@ -726,7 +270,7 @@ class AppUI(ctk.CTk):
         self.var_demo_mode = ctk.BooleanVar(value=False)
         self.original_db = self.db
 
-        self.sw_demo = ctk.CTkSwitch(self.bottom_sidebar, text="Modo Demonstração 🎭",
+        self.sw_demo = ctk.CTkSwitch(self.bottom_sidebar, text="Modo Simulação 🧪",
                                      variable=self.var_demo_mode,
                                      command=self.toggle_demo_mode,
                                      font=ctk.CTkFont(size=12, weight="bold"),
@@ -838,8 +382,9 @@ class AppUI(ctk.CTk):
             self.panels_container.configure(bg="#0f172a")
             self.header_dash.configure(bg="#0f172a")
         self.var_perfil.set("Eu")
-        self.update_db_references_and_refresh()
-        self.after(100, lambda: setattr(self, "_is_refreshing", False))
+        # Liberar a thread da UI antes de rodar queries pesadas para não congelar o Switch
+        self.after(50, self.update_db_references_and_refresh)
+        self.after(150, lambda: setattr(self, "_is_refreshing", False))
 
 
     def update_db_references_and_refresh(self):
@@ -1150,7 +695,7 @@ class AppUI(ctk.CTk):
         ]
         
         total = sum(d["val"] for d in data)
-        ctk.CTkLabel(chart_container, text=f"COMPOSIÇÃO DE GASTOS", font=ctk.CTkFont(size=12, weight="bold"), text_color="#94a3b8").pack(pady=(0, 10))
+        ctk.CTkLabel(chart_container, text="COMPOSIÇÃO DE GASTOS", font=ctk.CTkFont(size=12, weight="bold"), text_color="#94a3b8").pack(pady=(0, 10))
         
         bar_bg = ctk.CTkFrame(chart_container, fg_color="#1e293b", height=32, corner_radius=16, border_width=1, border_color="#334155")
         bar_bg.pack(fill="x", pady=5)
@@ -1192,7 +737,7 @@ class AppUI(ctk.CTk):
         ]
         
         total = sum(d["val"] for d in data)
-        ctk.CTkLabel(chart_container, text=f"ORIGEM DAS RECEITAS", font=ctk.CTkFont(size=12, weight="bold"), text_color="#94a3b8").pack(pady=(0, 10))
+        ctk.CTkLabel(chart_container, text="ORIGEM DAS RECEITAS", font=ctk.CTkFont(size=12, weight="bold"), text_color="#94a3b8").pack(pady=(0, 10))
         
         bar_bg = ctk.CTkFrame(chart_container, fg_color="#1e293b", height=32, corner_radius=16, border_width=1, border_color="#334155")
         bar_bg.pack(fill="x", pady=5)
@@ -1214,6 +759,7 @@ class AppUI(ctk.CTk):
         leg = ctk.CTkFrame(chart_container, fg_color="transparent")
         leg.pack(fill="x", pady=10)
         for d in data:
+            f = ctk.CTkFrame(leg, fg_color="transparent")
             f.pack(side="left", expand=True)
             ctk.CTkFrame(f, width=10, height=10, fg_color=d["color"], corner_radius=3).pack(side="left", padx=4)
             ctk.CTkLabel(f, text=f"{d['label']}: R$ {d['val']:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), font=ctk.CTkFont(size=10)).pack(side="left")
@@ -1247,7 +793,7 @@ class AppUI(ctk.CTk):
         ax.spines['left'].set_color('#334155')
         ax.spines['bottom'].set_color('#334155')
         
-        leg = ax.legend(facecolor='#1e293b', edgecolor='#334155', labelcolor='white', fontsize=8, loc='upper center', bbox_to_anchor=(0.5, 1.15), ncol=2)
+        ax.legend(facecolor='#1e293b', edgecolor='#334155', labelcolor='white', fontsize=8, loc='upper center', bbox_to_anchor=(0.5, 1.15), ncol=2)
         fig.tight_layout()
         
         canvas = FigureCanvasTkAgg(fig, master=chart_container)
@@ -1799,7 +1345,6 @@ class AppUI(ctk.CTk):
         for w in p.scroll_cat.winfo_children(): w.destroy()
         categorias = self.db.get_categorias(); pais = [c for c in categorias if c[3] is None]; filhos = [c for c in categorias if c[3] is not None]
         p.parent_options = ["(Nenhum Pai)"] + [c[1] for c in pais]; p.opt_parent.configure(values=p.parent_options); p.var_parent_cat.set("(Nenhum Pai)")
-        ordem = p.var_sort_order.get()
         tipos = ["Receita Fixa", "Receita Variável", "Despesa Fixa", "Despesa Variável", "Investimento"]
         for tipo in tipos:
             pais_tipo = [c for c in pais if c[2] == tipo]
@@ -1882,153 +1427,80 @@ class AppUI(ctk.CTk):
     def prev_year(self): self.var_ano.set(str(int(self.var_ano.get()) - 1)); self.refresh_all_widgets()
     def next_year(self): self.var_ano.set(str(int(self.var_ano.get()) + 1)); self.refresh_all_widgets()
 
-    def rodar_bot_integridade(self):
-        try:
-            import os, time, random
-            from database import Database
-            # Usar arquivo único por teste para evitar erro de 'win32: file in use'
-            test_db_path = f"integridade_test_{int(time.time())}.db"
-            test_db = Database(test_db_path)
-        except Exception as e:
-            tk.messagebox.showerror("Erro", f"Não foi possível iniciar o motor de testes: {e}")
-            return
-        
-        report = []
-        report.append("🔍 INICIANDO DIAGNÓSTICO DE INTEGRIDADE - TG SENTINEL\n")
-        report.append("-" * 50)
-        
-        # Criar modal imediatamente para mostrar "log" em tempo real
+    def rodar_diagnostico_real(self):
+        import time
         modal, txt_area = self.preparar_modal_vivo()
         
         def log(msg):
-            report.append(msg)
             txt_area.configure(state="normal")
             txt_area.insert("end", msg + "\n")
             txt_area.see("end")
             txt_area.configure(state="disabled")
             self.update()
-            time.sleep(0.4) # Delay para percepção humana
+            time.sleep(0.3)
             
+        log("🩺 INICIANDO DIAGNÓSTICO DO BANCO DE DADOS (REAL)...")
+        log("-" * 50)
+        
         try:
-            # Teste 1: Estrutura de Categorias
-            log("✅ Teste 1: Semeando categorias iniciais...")
-            cats = test_db.get_categorias()
-            if len(cats) > 0: log(f"   [OK] {len(cats)} categorias mapeadas.")
-            else: raise Exception("Falha ao semear categorias.")
-            
-            # Teste 2: Transação Simples Randomizada
-            val_salario = round(random.uniform(5000, 9000), 2)
-            cat_id_rec = next((c[0] for c in cats if c[2] == "Receita Fixa"), None)
-            
-            log(f"\n✅ Teste 2: Lançamento de Receita (Valor: R$ {val_salario:,.2f})")
-            test_db.inserir_transacao(
-                conta_id=1,
-                categoria_id=cat_id_rec,
-                descricao=f"Salário Real Time {int(time.time())}",
-                data_ini="01/01/2024",
-                valor_total=val_salario,
-                tipo_transacao="Receita Fixa",
-                metodo="Pix"
-            )
-            
-            res = test_db.get_resumo_financeiro("Janeiro", 2024, "Eu")
-            if abs(res["Receita Fixa"] - val_salario) < 0.01: 
-                log(f"   [OK] Motor capturou exatamente R$ {res['Receita Fixa']:,.2f}")
-            else: raise Exception(f"Erro no saldo: {res['Receita Fixa']}")
-            
-            # Teste 3: Parcelamento Randomizado
-            val_compra = round(random.uniform(300, 1200), 2)
-            cota_esperada = round(val_compra / 6, 2) # 50% de 1/3 (6 parcelas no total)
-            cat_id_des = next((c[0] for c in cats if c[2] == "Despesa Variável"), None)
-            
-            log(f"\n✅ Teste 3: Compra R$ {val_compra:,.2f} em 3x (50% Compartilhada)")
-            divisoes = {"Eu": val_compra/2, "Mãe": val_compra/2}
-            test_db.inserir_transacao(
-                conta_id=1,
-                categoria_id=cat_id_des,
-                descricao="Validando Divisão Dinâmica",
-                data_ini="01/01/2024",
-                valor_total=val_compra,
-                tipo_transacao="Despesa Variável",
-                metodo="Cartão", 
-                parcelas=3, 
-                divisoes=divisoes
-            )
-            
-            res_m1 = test_db.get_resumo_financeiro("Janeiro", 2024, "Eu")
-            cota_real = res_m1["Despesa Variável"]
-            # Margem de erro para centavos
-            if abs(cota_real - (val_compra / 2 / 3)) < 0.1:
-                log(f"   [OK] Cota mensal individual em compra parcelada validada: R$ {cota_real:,.2f}")
-            else: raise Exception(f"Erro na cota: {cota_real}")
-            
-            # Teste 5: Divisão Assimétrica (70/30)
-            val_asimetric = round(random.uniform(1000, 2000), 2)
-            log(f"\n✅ Teste 5: Divisão Assimétrica 70/30 (R$ {val_asimetric:,.2f})")
-            div_asimetrica = {"Eu": val_asimetric * 0.7, "Mãe": val_asimetric * 0.3}
-            test_db.inserir_transacao(
-                conta_id=1, categoria_id=cat_id_des, descricao="Teste Assimétrico",
-                data_ini="01/01/2024", valor_total=val_asimetric, tipo_transacao="Despesa Variável",
-                metodo="Dinheiro", divisoes=div_asimetrica
-            )
-            res_asimetrico = test_db.get_resumo_financeiro("Janeiro", 2024, "Eu")
-            cota_esperada_as = val_asimetric * 0.7
-            if abs(res_asimetrico["Despesa Variável"] - (cota_real + cota_esperada_as)) < 0.1:
-                log(f"   [OK] Cota assimétrica processada: R$ {cota_esperada_as:,.2f}")
-            else: raise Exception(f"Erro na cota assimétrica")
-
-            # Teste 6: Divisão entre 3 pessoas (Eu, Mãe, Pai)
-            val_trio = 900.0
-            log(f"\n✅ Teste 6: Divisão em Trio (R$ {val_trio:,.2f} / 3 pessoas)")
-            div_trio = {"Eu": 300.0, "Mãe": 300.0, "Pai": 300.0}
-            test_db.inserir_transacao(
-                conta_id=1, categoria_id=cat_id_des, descricao="Teste Trio",
-                data_ini="01/01/2024", valor_total=val_trio, tipo_transacao="Despesa Variável",
-                metodo="Pix", divisoes=div_trio
-            )
-            res_trio = test_db.get_resumo_financeiro("Janeiro", 2024, "Eu")
-            if abs(res_trio["Despesa Variável"] - (cota_real + cota_esperada_as + 300.0)) < 0.1:
-                log(f"   [OK] Cota de 1/3 validada com sucesso.")
-            else: raise Exception("Erro na divisão em trio")
-
-            # Teste 7: Validação de 'Cota de Outros' (O que não é meu)
-            log("\n✅ Teste 7: Verificação de 'Cota de Outros' (Rastreabilidade)")
-            outros_total = res_trio["Outros"] # Valor acumulado do que Mãe/Pai pagaram
-            if outros_total > 0:
-                log(f"   [OK] O sistema identificou R$ {outros_total:,.2f} pagos por terceiros.")
-            else: raise Exception("Falha ao rastrear pagamentos de outros usuários.")
-
-            res_fin = test_db.get_resumo_financeiro("Janeiro", 2024, "Eu")
-            rec = res_fin["Receita Fixa"] + res_fin["Receita Variável"]
-            des = res_fin["Despesa Fixa"] + res_fin["Despesa Variável"]
-            inv = res_fin["Investimento"]
-            saldo_calculado = rec - des - inv
-            
-            log(f"\n📊 RESUMO CONSOLIDADO (MULTICAMADAS):")
-            log(f"   - Receitas Totais: R$ {rec:,.2f}")
-            log(f"   - Despesas Individuais: R$ {des:,.2f}")
-            log(f"   - Total Pagos por Outros: R$ {outros_total:,.2f}")
-            log(f"   - Saldo Líquido Final: R$ {saldo_calculado:,.2f}")
-            
-            log("\n" + "=" * 50)
-            log("🎯 DIAGNÓSTICO CONCLUÍDO: SISTEMA 100% ÍNTEGRO")
-            log("   (Testes de Partilha Assimétrica e Múltipla: OK)")
-            
+            import sqlite3
+            with sqlite3.connect(self.db.db_name) as conn:
+                cursor = conn.cursor()
+                
+                # Check 1: Categorias Órfãs
+                log("\n[1/3] Verificando Transações Órfãs (Sem categoria)...")
+                cursor.execute("SELECT id, descricao FROM Transacoes WHERE categoria_id IS NULL OR categoria_id NOT IN (SELECT id FROM Categorias)")
+                orfas = cursor.fetchall()
+            if orfas:
+                log(f"⚠️ ATENÇÃO: {len(orfas)} transações encontradas sem categoria válida.")
+                for t in orfas:
+                    log(f"   - ID {t[0]}: {t[1]}")
+            else:
+                log("✅ Nenhuma transação órfã encontrada.")
+                
+            # Check 2: Divisões de Transações
+            log("\n[2/3] Verificando Integridade de Divisões Compartilhadas...")
+            cursor.execute('''
+                SELECT t.id, t.descricao, t.valor_total, SUM(d.valor_cota) as soma_cotas
+                FROM Transacoes t
+                JOIN Divisoes_Transacao d ON t.id = d.transacao_id
+                GROUP BY t.id
+                HAVING ABS(t.valor_total - soma_cotas) > 0.05
+            ''')
+            divergentes = cursor.fetchall()
+            if divergentes:
+                log(f"⚠️ ATENÇÃO: {len(divergentes)} transações com soma das cotas diferente do total.")
+                for t in divergentes:
+                    log(f"   - {t[1]} (Total: {t[2]}, Soma Cotas: {round(t[3], 2)})")
+            else:
+                log("✅ Todas as compras compartilhadas estão matematicamente corretas.")
+                
+            # Check 3: Validação de Datas
+            log("\n[3/3] Verificando Formato de Datas (DD/MM/AAAA)...")
+            cursor.execute("SELECT id, descricao, data FROM Transacoes")
+            todas = cursor.fetchall()
+            erros_data = []
+            for t in todas:
+                try:
+                    time.strptime(t[2], "%d/%m/%Y")
+                except:
+                    erros_data.append(t)
+                    
+            if erros_data:
+                log(f"⚠️ ATENÇÃO: {len(erros_data)} transações com data corrompida.")
+                for t in erros_data:
+                    log(f"   - ID {t[0]}: {t[1]} (Data: {t[2]})")
+            else:
+                log("✅ Todas as datas estão perfeitamente formatadas.")
+                
+            log("\n" + "-" * 50)
+            if not orfas and not divergentes and not erros_data:
+                log("🌟 DIAGNÓSTICO CONCLUÍDO: Seu banco de dados está 100% saudável!")
+            else:
+                log("🚨 DIAGNÓSTICO CONCLUÍDO: Inconsistências foram encontradas. Verifique os lançamentos.")
+                
         except Exception as e:
-            log(f"\n❌ FALHA CRÍTICA NO MOTOR: {str(e)}")
-        finally:
-            # Limpeza robusta
-            try:
-                import gc
-                # Pequeno delay para o Windows liberar o handle do arquivo
-                del test_db
-                gc.collect() 
-                time.sleep(0.5)
-                if 'test_db_path' in locals() and os.path.exists(test_db_path):
-                    os.remove(test_db_path)
-                    # Não logar no modal pois ele pode já estar fechando
-            except Exception as e:
-                print(f"Erro ao deletar banco temporário: {e}")
+            log(f"\n❌ Erro crítico durante o diagnóstico: {e}")
 
     def preparar_modal_vivo(self):
         modal = ctk.CTkToplevel(self)
@@ -2142,33 +1614,28 @@ class AppUI(ctk.CTk):
             set_val(self.card_saldo, f"R$ {des:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), "#F44336")
 
     def abrir_config_ia(self):
-        if hasattr(self, "config_ia_sidebar_frame") and self.config_ia_sidebar_frame.winfo_exists():
-            self.config_ia_sidebar_frame.destroy()
+        if hasattr(self, 'header_dash'): self.header_dash.pack_forget()
+        if hasattr(self, 'panels_container'): self.panels_container.pack_forget()
+        if hasattr(self, 'config_geral_frame'): self.config_geral_frame.destroy()
+        if hasattr(self, 'config_ia_frame'): self.config_ia_frame.destroy()
+        if hasattr(self, 'ai_sidebar_frame') and self.ai_sidebar_frame.winfo_ismapped():
+            self.ai_sidebar_frame.grid_remove()
             
-        self.config_ia_sidebar_frame = ctk.CTkFrame(self, width=280, corner_radius=0, fg_color="#1e293b")
-        self.config_ia_sidebar_frame.grid_propagate(False)
-        
-        if self.sidebar_frame.winfo_viewable():
-            self.sidebar_frame.grid_remove()
+        self.config_ia_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
+        self.config_ia_frame.pack(fill="both", expand=True)
             
-        self.config_ia_sidebar_frame.grid(row=0, column=0, sticky="nsew")
+        # Header com Voltar
+        header = ctk.CTkFrame(self.config_ia_frame, fg_color="transparent")
+        header.pack(fill="x", pady=(20, 10), padx=30)
         
-        # Header do menu deslizante
-        header = ctk.CTkFrame(self.config_ia_sidebar_frame, fg_color="transparent")
-        header.pack(fill="x", padx=10, pady=(10, 5))
+        btn_voltar = ctk.CTkButton(header, text="← Voltar", width=80, fg_color="#555555", hover_color="#333333", command=self.abrir_config_geral)
+        btn_voltar.pack(side="left", padx=(0, 15))
         
-        ctk.CTkLabel(header, text="⚙️ Configurações IA", font=ctk.CTkFont(weight="bold", size=16)).pack(side="left")
-        
-        def fechar_config():
-            self.config_ia_sidebar_frame.grid_remove()
-            self.sidebar_frame.grid(row=0, column=0, sticky="nsew")
-            self.grid_columnconfigure(0, minsize=280)
-            
-        ctk.CTkButton(header, text="✕", width=30, fg_color="#F44336", hover_color="#D32F2F", command=fechar_config).pack(side="right")
+        ctk.CTkLabel(header, text="⚙️ Configurações IA", font=ctk.CTkFont(weight="bold", size=24)).pack(side="left")
         
         # Scrollable area for settings
-        scroll_frame = ctk.CTkScrollableFrame(self.config_ia_sidebar_frame, fg_color="transparent")
-        scroll_frame.pack(fill="both", expand=True, padx=10, pady=5)
+        scroll_frame = ctk.CTkScrollableFrame(self.config_ia_frame, fg_color="transparent")
+        scroll_frame.pack(fill="both", expand=True, padx=30, pady=10)
         
         # Ativar IA
         var_ativa = ctk.BooleanVar(value=self.db.get_preferencia("ia_ativa", "0") == "1")
@@ -2182,7 +1649,7 @@ class AppUI(ctk.CTk):
         opt_profile.pack(fill="x", padx=10, pady=5)
         
         # Descrição do Perfil
-        lbl_profile_desc = ctk.CTkLabel(scroll_frame, text="", font=ctk.CTkFont(size=10), text_color="#10b981", wraplength=220, justify="left")
+        lbl_profile_desc = ctk.CTkLabel(scroll_frame, text="", font=ctk.CTkFont(size=10), text_color="#10b981", wraplength=400, justify="left")
         lbl_profile_desc.pack(anchor="w", padx=10, pady=(0, 5))
         
         def on_profile_change(*args):
@@ -2224,7 +1691,7 @@ class AppUI(ctk.CTk):
                     if var_api_model.get() not in models:
                         self.after(0, lambda: var_api_model.set(models[0] if models else ""))
                     self.after(0, lambda: btn_fetch.configure(text="⟳ Buscar Modelos", state="normal"))
-                except Exception as e:
+                except Exception:
                     self.after(0, lambda: btn_fetch.configure(text="Erro!", state="normal"))
             import threading
             threading.Thread(target=_do_fetch, daemon=True).start()
@@ -2277,10 +1744,12 @@ class AppUI(ctk.CTk):
             self.db.set_preferencia("ia_api_model", var_api_model.get())
             self.db.set_preferencia("ia_local_model_text", var_model_text.get())
             self.db.set_preferencia("ia_local_model_vision", var_model_vision.get())
-            fechar_config()
+            self.abrir_config_geral()
             self.refresh_all_widgets()
             
-        ctk.CTkButton(self.config_ia_sidebar_frame, text="SALVAR", fg_color="#2E7D32", hover_color="#1B5E20", command=salvar).pack(side="bottom", fill="x", padx=20, pady=20)
+        ctk.CTkButton(self.config_ia_frame, text="SALVAR", fg_color="#2E7D32", hover_color="#1B5E20", height=40, font=ctk.CTkFont(weight="bold"), command=salvar).pack(side="bottom", fill="x", padx=30, pady=20)
+
+
 
     def abrir_chat_ia(self):
         if self.db.get_preferencia("ia_ativa", "0") != "1":
@@ -2481,10 +1950,10 @@ class AppUI(ctk.CTk):
                 self.after(0, lambda: self.var_ai_input.set("Processando voz..."))
                 text = r.recognize_google(audio, language="pt-BR")
                 self.after(0, lambda: self.var_ai_input.set(text))
-            except Exception as e:
+            except Exception:
                 self.after(0, lambda: self.var_ai_input.set(""))
                 from tkinter import messagebox
-                messagebox.showerror("Erro de Voz", f"Não foi possível capturar a voz.\nVerifique se o microfone está conectado e se a biblioteca SpeechRecognition e o PyAudio estão instalados.")
+                messagebox.showerror("Erro de Voz", "Não foi possível capturar a voz.\nVerifique se o microfone está conectado e se a biblioteca SpeechRecognition e o PyAudio estão instalados.")
         
         import threading
         threading.Thread(target=_listen, daemon=True).start()
@@ -2652,7 +2121,7 @@ class AppUI(ctk.CTk):
                         import threading
                         threading.Thread(target=self.processar_msg_ia, args=(msg_realimentacao,), daemon=True).start()
                         return
-                    except Exception as e:
+                    except Exception:
                         pass
 
             if final_text and not final_text.startswith("["):

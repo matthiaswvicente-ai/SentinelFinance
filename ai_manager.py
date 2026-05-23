@@ -61,7 +61,7 @@ class AIManager:
                 contexto += "\nExemplo de retorno exato: [BUSCAR_MES_ANO: 02/2025]"
                 contexto += "\nNão responda mais nada. O app vai interceptar, buscar os dados e devolver para você."
             return contexto
-        except Exception as e:
+        except Exception:
             return "Você é um assistente financeiro inteligente. Ajude o usuário a gerenciar suas finanças."
 
     def processar_nota(self, image_path, user_msg=""):
@@ -201,5 +201,5 @@ MUITO IMPORTANTE: Não retorne nenhuma outra palavra, apenas o colchete do JSON 
             if text.endswith("```"):
                 text = text[:-3]
             return json.loads(text.strip())
-        except Exception as e:
+        except Exception:
             raise Exception(f"A resposta da IA não foi um JSON válido. Retorno bruto: {text[:100]}...")

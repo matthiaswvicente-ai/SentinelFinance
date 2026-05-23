@@ -1,11 +1,44 @@
 import sqlite3
 import os
 import datetime
+import shutil
+import glob
+from logger import logger
 
 class Database:
     def __init__(self, db_name="financas.db"):
         self.db_name = db_name
+        if db_name == "financas.db" and os.path.exists(db_name):
+            self._auto_backup()
         self.create_tables()
+
+    def _auto_backup(self):
+        try:
+            backup_dir = "backups"
+            if not os.path.exists(backup_dir):
+                os.makedirs(backup_dir)
+            
+            hoje = datetime.datetime.now().strftime("%Y-%m-%d")
+            backup_file = os.path.join(backup_dir, f"financas_{hoje}.db")
+            
+            if not os.path.exists(backup_file):
+                shutil.copy2(self.db_name, backup_file)
+                
+            # Limpar backups antigos (manter 7 dias)
+            backups = sorted(glob.glob(os.path.join(backup_dir, "financas_*.db")))
+            while len(backups) > 7:
+                oldest = backups.pop(0)
+                os.remove(oldest)
+        except Exception:
+            logger.error("Erro ao fazer backup automático", exc_info=True)
+
+    def export_database(self, dest_path):
+        try:
+            shutil.copy2(self.db_name, dest_path)
+            return True, "Backup exportado com sucesso."
+        except Exception as e:
+            logger.error("Erro ao exportar banco de dados", exc_info=True)
+            return False, str(e)
 
     def get_connection(self):
         return sqlite3.connect(self.db_name)
@@ -216,6 +249,7 @@ class Database:
                 conn.commit()
                 return True, "Categoria adicionada."
         except Exception as e:
+            logger.error('Erro no BD', exc_info=True)
             return False, str(e)
             
     def atualizar_categoria(self, cat_id, novo_nome, tipo=None, parent_id=None):
@@ -231,6 +265,7 @@ class Database:
                 conn.commit()
                 return True, "Categoria atualizada."
         except Exception as e:
+            logger.error('Erro no BD', exc_info=True)
             return False, str(e)
             
     def get_preferencia(self, chave, default=None):
@@ -240,7 +275,9 @@ class Database:
                 cursor.execute("SELECT valor FROM Preferencias WHERE chave = ?", (chave,))
                 res = cursor.fetchone()
                 return res[0] if res else default
-        except: return default
+        except Exception:
+            logger.error('Erro ao ler preferência', exc_info=True)
+            return default
 
     def set_preferencia(self, chave, valor):
         try:
@@ -248,7 +285,8 @@ class Database:
                 cursor = conn.cursor()
                 cursor.execute("INSERT OR REPLACE INTO Preferencias (chave, valor) VALUES (?, ?)", (chave, str(valor)))
                 conn.commit()
-        except: pass
+        except Exception:
+            logger.error('Erro ignorado', exc_info=True)
 
     def excluir_categoria(self, cat_id):
         try:
@@ -264,6 +302,7 @@ class Database:
                 conn.commit()
                 return True, "Excluída."
         except Exception as e:
+            logger.error('Erro no BD', exc_info=True)
             return False, str(e)
 
     def obter_ou_criar_usuario(self, cursor, nome):
@@ -291,7 +330,7 @@ class Database:
             # Converter data string para objeto date
             try:
                 dt_base = datetime.datetime.strptime(data_ini, "%d/%m/%Y")
-            except:
+            except Exception:
                 dt_base = datetime.datetime.now()
 
             for i in range(parcelas):
@@ -333,6 +372,7 @@ class Database:
             return True, "Transação(ões) salva(s) com sucesso."
             
         except Exception as e:
+            logger.error('Erro ao inserir transação', exc_info=True)
             conn.rollback()
             return False, str(e)
         finally:
@@ -347,6 +387,7 @@ class Database:
                 conn.commit()
                 return True, "Transação excluída."
         except Exception as e:
+            logger.error('Erro no BD', exc_info=True)
             return False, str(e)
 
     def get_transacao_by_id(self, transacao_id):
@@ -360,7 +401,8 @@ class Database:
                 WHERE t.id = ?
             """, (transacao_id,))
             t_row = cursor.fetchone()
-            if not t_row: return None
+            if not t_row:
+                return None
             
             cursor.execute("""
                 SELECT u.nome, d.valor_cota
@@ -402,6 +444,7 @@ class Database:
                 conn.commit()
                 return True, "Transação atualizada."
         except Exception as e:
+            logger.error('Erro no BD', exc_info=True)
             return False, str(e)
 
     def get_transacoes(self, mes=None, ano=None, perfil_nome="Eu", categoria_id=None):
@@ -517,7 +560,8 @@ class Database:
             cursor = conn.cursor()
             cursor.execute("SELECT DISTINCT substr(data, 7, 4) FROM Transacoes")
             for row in cursor.fetchall():
-                if row[0]: anos.add(row[0])
+                if row[0]:
+                    anos.add(row[0])
         
         # Retorna lista ordenada
         return sorted(list(anos))
@@ -529,7 +573,7 @@ class Database:
                 cursor.execute("SELECT nome FROM Usuarios_Familia ORDER BY id")
                 perfis = [row[0] for row in cursor.fetchall()]
                 return perfis if perfis else ["Eu"]
-            except:
+            except Exception:
                 return ["Eu"]
 
     def get_resumo_estruturado(self, mes, ano, perfil_nome="Eu"):
@@ -590,7 +634,8 @@ class Database:
             evolucao = {str(i).zfill(2): {"Receitas": 0.0, "Despesas": 0.0} for i in range(1, 13)}
             
             for mes, tipo, valor in resultados:
-                if valor is None: valor = 0.0
+                if valor is None:
+                    valor = 0.0
                 if "Receita" in tipo:
                     evolucao[mes]["Receitas"] += valor
                 elif "Despesa" in tipo:
@@ -632,8 +677,10 @@ class Database:
             
             diario = {}
             for dia, tipo, valor in resultados:
-                if valor is None: valor = 0.0
-                if dia not in diario: diario[dia] = {"Receitas": 0.0, "Despesas": 0.0}
+                if valor is None:
+                    valor = 0.0
+                if dia not in diario:
+                    diario[dia] = {"Receitas": 0.0, "Despesas": 0.0}
                 if "Receita" in tipo:
                     diario[dia]["Receitas"] += valor
                 elif "Despesa" in tipo:
