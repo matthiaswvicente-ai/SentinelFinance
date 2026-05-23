@@ -8,6 +8,7 @@ class AIManager:
         self.provider = self.db.get_preferencia("ia_provider", "API")
         self.api_key = self.db.get_preferencia("ia_api_key", "")
         self.vision_enabled = self.db.get_preferencia("ia_local_vision", "0") == "1"
+        self.api_model = self.db.get_preferencia("ia_api_model", "gemini-1.5-flash-latest")
         self.local_model_text = self.db.get_preferencia("ia_local_model_text", "llama3")
         self.local_model_vision = self.db.get_preferencia("ia_local_model_vision", "llava")
 
@@ -42,8 +43,23 @@ class AIManager:
                     data, desc, valor, cat = t[1], t[2], t[3], t[4]
                     contexto += f"- {data} | {desc} | R$ {valor:.2f} | {cat}\n"
                     
-            contexto += "\nREGRA DE COMPORTAMENTO: Os dados acima são apenas para sua referência invisível. NÃO OS CITE OU RESUMA a menos que o usuário faça uma pergunta específica sobre eles. Se o usuário disser apenas 'Oi', responda com um simples cumprimento."
-            contexto += "\nREGRA DE AÇÃO: Se o usuário pedir para ADICIONAR ou REGISTRAR um gasto/compra (ex: 'comprei um pão por 10 reais'), você NÃO deve conversar. Você DEVE retornar APENAS um JSON válido neste formato exato (sem Markdown): [{\"acao\": \"adicionar\", \"descricao\": \"Pão\", \"valor\": 10.00, \"categoria\": \"Despesa Variável\"}]. A categoria deve ser uma das suas cadastradas ou deixar genérica."
+            contexto += "\nREGRA DE COMPORTAMENTO: Os dados acima são apenas para sua referência invisível. NÃO OS CITE OU RESUMA a menos que o usuário faça uma pergunta específica."
+            contexto += "\n\nREGRA DE AÇÃO PARA LANÇAMENTOS (MODO CONTADOR RIGOROSO):"
+            contexto += "\nO usuário deseja registrar uma transação. Você age como um contador."
+            contexto += "\n1. COLETA: Para lançar, você OBRIGATORIAMENTE precisa de: a) Valor Numérico, b) Descrição, c) Categoria, d) Método de Pagamento (Cartão, Pix, Dinheiro, etc)."
+            contexto += "\n2. Se QUALQUER um desses 4 dados faltar na conversa, NÃO GERE JSON! Responda em texto natural fazendo uma pergunta curta para coletar o que falta."
+            contexto += "\n3. RESUMO: Se você já tem todos os dados, NÃO GERE JSON AINDA! Responda com um resumo e peça confirmação. Ex: 'Confirme: Descrição: X | Valor: Y | Categoria: Z | Pagamento: W. Posso lançar?'"
+            contexto += "\n4. AÇÃO: SOMENTE QUANDO o usuário CONFIRMAR o resumo (ex: 'sim', 'ok', 'pode lançar'), você DEVE retornar APENAS um array JSON válido neste exato formato (sem Markdown):"
+            contexto += "\n[{\"acao\": \"adicionar\", \"descricao\": \"...\", \"valor\": 0.00, \"categoria\": \"...\", \"pagamento\": \"...\"}]"
+            contexto += "\nNão retorne mais nenhum texto além do JSON nessa etapa final. Dica: observe o Histórico da Conversa para lembrar dos dados já informados."
+            if self.provider == "Local":
+                contexto += "\n\n=== RECURSO ESPECIAL DE BUSCA PROFUNDA ==="
+                contexto += "\nVocê está rodando no modo IA Local e pode pedir ao app para ler o banco de dados."
+                contexto += "\nO contexto acima tem apenas os 30 últimos lançamentos do mês atual para economizar tempo."
+                contexto += "\nSe o usuário perguntar algo de meses anteriores (ex: 'Quanto gastei em Fevereiro de 2025?'), RETORNE APENAS ESTE COMANDO SECRETO:"
+                contexto += "\n[BUSCAR_MES_ANO: MM/AAAA]"
+                contexto += "\nExemplo de retorno exato: [BUSCAR_MES_ANO: 02/2025]"
+                contexto += "\nNão responda mais nada. O app vai interceptar, buscar os dados e devolver para você."
             return contexto
         except Exception as e:
             return "Você é um assistente financeiro inteligente. Ajude o usuário a gerenciar suas finanças."
@@ -62,7 +78,7 @@ class AIManager:
         try:
             import google.generativeai as genai
             genai.configure(api_key=self.api_key)
-            model = genai.GenerativeModel('gemini-flash-latest', system_instruction=context)
+            model = genai.GenerativeModel(self.api_model, system_instruction=context)
             if callback:
                 response = model.generate_content(text, stream=True)
                 for chunk in response:
@@ -127,7 +143,7 @@ MUITO IMPORTANTE: Não retorne nenhuma outra palavra, apenas o colchete do JSON 
             import google.generativeai as genai
             import PIL.Image
             genai.configure(api_key=self.api_key)
-            model = genai.GenerativeModel('gemini-flash-latest')
+            model = genai.GenerativeModel(self.api_model)
             img = PIL.Image.open(image_path)
             
             prompt = self._get_vision_prompt()

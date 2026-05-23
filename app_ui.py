@@ -9,13 +9,14 @@ matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 class NovaTransacaoForm(ctk.CTkFrame):
-    def __init__(self, parent, db, app_ui, is_integrated=False, edit_id=None):
+    def __init__(self, parent, db, app_ui, is_integrated=False, edit_id=None, initial_data=None):
         super().__init__(parent, fg_color="#1e222b", corner_radius=10)
         self.db = db
         self.app_ui = app_ui
         self.fechar_pos_save = True # Padrão para modal
         self.is_integrated = is_integrated
         self.edit_id = edit_id
+        self.initial_data = initial_data
 
         # Variáveis de Estado
         self.var_data = ctk.StringVar(value=datetime.datetime.now().strftime("%d/%m/%Y"))
@@ -33,6 +34,8 @@ class NovaTransacaoForm(ctk.CTkFrame):
         self.var_bandeira = ctk.StringVar(value="Visa")
         self.var_dono_cartao = ctk.StringVar(value="Eu")
         self.var_inicio_pag = ctk.StringVar(value=datetime.datetime.now().strftime("%m/%Y"))
+        
+        self.var_repetir_meses = ctk.StringVar(value="1 Mês")
 
         # Compartilhamento
         self.pessoas = self.db.get_perfis() if hasattr(self.db, 'get_perfis') else ["Eu"]
@@ -63,9 +66,38 @@ class NovaTransacaoForm(ctk.CTkFrame):
         
         if self.edit_id:
             self.load_edit_data()
+        elif getattr(self, "initial_data", None):
+            self.load_initial_data()
         else:
             self.render_step_1()
 
+
+    def load_initial_data(self):
+        t = self.initial_data
+        from datetime import datetime
+        data_str = t.get("data", datetime.now().strftime("%d/%m/%Y"))
+        if data_str.lower() in ["hoje", "today"]: data_str = datetime.now().strftime("%d/%m/%Y")
+        self.var_data.set(data_str)
+        self.var_desc.set(t.get("descricao", "Nova Transação"))
+        self.var_pilar.set(t.get("tipo_transacao", "Despesa Variável"))
+        self.var_categoria.set(t.get("categoria", ""))
+        self.var_subcategoria.set("Geral")
+        self.var_valor.set(f"{float(t.get('valor', 0)):.2f}".replace(".", ","))
+        self.var_obs.set(t.get("observacao", ""))
+        
+        m_ai = t.get("metodo", "Dinheiro")
+        for m in self.metodos:
+            self.var_metodos[m].set(m.lower() in m_ai.lower())
+            
+        self.var_parcelas.set(str(t.get("parcelas", 1)))
+        self.var_bandeira.set(t.get("bandeira", "Visa"))
+        self.var_dono_cartao.set(t.get("dono_cartao", "Eu"))
+        
+        div_ai = t.get("divisao", "Eu")
+        for p in self.pessoas:
+            self.var_pessoas[p].set(p.lower() in div_ai.lower())
+            
+        self.render_step_1()
     def load_edit_data(self):
         t = self.db.get_transacao_by_id(self.edit_id)
         if not t:
@@ -386,24 +418,40 @@ class NovaTransacaoForm(ctk.CTkFrame):
                 divisoes=divisoes
             )
         else:
-            sucesso, msg = self.db.inserir_transacao(
-                conta_id=1, 
-                categoria_id=cat_id, 
-                descricao=self.var_desc.get(), 
-                data_ini=self.var_data.get(),
-                valor_total=val_total,
-                tipo_transacao=pilar,
-                metodo=metodo_str,
-                parcelas=num_parcelas,
-                bandeira=self.var_bandeira.get() if "Cartão" in metodo_str else "",
-                dono=self.var_dono_cartao.get() if "Cartão" in metodo_str else "",
-                divisoes=divisoes,
-                observacao=self.var_obs.get()
-            )
+            qtde_meses = int(self.var_repetir_meses.get().split()[0])
+            import datetime
+            from dateutil.relativedelta import relativedelta
+            try: data_base = datetime.datetime.strptime(self.var_data.get(), "%d/%m/%Y")
+            except: data_base = datetime.datetime.now()
+            
+            sucesso = True
+            msg = ""
+            for i in range(qtde_meses):
+                data_lote = (data_base + relativedelta(months=i)).strftime("%d/%m/%Y")
+                s, m = self.db.inserir_transacao(
+                    conta_id=1, 
+                    categoria_id=cat_id, 
+                    descricao=self.var_desc.get() if i == 0 else f"{self.var_desc.get()} ({i+1}/{qtde_meses})" if qtde_meses > 1 else self.var_desc.get(), 
+                    data_ini=data_lote,
+                    valor_total=val_total,
+                    tipo_transacao=pilar,
+                    metodo=metodo_str,
+                    parcelas=num_parcelas,
+                    bandeira=self.var_bandeira.get() if "Cartão" in metodo_str else "",
+                    dono=self.var_dono_cartao.get() if "Cartão" in metodo_str else "",
+                    divisoes=divisoes,
+                    observacao=self.var_obs.get()
+                )
+                if not s:
+                    sucesso = False; msg = m; break
         
         if sucesso:
             if self.fechar_pos_save:
-                self.app_ui.fechar_formulario()
+                if not getattr(self, "is_integrated", True):
+                    self.master.destroy()
+                    self.app_ui.refresh_all_widgets()
+                else:
+                    self.app_ui.fechar_formulario()
             else:
                 self.edit_id = None
                 self.var_desc.set("")
@@ -657,6 +705,9 @@ class AppUI(ctk.CTk):
 
         self.btn_ia = create_nav_btn("🤖 Assistente IA", self.abrir_chat_ia)
         self.btn_ia.pack(fill="x", pady=2, padx=10)
+        
+        self.btn_bot_rapido = create_nav_btn("⚡ Lançamento Rápido", self.abrir_bot_chat)
+        self.btn_bot_rapido.pack(fill="x", pady=2, padx=10)
 
         self.btn_bot = create_nav_btn("► Bot de Integridade", self.rodar_bot_integridade)
         self.btn_bot.pack(fill="x", pady=2, padx=10)
@@ -698,15 +749,41 @@ class AppUI(ctk.CTk):
         title_container = tk.Frame(self.header_dash, bg="#0f172a")
         title_container.pack(side="left")
         
-        ctk.CTkLabel(title_container, text="Dashboard", font=ctk.CTkFont(size=24, weight="bold")).pack(side="left")
+        ctk.CTkLabel(title_container, text="Dashboard", font=ctk.CTkFont(size=24, weight="bold")).pack(side="left", padx=(0, 20))
         
+        def nav_mes(dir):
+            try:
+                idx = self.months.index(self.var_mes.get())
+                novo_idx = idx + dir
+                ano_atual = int(self.var_ano.get())
+                if novo_idx < 0:
+                    novo_idx = 11
+                    self.var_ano.set(str(ano_atual - 1))
+                elif novo_idx > 11:
+                    novo_idx = 0
+                    self.var_ano.set(str(ano_atual + 1))
+                self.var_mes.set(self.months[novo_idx])
+                self.refresh_all_widgets()
+            except: pass
+            
+        def nav_hoje():
+            import datetime
+            n = datetime.datetime.now()
+            self.var_mes.set(self.months[n.month-1])
+            self.var_ano.set(str(n.year))
+            self.refresh_all_widgets()
+
+        ctk.CTkButton(title_container, text="<", width=30, height=32, corner_radius=10, fg_color="#334155", hover_color="#475569", command=lambda: nav_mes(-1)).pack(side="left")
         self.opt_mes = ctk.CTkOptionMenu(title_container, variable=self.var_mes, values=self.months, width=120, height=32, corner_radius=10, command=self.refresh_all_widgets)
-        self.opt_mes.pack(side="left", padx=10)
+        self.opt_mes.pack(side="left", padx=5)
+        ctk.CTkButton(title_container, text=">", width=30, height=32, corner_radius=10, fg_color="#334155", hover_color="#475569", command=lambda: nav_mes(1)).pack(side="left")
         
         self.year_frame = tk.Frame(title_container, bg="#0f172a")
-        self.year_frame.pack(side="left", padx=5)
+        self.year_frame.pack(side="left", padx=10)
         self.opt_ano = ctk.CTkOptionMenu(self.year_frame, variable=self.var_ano, values=self.db.get_range_anos(), width=90, height=32, corner_radius=10, command=self.refresh_all_widgets)
         self.opt_ano.pack(side="left")
+        
+        ctk.CTkButton(title_container, text="📅 Atual", width=60, height=32, corner_radius=10, fg_color="#2563eb", hover_color="#1d4ed8", font=ctk.CTkFont(size=12, weight="bold"), command=nav_hoje).pack(side="left", padx=10)
 
         self.opt_ano.pack(side="left")
 
@@ -1159,8 +1236,8 @@ class AppUI(ctk.CTk):
         x = range(len(meses))
         width = 0.35
         
-        ax.bar([i - width/2 for i in x], val_rec, width, label='Receitas', color='#22c55e')
-        ax.bar([i + width/2 for i in x], val_des, width, label='Despesas', color='#f43f5e')
+        bars_rec = ax.bar([i - width/2 for i in x], val_rec, width, label='Receitas', color='#22c55e')
+        bars_des = ax.bar([i + width/2 for i in x], val_des, width, label='Despesas', color='#f43f5e')
         
         ax.set_xticks(x)
         ax.set_xticklabels(meses, color='white', fontsize=8)
@@ -1174,6 +1251,35 @@ class AppUI(ctk.CTk):
         fig.tight_layout()
         
         canvas = FigureCanvasTkAgg(fig, master=chart_container)
+        
+        # Tooltip Logic
+        annot = ax.annotate("", xy=(0,0), xytext=(0, 5), textcoords="offset points",
+                            bbox=dict(boxstyle="round", fc="#334155", ec="#cbd5e1", alpha=0.95),
+                            arrowprops=dict(arrowstyle="->", color="#cbd5e1"),
+                            color="white", fontsize=9, fontweight="bold")
+        annot.set_visible(False)
+        annot.set_zorder(100)
+        
+        def on_hover(event):
+            vis = annot.get_visible()
+            if event.inaxes == ax:
+                for bars, tipo in [(bars_rec, "Receita"), (bars_des, "Despesa")]:
+                    for bar in bars:
+                        cont, ind = bar.contains(event)
+                        if cont:
+                            annot.xy = (bar.get_x() + bar.get_width() / 2, bar.get_height())
+                            # Format value to BRL
+                            val_str = f"R$ {bar.get_height():,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                            annot.set_text(f"{tipo}\n{val_str}")
+                            annot.set_visible(True)
+                            canvas.draw_idle()
+                            return
+            if vis:
+                annot.set_visible(False)
+                canvas.draw_idle()
+                
+        canvas.mpl_connect("motion_notify_event", on_hover)
+        
         canvas.draw()
         canvas.get_tk_widget().pack(fill="both", expand=True)
 
@@ -2036,56 +2142,115 @@ class AppUI(ctk.CTk):
             set_val(self.card_saldo, f"R$ {des:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), "#F44336")
 
     def abrir_config_ia(self):
-        modal = ctk.CTkToplevel(self)
-        modal.title("Configurações da IA")
-        modal.geometry("450x680")
-        modal.attributes("-topmost", True)
+        if hasattr(self, "config_ia_sidebar_frame") and self.config_ia_sidebar_frame.winfo_exists():
+            self.config_ia_sidebar_frame.destroy()
+            
+        self.config_ia_sidebar_frame = ctk.CTkFrame(self, width=280, corner_radius=0, fg_color="#1e293b")
+        self.config_ia_sidebar_frame.grid_propagate(False)
         
-        frame = ctk.CTkFrame(modal, fg_color="#1e222b", corner_radius=15)
-        frame.pack(fill="both", expand=True, padx=20, pady=20)
+        if self.sidebar_frame.winfo_viewable():
+            self.sidebar_frame.grid_remove()
+            
+        self.config_ia_sidebar_frame.grid(row=0, column=0, sticky="nsew")
         
-        ctk.CTkLabel(frame, text="⚙️ CONFIGURAÇÕES DA IA", font=ctk.CTkFont(weight="bold", size=18)).pack(pady=(10, 20))
+        # Header do menu deslizante
+        header = ctk.CTkFrame(self.config_ia_sidebar_frame, fg_color="transparent")
+        header.pack(fill="x", padx=10, pady=(10, 5))
+        
+        ctk.CTkLabel(header, text="⚙️ Configurações IA", font=ctk.CTkFont(weight="bold", size=16)).pack(side="left")
+        
+        def fechar_config():
+            self.config_ia_sidebar_frame.grid_remove()
+            self.sidebar_frame.grid(row=0, column=0, sticky="nsew")
+            self.grid_columnconfigure(0, minsize=280)
+            
+        ctk.CTkButton(header, text="✕", width=30, fg_color="#F44336", hover_color="#D32F2F", command=fechar_config).pack(side="right")
+        
+        # Scrollable area for settings
+        scroll_frame = ctk.CTkScrollableFrame(self.config_ia_sidebar_frame, fg_color="transparent")
+        scroll_frame.pack(fill="both", expand=True, padx=10, pady=5)
         
         # Ativar IA
         var_ativa = ctk.BooleanVar(value=self.db.get_preferencia("ia_ativa", "0") == "1")
-        sw_ativa = ctk.CTkSwitch(frame, text="Ativar Assistente de IA", variable=var_ativa)
-        sw_ativa.pack(anchor="w", padx=20, pady=10)
+        sw_ativa = ctk.CTkSwitch(scroll_frame, text="Ativar Assistente de IA", variable=var_ativa)
+        sw_ativa.pack(anchor="w", padx=10, pady=10)
         
-        # Provedor
-        ctk.CTkLabel(frame, text="Provedor:").pack(anchor="w", padx=20, pady=(10, 0))
-        var_provider = ctk.StringVar(value=self.db.get_preferencia("ia_provider", "API"))
-        opt_provider = ctk.CTkOptionMenu(frame, variable=var_provider, values=["API (Gemini)", "Local (Ollama)"])
-        opt_provider.pack(fill="x", padx=20, pady=5)
+        # Perfil do Assistente
+        ctk.CTkLabel(scroll_frame, text="Modo do Assistente:").pack(anchor="w", padx=10, pady=(10, 0))
+        var_profile = ctk.StringVar(value=self.db.get_preferencia("ia_profile", "API"))
+        opt_profile = ctk.CTkOptionMenu(scroll_frame, variable=var_profile, values=["API", "Local"])
+        opt_profile.pack(fill="x", padx=10, pady=5)
+        
+        # Descrição do Perfil
+        lbl_profile_desc = ctk.CTkLabel(scroll_frame, text="", font=ctk.CTkFont(size=10), text_color="#10b981", wraplength=220, justify="left")
+        lbl_profile_desc.pack(anchor="w", padx=10, pady=(0, 5))
+        
+        def on_profile_change(*args):
+            p = var_profile.get()
+            if p == "API":
+                lbl_profile_desc.configure(text="☁️ IA Nuvem: Rápida. Usa dados de 30 dias.")
+            elif p == "Local":
+                lbl_profile_desc.configure(text="💻 IA Local: Privacidade máxima e buscas profundas.")
+                
+        var_profile.trace("w", on_profile_change)
+        on_profile_change()
         
         # API Key
-        ctk.CTkLabel(frame, text="Chave da API (apenas para API):").pack(anchor="w", padx=20, pady=(10, 0))
+        ctk.CTkLabel(scroll_frame, text="Chave da API (Nuvem):").pack(anchor="w", padx=10, pady=(10, 0))
         var_key = ctk.StringVar(value=self.db.get_preferencia("ia_api_key", ""))
-        entry_key = ctk.CTkEntry(frame, textvariable=var_key, show="*")
-        entry_key.pack(fill="x", padx=20, pady=5)
+        entry_key = ctk.CTkEntry(scroll_frame, textvariable=var_key, show="*")
+        entry_key.pack(fill="x", padx=10, pady=5)
+        
+        # Modelo da API
+        ctk.CTkLabel(scroll_frame, text="Modelo (Nuvem):").pack(anchor="w", padx=10, pady=(10, 0))
+        var_api_model = ctk.StringVar(value=self.db.get_preferencia("ia_api_model", "gemini-1.5-flash-latest"))
+        opt_api_model = ctk.CTkOptionMenu(scroll_frame, variable=var_api_model, values=[var_api_model.get()])
+        opt_api_model.pack(fill="x", padx=10, pady=5)
+        
+        def fetch_models():
+            btn_fetch.configure(text="Buscando...", state="disabled")
+            def _do_fetch():
+                try:
+                    import google.generativeai as genai
+                    genai.configure(api_key=var_key.get())
+                    models = []
+                    for m in genai.list_models():
+                        if 'generateContent' in m.supported_generation_methods:
+                            models.append(m.name.replace('models/', ''))
+                    if not models:
+                        models = ["gemini-1.5-flash-latest", "gemini-1.5-pro-latest"]
+                    
+                    self.after(0, lambda: opt_api_model.configure(values=models))
+                    if var_api_model.get() not in models:
+                        self.after(0, lambda: var_api_model.set(models[0] if models else ""))
+                    self.after(0, lambda: btn_fetch.configure(text="⟳ Buscar Modelos", state="normal"))
+                except Exception as e:
+                    self.after(0, lambda: btn_fetch.configure(text="Erro!", state="normal"))
+            import threading
+            threading.Thread(target=_do_fetch, daemon=True).start()
+            
+        btn_fetch = ctk.CTkButton(scroll_frame, text="⟳ Buscar Modelos", height=24, fg_color="#3b82f6", hover_color="#2563eb", command=fetch_models)
+        btn_fetch.pack(fill="x", padx=10, pady=2)
         
         # Visão Local
-        ctk.CTkLabel(frame, text="Visão Computacional (Leitura de Notas):").pack(anchor="w", padx=20, pady=(10, 0))
+        ctk.CTkLabel(scroll_frame, text="Visão Computacional:").pack(anchor="w", padx=10, pady=(10, 0))
         var_vision = ctk.BooleanVar(value=self.db.get_preferencia("ia_local_vision", "0") == "1")
-        sw_vision = ctk.CTkSwitch(frame, text="Ativar Leitura de Imagens", variable=var_vision)
-        sw_vision.pack(anchor="w", padx=20, pady=5)
-        ctk.CTkLabel(frame, text="⚠️ Modelos locais exigem muito hardware para processar imagens. APIs em nuvem são mais rápidas e recomendadas.", font=ctk.CTkFont(size=10), text_color="#f59e0b", wraplength=350, justify="left").pack(anchor="w", padx=20, pady=(0, 10))
+        sw_vision = ctk.CTkSwitch(scroll_frame, text="Leitura de Imagens", variable=var_vision)
+        sw_vision.pack(anchor="w", padx=10, pady=5)
         
         # Modelos Locais
-        ctk.CTkLabel(frame, text="Modelos Locais (Ollama):").pack(anchor="w", padx=20, pady=(10, 0))
-        
-        f_models = ctk.CTkFrame(frame, fg_color="transparent")
-        f_models.pack(fill="x", padx=20, pady=5)
+        ctk.CTkLabel(scroll_frame, text="Modelos Locais (Ollama):").pack(anchor="w", padx=10, pady=(10, 0))
         
         var_model_text = ctk.StringVar(value=self.db.get_preferencia("ia_local_model_text", "llama3"))
         var_model_vision = ctk.StringVar(value=self.db.get_preferencia("ia_local_model_vision", "llava"))
         
-        ctk.CTkLabel(f_models, text="Texto:").pack(side="left")
-        opt_model_text = ctk.CTkOptionMenu(f_models, variable=var_model_text, values=[var_model_text.get()], width=110)
-        opt_model_text.pack(side="left", fill="x", expand=True, padx=(5, 10))
+        ctk.CTkLabel(scroll_frame, text="Texto:").pack(anchor="w", padx=10)
+        opt_model_text = ctk.CTkOptionMenu(scroll_frame, variable=var_model_text, values=[var_model_text.get()])
+        opt_model_text.pack(fill="x", padx=10, pady=(0,5))
         
-        ctk.CTkLabel(f_models, text="Visão:").pack(side="left")
-        opt_model_vision = ctk.CTkOptionMenu(f_models, variable=var_model_vision, values=[var_model_vision.get()], width=110)
-        opt_model_vision.pack(side="left", fill="x", expand=True, padx=(5, 0))
+        ctk.CTkLabel(scroll_frame, text="Visão:").pack(anchor="w", padx=10)
+        opt_model_vision = ctk.CTkOptionMenu(scroll_frame, variable=var_model_vision, values=[var_model_vision.get()])
+        opt_model_vision.pack(fill="x", padx=10, pady=(0,5))
         
         def buscar_modelos():
             try:
@@ -2098,30 +2263,24 @@ class AppUI(ctk.CTk):
                         opt_model_vision.configure(values=models)
                         if var_model_text.get() not in models: var_model_text.set(models[0])
                         if var_model_vision.get() not in models: var_model_vision.set(models[0])
-                        from tkinter import messagebox
-                        messagebox.showinfo("Modelos", f"Encontrados {len(models)} modelos no Ollama local.")
-                    else:
-                        from tkinter import messagebox
-                        messagebox.showwarning("Modelos", "Nenhum modelo instalado no Ollama.")
-                else:
-                    from tkinter import messagebox
-                    messagebox.showerror("Erro", "Não foi possível buscar os modelos.")
-            except Exception as e:
-                from tkinter import messagebox
-                messagebox.showerror("Erro de Conexão", "Ollama não está rodando. Inicie o aplicativo Ollama no seu computador antes de buscar os modelos.")
-
-        ctk.CTkButton(frame, text="🔄 Buscar Modelos Instalados", fg_color="#334155", hover_color="#475569", command=buscar_modelos).pack(fill="x", padx=20, pady=5)
+            except: pass
+            
+        ctk.CTkButton(scroll_frame, text="🔄 Atualizar Locais", height=24, fg_color="#334155", hover_color="#475569", command=buscar_modelos).pack(fill="x", padx=10, pady=5)
         
         def salvar():
             self.db.set_preferencia("ia_ativa", "1" if var_ativa.get() else "0")
-            self.db.set_preferencia("ia_provider", "API" if "API" in var_provider.get() else "Local")
+            p = var_profile.get()
+            self.db.set_preferencia("ia_profile", p)
+            self.db.set_preferencia("ia_provider", "API" if p == "API" else "Local")
             self.db.set_preferencia("ia_api_key", var_key.get())
             self.db.set_preferencia("ia_local_vision", "1" if var_vision.get() else "0")
+            self.db.set_preferencia("ia_api_model", var_api_model.get())
             self.db.set_preferencia("ia_local_model_text", var_model_text.get())
             self.db.set_preferencia("ia_local_model_vision", var_model_vision.get())
-            modal.destroy()
+            fechar_config()
+            self.refresh_all_widgets()
             
-        ctk.CTkButton(frame, text="SALVAR", fg_color="#2E7D32", hover_color="#1B5E20", command=salvar).pack(pady=20)
+        ctk.CTkButton(self.config_ia_sidebar_frame, text="SALVAR", fg_color="#2E7D32", hover_color="#1B5E20", command=salvar).pack(side="bottom", fill="x", padx=20, pady=20)
 
     def abrir_chat_ia(self):
         if self.db.get_preferencia("ia_ativa", "0") != "1":
@@ -2129,6 +2288,8 @@ class AppUI(ctk.CTk):
             messagebox.showwarning("IA Desativada", "Por favor, ative a IA no painel de configurações antes de usar.")
             return
             
+        self.current_chat_mode = "IA"
+        
         if self.sidebar_frame.winfo_viewable():
             self.sidebar_frame.grid_remove()
             self.ai_sidebar_frame.grid(row=0, column=0, sticky="nsew")
@@ -2138,8 +2299,47 @@ class AppUI(ctk.CTk):
                     self.show_loading_and_build_chat()
                 else:
                     self.build_ai_chat()
+            else:
+                self.refresh_chat_header()
         else:
-            self.fechar_chat_ia()
+            if hasattr(self, "lbl_chat_title") and self.lbl_chat_title.cget("text") != "🤖 Assistente IA":
+                self.refresh_chat_header()
+            else:
+                self.fechar_chat_ia()
+
+    def abrir_bot_chat(self):
+        self.current_chat_mode = "BOT"
+        
+        if self.sidebar_frame.winfo_viewable():
+            self.sidebar_frame.grid_remove()
+            self.ai_sidebar_frame.grid(row=0, column=0, sticky="nsew")
+            
+            if not self.ai_sidebar_frame.winfo_children():
+                self.build_ai_chat()
+            else:
+                self.refresh_chat_header()
+        else:
+            if hasattr(self, "lbl_chat_title") and self.lbl_chat_title.cget("text") != "⚡ Lançamento Rápido":
+                self.refresh_chat_header()
+            else:
+                self.fechar_chat_ia()
+                
+    def refresh_chat_header(self):
+        if not hasattr(self, "lbl_chat_title"): return
+        if getattr(self, "current_chat_mode", "IA") == "BOT":
+            self.lbl_chat_title.configure(text="⚡ Lançamento Rápido")
+            self.ai_mode_label.configure(text="🤖 Bot Estruturado")
+            if hasattr(self, "btn_anexo") and self.btn_anexo.winfo_exists(): self.btn_anexo.pack_forget()
+            if hasattr(self, "btn_mic") and self.btn_mic.winfo_exists(): self.btn_mic.pack_forget()
+        else:
+            self.lbl_chat_title.configure(text="🤖 Assistente IA")
+            p = self.db.get_preferencia("ia_profile", "API")
+            tags = {"API": "☁️ Nuvem", "Local": "💻 Local"}
+            self.ai_mode_label.configure(text=tags.get(p, p))
+            if hasattr(self, "btn_mic") and self.btn_mic.winfo_exists(): self.btn_mic.pack(side="left", padx=(0, 5))
+            if hasattr(self, "btn_anexo") and self.btn_anexo.winfo_exists(): self.btn_anexo.pack(side="left", padx=(0, 5), before=self.btn_mic)
+            
+        self.toggle_ai_chat_size(force_level=2)
 
     def show_loading_and_build_chat(self):
         self.loading_frame = ctk.CTkFrame(self.ai_sidebar_frame, fg_color="transparent")
@@ -2164,6 +2364,7 @@ class AppUI(ctk.CTk):
             except: pass
             
             self.after(0, lambda: self.loading_frame.destroy() if hasattr(self, 'loading_frame') and self.loading_frame.winfo_exists() else None)
+            self.after(0, lambda: self.toggle_ai_chat_size(force_level=2))
             self.after(0, lambda: self.build_ai_chat() if self.ai_sidebar_frame.winfo_viewable() else None)
             
         import threading
@@ -2172,13 +2373,16 @@ class AppUI(ctk.CTk):
     def fechar_chat_ia(self):
         self.ai_sidebar_frame.grid_remove()
         self.sidebar_frame.grid(row=0, column=0, sticky="nsew")
+        self.grid_columnconfigure(0, minsize=280)
         
-    def toggle_ai_chat_size(self):
-        if not hasattr(self, 'ai_chat_size_level'):
-            self.ai_chat_size_level = 1
+    def toggle_ai_chat_size(self, force_level=None):
+        if force_level is not None:
+            self.ai_chat_size_level = force_level
+        else:
+            if not hasattr(self, 'ai_chat_size_level'):
+                self.ai_chat_size_level = 2
+            self.ai_chat_size_level = 1 if self.ai_chat_size_level == 2 else 2
             
-        self.ai_chat_size_level = (self.ai_chat_size_level % 3) + 1
-        
         if self.ai_chat_size_level == 1:
             self.grid_columnconfigure(0, minsize=280, weight=0)
             self.ai_sidebar_frame.configure(width=280)
@@ -2189,23 +2393,54 @@ class AppUI(ctk.CTk):
             self.ai_sidebar_frame.configure(width=550)
             self.grid_columnconfigure(1, minsize=2)
             self.main_frame.grid()
-        elif self.ai_chat_size_level == 3:
-            self.grid_columnconfigure(0, minsize=0, weight=1)
-            self.grid_columnconfigure(1, minsize=0)
-            self.main_frame.grid_remove()
 
     def build_ai_chat(self):
         header = ctk.CTkFrame(self.ai_sidebar_frame, fg_color="transparent")
         header.pack(fill="x", padx=10, pady=(10, 5))
-        ctk.CTkLabel(header, text="🤖 Assistente IA", font=ctk.CTkFont(weight="bold", size=16)).pack(side="left")
         
+        titulo = "⚡ Lançamento Rápido" if getattr(self, "current_chat_mode", "IA") == "BOT" else "🤖 Assistente IA"
+        self.lbl_chat_title = ctk.CTkLabel(header, text=titulo, font=ctk.CTkFont(weight="bold", size=16))
+        self.lbl_chat_title.pack(side="left")
+        
+
+        
+        if getattr(self, "current_chat_mode", "IA") == "BOT":
+            tag_text = "🤖 Bot Estruturado"
+        else:
+            p = self.db.get_preferencia("ia_profile", "API")
+            tags = {"API": "☁️ Nuvem", "Local": "💻 Local"}
+            tag_text = tags.get(p, p)
+            
+        self.ai_mode_label = ctk.CTkLabel(header, text=tag_text, font=ctk.CTkFont(size=10, weight="bold"), text_color="#10b981")
+        self.ai_mode_label.pack(side="left", padx=(10, 0))
+        
+        def limpar_chat():
+            for widget in self.ai_chat_history.winfo_children():
+                widget.destroy()
+            if hasattr(self, "chat_messages_memory"):
+                self.chat_messages_memory.clear()
+            if hasattr(self, "script_bot"):
+                self.script_bot.state = "IDLE"
+                self.script_bot.data = {}
+            self.adicionar_msg_chat("Sistema", "🧹 Chat limpo e contexto reiniciado.")
+            
         ctk.CTkButton(header, text="✕", width=30, fg_color="#F44336", hover_color="#D32F2F", command=self.fechar_chat_ia).pack(side="right")
         ctk.CTkButton(header, text="⛶", width=30, fg_color="#334155", hover_color="#475569", command=self.toggle_ai_chat_size).pack(side="right", padx=5)
+        ctk.CTkButton(header, text="🧹 Limpar", width=50, fg_color="#64748b", hover_color="#475569", font=ctk.CTkFont(size=10, weight="bold"), command=limpar_chat).pack(side="right", padx=5)
+        
+        f_input = ctk.CTkFrame(self.ai_sidebar_frame, fg_color="transparent")
+        f_input.pack(side="bottom", fill="x", padx=10, pady=(5, 10))
         
         self.ai_chat_history = ctk.CTkScrollableFrame(self.ai_sidebar_frame, fg_color="#0f172a", corner_radius=10)
-        self.ai_chat_history.pack(fill="both", expand=True, padx=10, pady=5)
+        self.ai_chat_history.pack(side="top", fill="both", expand=True, padx=10, pady=5)
         
         self.current_wrap_len = 230
+        
+        try:
+            from script_bot import ScriptBot
+            self.script_bot = ScriptBot(self.db)
+        except:
+            pass
         
         def _on_chat_resize(event):
             wrap = max(200, event.width - 40)
@@ -2219,23 +2454,20 @@ class AppUI(ctk.CTk):
                         _update_labels(child)
                 _update_labels(self.ai_chat_history)
                 
-        self.ai_chat_history.bind("<Configure>", _on_chat_resize)
-        
-        f_input = ctk.CTkFrame(self.ai_sidebar_frame, fg_color="transparent")
-        f_input.pack(fill="x", padx=10, pady=(5, 10))
+        self.ai_chat_history.bind("<Configure>", _on_chat_resize, add="+")
         
         self.var_ai_input = ctk.StringVar()
-        self.entry_ai = ctk.CTkEntry(f_input, textvariable=self.var_ai_input, placeholder_text="Digite ou anexe nota...")
+        self.entry_ai = ctk.CTkEntry(f_input, textvariable=self.var_ai_input, placeholder_text="Digite ou anexe nota...", corner_radius=20, border_color="#334155")
         self.entry_ai.pack(side="left", fill="x", expand=True, padx=(0, 5))
         self.entry_ai.bind("<Return>", lambda e: self.enviar_msg_ia())
         
-        btn_anexo = ctk.CTkButton(f_input, text="📎", width=30, fg_color="#334155", hover_color="#475569", command=self.anexar_imagem_ia)
-        btn_anexo.pack(side="left", padx=(0, 5))
+        self.btn_anexo = ctk.CTkButton(f_input, text="📎", width=35, height=30, corner_radius=15, fg_color="#334155", hover_color="#475569", command=self.anexar_imagem_ia)
+        self.btn_anexo.pack(side="left", padx=(0, 5))
         
-        btn_mic = ctk.CTkButton(f_input, text="🎤", width=30, fg_color="#ef4444", hover_color="#dc2626", command=self.capturar_voz_ia)
-        btn_mic.pack(side="left", padx=(0, 5))
+        self.btn_mic = ctk.CTkButton(f_input, text="🎤", width=35, height=30, corner_radius=15, fg_color="#ef4444", hover_color="#dc2626", command=self.capturar_voz_ia)
+        self.btn_mic.pack(side="left", padx=(0, 5))
         
-        btn_enviar = ctk.CTkButton(f_input, text="➤", width=30, fg_color="#3b82f6", hover_color="#2563eb", command=self.enviar_msg_ia)
+        btn_enviar = ctk.CTkButton(f_input, text="➤", width=35, height=30, corner_radius=15, fg_color="#3b82f6", hover_color="#2563eb", command=self.enviar_msg_ia)
         btn_enviar.pack(side="left")
 
     def capturar_voz_ia(self):
@@ -2287,18 +2519,36 @@ class AppUI(ctk.CTk):
             threading.Thread(target=self.processar_msg_ia, args=(msg,), daemon=True).start()
         
     def adicionar_msg_chat(self, autor, texto, frame_custom=None):
-        f = ctk.CTkFrame(self.ai_chat_history, fg_color="transparent")
-        f.pack(fill="x", pady=2)
-        cor_autor = "#3b82f6" if autor == "Você" else "#10b981"
-        ctk.CTkLabel(f, text=f"{autor}:", font=ctk.CTkFont(weight="bold", size=11), text_color=cor_autor).pack(anchor="w")
+        cor_bg = "#1e293b" if autor == "Você" else "transparent"
+        f = ctk.CTkFrame(self.ai_chat_history, fg_color=cor_bg, corner_radius=15)
+        f.pack(fill="x", pady=4, padx=5)
+        
+        if autor in ["Você", "IA"] and texto:
+            if not hasattr(self, "chat_messages_memory"):
+                self.chat_messages_memory = []
+            self.chat_messages_memory.append(f"{autor}: {texto}")
+            if len(self.chat_messages_memory) > 10:
+                self.chat_messages_memory.pop(0)
+                
+        cor_autor = "#3b82f6" if autor == "Você" else ("#10b981" if autor == "IA" else "#f59e0b")
+        icon = "👤 " if autor == "Você" else ("✨ " if autor == "IA" else "🤖 ")
+        
+        ctk.CTkLabel(f, text=f"{icon}{autor}", font=ctk.CTkFont(weight="bold", size=11), text_color=cor_autor).pack(anchor="w", padx=10, pady=(5, 0))
         if texto:
-            wrap = getattr(self, 'current_wrap_len', 230)
-            ctk.CTkLabel(f, text=texto, font=ctk.CTkFont(size=12), justify="left", wraplength=wrap).pack(anchor="w")
+            wrap = 500 if getattr(self, 'ai_chat_size_level', 1) == 2 else 230
+            ctk.CTkLabel(f, text=texto, font=ctk.CTkFont(size=12), justify="left", wraplength=wrap).pack(anchor="w", padx=10, pady=(0, 5))
         if frame_custom:
             frame_custom(f)
-        self.ai_chat_history.update_idletasks()
-        if hasattr(self.ai_chat_history, '_parent_canvas'):
-            self.ai_chat_history._parent_canvas.yview_moveto(1.0)
+            
+        def force_scroll():
+            try:
+                self.ai_chat_history.update_idletasks()
+                if hasattr(self.ai_chat_history, '_parent_canvas'):
+                    self.ai_chat_history._parent_canvas.yview_moveto(1.0)
+            except: pass
+        self.after(10, force_scroll)
+        self.after(100, force_scroll)
+        self.after(300, force_scroll)
             
     def processar_msg_ia(self, msg):
         try:
@@ -2307,13 +2557,14 @@ class AppUI(ctk.CTk):
             from ai_manager import AIManager
             ai = AIManager(self.db)
             
-            f = ctk.CTkFrame(self.ai_chat_history, fg_color="transparent")
-            f.pack(fill="x", pady=2)
+            f = ctk.CTkFrame(self.ai_chat_history, fg_color="transparent", corner_radius=15)
+            f.pack(fill="x", pady=4, padx=5)
             
             f_header = ctk.CTkFrame(f, fg_color="transparent")
-            f_header.pack(fill="x")
+            f_header.pack(fill="x", padx=10, pady=(5, 0))
             
-            ctk.CTkLabel(f_header, text="IA:", font=ctk.CTkFont(weight="bold", size=11), text_color="#10b981").pack(side="left")
+            icon = "🤖 " if getattr(self, "current_chat_mode", "IA") == "BOT" else "✨ "
+            ctk.CTkLabel(f_header, text=f"{icon}IA", font=ctk.CTkFont(weight="bold", size=11), text_color="#10b981").pack(side="left")
             lbl_stats = ctk.CTkLabel(f_header, text="", font=ctk.CTkFont(size=9), text_color="#64748b")
             lbl_stats.pack(side="left", padx=(10, 0))
             
@@ -2321,9 +2572,9 @@ class AppUI(ctk.CTk):
             btn_stop = ctk.CTkButton(f_header, text="🛑 Parar", width=50, height=20, fg_color="#F44336", hover_color="#D32F2F", font=ctk.CTkFont(size=10), command=lambda: abort_event.set())
             btn_stop.pack(side="right")
             
-            wrap = getattr(self, 'current_wrap_len', 230)
+            wrap = 500 if getattr(self, 'ai_chat_size_level', 1) == 2 else 230
             lbl_resp = ctk.CTkLabel(f, text="Pensando...", font=ctk.CTkFont(size=12), justify="left", wraplength=wrap)
-            lbl_resp.pack(anchor="w")
+            lbl_resp.pack(anchor="w", padx=10, pady=(0, 5))
             
             self.ai_chat_history.update_idletasks()
             if hasattr(self.ai_chat_history, '_parent_canvas'):
@@ -2350,17 +2601,65 @@ class AppUI(ctk.CTk):
                     try:
                         lbl_resp.configure(text=accumulated[0])
                         lbl_stats.configure(text=f"{tps:.1f} t/s")
+                        self.ai_chat_history.update_idletasks()
                         if hasattr(self.ai_chat_history, '_parent_canvas'):
                             self.ai_chat_history._parent_canvas.yview_moveto(1.0)
                     except: pass
                 
                 self.after(0, update_ui)
                 
-            res = ai.enviar_mensagem(msg, callback=on_chunk, abort_event=abort_event)
+            if getattr(self, "current_chat_mode", "IA") == "BOT":
+                res_bot = self.script_bot.processar_mensagem(msg)
+                # Simula o recebimento do chunk único
+                on_chunk(res_bot)
+                res = ""
+            else:
+                # Comportamento normal da IA
+                hist_list = getattr(self, "chat_messages_memory", [])
+                if len(hist_list) > 1:
+                    hist_str = "\n".join(hist_list[:-1])
+                    msg_with_hist = f"Histórico Recente da Conversa:\n{hist_str}\n\nNova Mensagem do Usuário: {msg}"
+                else:
+                    msg_with_hist = msg
+                res = ai.enviar_mensagem(msg_with_hist, callback=on_chunk, abort_event=abort_event)
             
             self.after(0, lambda: btn_stop.destroy() if btn_stop.winfo_exists() else None)
             
             final_text = accumulated[0].strip()
+            
+            if not hasattr(self, "chat_messages_memory"):
+                self.chat_messages_memory = []
+            if "[BUSCAR_MES_ANO:" in final_text:
+                import re
+                match = re.search(r'\[BUSCAR_MES_ANO:\s*(\d{2}/\d{4})\]', final_text)
+                if match:
+                    mes_ano = match.group(1)
+                    mes_str, ano_str = mes_ano.split("/")
+                    meses_nomes = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
+                    try:
+                        mes_nome = meses_nomes[int(mes_str) - 1]
+                        resumo = self.db.get_resumo_financeiro(mes_nome, ano_str, "Eu")
+                        transacoes = self.db.get_transacoes(mes_nome, ano_str, "Eu")
+                        
+                        dados_busca = f"=== RESULTADO DA BUSCA DE {mes_nome}/{ano_str} ===\nResumo: Receitas {resumo.get('Receita Fixa', 0)+resumo.get('Receita Variável', 0):.2f} | Despesas {resumo.get('Despesa Fixa', 0)+resumo.get('Despesa Variável', 0):.2f}\nTransações:\n"
+                        for t in transacoes[:30]:
+                            dados_busca += f"{t[1]} | {t[2]} | R$ {t[3]:.2f} | {t[4]}\n"
+                            
+                        self.after(0, lambda lbl=lbl_resp: lbl.pack_forget())
+                        self.after(0, lambda: self.adicionar_msg_chat("Sistema", f"🔍 Buscando dados profundos de {mes_nome}/{ano_str}..."))
+                        
+                        msg_realimentacao = f"{dados_busca}\n\nAGORA, responda à pergunta original do usuário com base nestes dados (não fale do JSON, aja naturalmente)."
+                        import threading
+                        threading.Thread(target=self.processar_msg_ia, args=(msg_realimentacao,), daemon=True).start()
+                        return
+                    except Exception as e:
+                        pass
+
+            if final_text and not final_text.startswith("["):
+                self.chat_messages_memory.append(f"IA: {final_text}")
+            elif final_text.startswith("["):
+                self.chat_messages_memory.clear() # Limpa a memória após concluir transação ou busca
+
             
             # Limpa formatação markdown se a IA colocar
             if final_text.startswith("```json"):
@@ -2376,7 +2675,57 @@ class AppUI(ctk.CTk):
                     import json
                     parsed = json.loads(final_text)
                     if isinstance(parsed, list) and len(parsed) > 0 and "acao" in parsed[0]:
-                        self.after(0, lambda lbl=lbl_resp, f_ref=f, p=parsed: (lbl.pack_forget(), self._renderizar_itens_aprovacao_ia(f_ref, p)))
+                        self.after(0, lambda lbl=lbl_resp: lbl.pack_forget())
+                        
+                        if getattr(self, "var_demo_mode", False) and self.var_demo_mode.get():
+                            # MODO DEMO: INSERÇÃO DIRETA
+                            def perform_insert(p):
+                                cat_nome = p.get("categoria", "Diversos")
+                                pilar = p.get("tipo_transacao", "Despesa Variável")
+                                cats = self.db.get_categorias()
+                                cat_id = None
+                                for c in cats:
+                                    if c[1].lower() == cat_nome.lower() and c[2] == pilar:
+                                        cat_id = c[0]; break
+                                if not cat_id:
+                                    for c in cats:
+                                        if c[1].lower() == cat_nome.lower():
+                                            cat_id = c[0]; break
+                                if not cat_id: cat_id = 1
+                                self.db.inserir_transacao(
+                                    conta_id=1,
+                                    categoria_id=cat_id,
+                                    descricao=p.get("descricao", "Nova Transação"),
+                                    data_ini=p.get("data", ""),
+                                    valor_total=p.get("valor", 0),
+                                    tipo_transacao=pilar,
+                                    metodo=p.get("metodo", "Dinheiro"),
+                                    parcelas=p.get("parcelas", 1),
+                                    bandeira=p.get("bandeira", ""),
+                                    dono=p.get("dono_cartao", ""),
+                                    divisoes={},
+                                    observacao=p.get("observacao", "")
+                                )
+                                self.after(0, self.refresh_all_widgets)
+                            
+                            for p in parsed:
+                                perform_insert(p)
+                            self.after(0, lambda: self.adicionar_msg_chat("Sistema", "✅ Lançamento inserido diretamente (Modo Demonstração ativo)."))
+                        else:
+                            # MODO PRODUÇÃO: ABRIR FORMULÁRIO
+                            def abrir_form(p):
+                                modal = ctk.CTkToplevel(self.winfo_toplevel())
+                                modal.title("Conferência de Lançamento (IA)")
+                                modal.geometry("500x600")
+                                modal.transient(self.winfo_toplevel())
+                                modal.grab_set()
+                                from app_ui import NovaTransacaoForm
+                                form = NovaTransacaoForm(modal, self.db, self, is_integrated=False, initial_data=p)
+                                form.pack(fill="both", expand=True)
+                                
+                            for p in parsed:
+                                self.after(0, lambda p_data=p: abrir_form(p_data))
+                            self.after(0, lambda: self.adicionar_msg_chat("Sistema", "📋 Formulário pré-preenchido aberto. Revise e salve para concluir."))
                         return
                 except: pass
             

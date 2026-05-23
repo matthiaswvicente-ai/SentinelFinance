@@ -14,6 +14,17 @@ class Database:
         """No caso de banco em arquivo, garante que não há conexões pendentes"""
         pass # No SQLite com 'with' as conexões fecham ao sair do bloco
 
+    def switch_to_sandbox(self):
+        import shutil
+        if os.path.exists("financas.db"):
+            shutil.copy("financas.db", "sandbox_financas.db")
+        self.db_name = "sandbox_financas.db"
+        self.create_tables()
+
+    def switch_to_production(self):
+        self.db_name = "financas.db"
+        self.create_tables()
+
     def create_tables(self):
         with self.get_connection() as conn:
             cursor = conn.cursor()
