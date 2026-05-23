@@ -319,6 +319,215 @@ def main(page: ft.Page):
         plt.close(fig)
         return base64.b64encode(buf.getvalue()).decode("utf-8")
 
+    def fab_click(e):
+        # Text fields
+        txt_desc = ft.TextField(label="Descrição", hint_text="Ex: Compras Supermercado", border_color="#475569", text_style=ft.TextStyle(color="white"), bgcolor="#0f172a")
+        txt_valor = ft.TextField(label="Valor (R$)", hint_text="Ex: 150.50", border_color="#475569", text_style=ft.TextStyle(color="white"), bgcolor="#0f172a")
+        txt_data = ft.TextField(label="Data (DD/MM/AAAA)", value=datetime.datetime.now().strftime("%d/%m/%Y"), border_color="#475569", text_style=ft.TextStyle(color="white"), bgcolor="#0f172a")
+        txt_parcelas = ft.TextField(label="Parcelas", value="1", border_color="#475569", text_style=ft.TextStyle(color="white"), bgcolor="#0f172a", visible=False)
+        txt_obs = ft.TextField(label="Observação (Opcional)", border_color="#475569", text_style=ft.TextStyle(color="white"), bgcolor="#0f172a")
+        
+        # Transaction Type
+        drop_tipo = ft.Dropdown(
+            label="Tipo",
+            border_color="#475569",
+            text_style=ft.TextStyle(color="white"),
+            bgcolor="#0f172a",
+            options=[
+                ft.dropdown.Option("Despesa Fixa"),
+                ft.dropdown.Option("Despesa Variável"),
+                ft.dropdown.Option("Receita Fixa"),
+                ft.dropdown.Option("Receita Variável"),
+                ft.dropdown.Option("Investimento")
+            ],
+            value="Despesa Variável"
+        )
+        
+        # Payment Method
+        drop_metodo = ft.Dropdown(
+            label="Método de Pagamento",
+            border_color="#475569",
+            text_style=ft.TextStyle(color="white"),
+            bgcolor="#0f172a",
+            options=[
+                ft.dropdown.Option("Dinheiro"),
+                ft.dropdown.Option("Pix"),
+                ft.dropdown.Option("Boleto"),
+                ft.dropdown.Option("Cartão de Crédito")
+            ],
+            value="Dinheiro",
+            on_change=lambda e: toggle_card_fields()
+        )
+        
+        # Credit Card Selectors
+        cartoes = db.get_cartoes()
+        card_options = []
+        for c in cartoes:
+            # card structure: id, nome, limite, dia_fechamento, dia_vencimento, cor, bandeira, dono, digitos
+            card_id, c_nome, c_lim, c_fech, c_venc, c_cor, c_band, c_dono, c_dig = c
+            card_options.append(ft.dropdown.Option(
+                key=f"{c_band}|{c_dono}", 
+                text=f"{c_nome} ({c_band} - {c_dono} •••• {c_dig})"
+            ))
+            
+        drop_cartao = ft.Dropdown(
+            label="Selecione o Cartão",
+            border_color="#475569",
+            text_style=ft.TextStyle(color="white"),
+            bgcolor="#0f172a",
+            options=card_options,
+            visible=False
+        )
+        
+        # Categories Dropdown
+        cats = db.get_categorias()
+        cat_options = []
+        for cat in cats:
+            c_id, c_nome, c_tipo, c_pid, c_has_sub = cat
+            if not c_has_sub: # leaf
+                cat_options.append(ft.dropdown.Option(key=str(c_id), text=f"{c_nome} ({c_tipo})"))
+                
+        drop_cat = ft.Dropdown(
+            label="Categoria",
+            border_color="#475569",
+            text_style=ft.TextStyle(color="white"),
+            bgcolor="#0f172a",
+            options=cat_options
+        )
+        if cat_options:
+            drop_cat.value = cat_options[0].key
+
+        # Dynamic Visibility Handler for Card Selector
+        def toggle_card_fields():
+            is_card = drop_metodo.value == "Cartão de Crédito"
+            drop_cartao.visible = is_card
+            txt_parcelas.visible = is_card
+            dialog.content.update()
+
+        # Save Transaction Handler
+        def salvar_lancamento(e):
+            desc = (txt_desc.value or "").strip()
+            valor_str = (txt_valor.value or "").strip()
+            data_str = (txt_data.value or "").strip()
+            tipo = drop_tipo.value
+            metodo = drop_metodo.value
+            cat_id_str = drop_cat.value
+            parcelas_str = (txt_parcelas.value or "").strip()
+            obs = (txt_obs.value or "").strip()
+            
+            if not desc or not valor_str or not data_str or not cat_id_str:
+                page.snack_bar = ft.SnackBar(
+                    content=ft.Text("Por favor, preencha a descrição, valor e data!", color="white"),
+                    bgcolor="#ef4444"
+                )
+                page.snack_bar.open = True
+                page.update()
+                return
+                
+            try:
+                valor = float(valor_str.replace(",", "."))
+                parcelas = int(parcelas_str) if metodo == "Cartão de Crédito" else 1
+            except ValueError:
+                page.snack_bar = ft.SnackBar(
+                    content=ft.Text("Valor ou número de parcelas inválido!", color="white"),
+                    bgcolor="#ef4444"
+                )
+                page.snack_bar.open = True
+                page.update()
+                return
+                
+            bandeira = ""
+            dono = ""
+            if metodo == "Cartão de Crédito":
+                if not drop_cartao.value:
+                    page.snack_bar = ft.SnackBar(
+                        content=ft.Text("Por favor, selecione um cartão de crédito!", color="white"),
+                        bgcolor="#ef4444"
+                    )
+                    page.snack_bar.open = True
+                    page.update()
+                    return
+                parts = drop_cartao.value.split("|")
+                bandeira = parts[0]
+                dono = parts[1]
+                
+            success, msg = db.inserir_transacao(
+                conta_id=None,
+                categoria_id=int(cat_id_str),
+                descricao=desc,
+                data_ini=data_str,
+                valor_total=valor,
+                tipo_transacao=tipo,
+                metodo=metodo,
+                parcelas=parcelas,
+                bandeira=bandeira,
+                dono=dono,
+                recorrencia=None,
+                divisoes=None,
+                observacao=obs
+            )
+            
+            if success:
+                page.snack_bar = ft.SnackBar(
+                    content=ft.Text("Lançamento adicionado com sucesso!", color="white"),
+                    bgcolor="#10b981"
+                )
+                # Close Dialog
+                dialog.open = False
+                page.update()
+                # Re-render dashboard
+                render_dashboard()
+            else:
+                page.snack_bar = ft.SnackBar(
+                    content=ft.Text(f"Erro ao salvar: {msg}", color="white"),
+                    bgcolor="#ef4444"
+                )
+                page.snack_bar.open = True
+                page.update()
+
+        def fechar_dialog(e):
+            dialog.open = False
+            page.update()
+
+        # Dialog structure
+        dialog_content = ft.Container(
+            width=400,
+            height=450,
+            content=ft.ListView(
+                spacing=15,
+                controls=[
+                    txt_desc,
+                    txt_valor,
+                    txt_data,
+                    drop_tipo,
+                    drop_metodo,
+                    drop_cartao,
+                    txt_parcelas,
+                    drop_cat,
+                    txt_obs
+                ]
+            )
+        )
+
+        dialog = ft.AlertDialog(
+            title=ft.Text("Novo Lançamento", color="white", weight=ft.FontWeight.BOLD),
+            content=dialog_content,
+            bgcolor="#1e293b",
+            actions=[
+                ft.TextButton(content="Cancelar", on_click=fechar_dialog),
+                ft.Button(
+                    content="Salvar Lançamento",
+                    bgcolor="#3b82f6",
+                    color="white",
+                    on_click=salvar_lancamento
+                )
+            ]
+        )
+        
+        page.dialog = dialog
+        dialog.open = True
+        page.update()
+
     def render_dashboard():
         mes_atual = meses_pt[state["mes_idx"]]
         ano_atual = str(state["ano"])
@@ -1058,216 +1267,6 @@ def main(page: ft.Page):
             body
         ]
     )
-    
-    def fab_click(e):
-        # Text fields
-        txt_desc = ft.TextField(label="Descrição", hint_text="Ex: Compras Supermercado", border_color="#475569", text_style=ft.TextStyle(color="white"), bgcolor="#0f172a")
-        txt_valor = ft.TextField(label="Valor (R$)", hint_text="Ex: 150.50", border_color="#475569", text_style=ft.TextStyle(color="white"), bgcolor="#0f172a")
-        txt_data = ft.TextField(label="Data (DD/MM/AAAA)", value=datetime.datetime.now().strftime("%d/%m/%Y"), border_color="#475569", text_style=ft.TextStyle(color="white"), bgcolor="#0f172a")
-        txt_parcelas = ft.TextField(label="Parcelas", value="1", border_color="#475569", text_style=ft.TextStyle(color="white"), bgcolor="#0f172a", visible=False)
-        txt_obs = ft.TextField(label="Observação (Opcional)", border_color="#475569", text_style=ft.TextStyle(color="white"), bgcolor="#0f172a")
-        
-        # Transaction Type
-        drop_tipo = ft.Dropdown(
-            label="Tipo",
-            border_color="#475569",
-            text_style=ft.TextStyle(color="white"),
-            bgcolor="#0f172a",
-            options=[
-                ft.dropdown.Option("Despesa Fixa"),
-                ft.dropdown.Option("Despesa Variável"),
-                ft.dropdown.Option("Receita Fixa"),
-                ft.dropdown.Option("Receita Variável"),
-                ft.dropdown.Option("Investimento")
-            ],
-            value="Despesa Variável"
-        )
-        
-        # Payment Method
-        drop_metodo = ft.Dropdown(
-            label="Método de Pagamento",
-            border_color="#475569",
-            text_style=ft.TextStyle(color="white"),
-            bgcolor="#0f172a",
-            options=[
-                ft.dropdown.Option("Dinheiro"),
-                ft.dropdown.Option("Pix"),
-                ft.dropdown.Option("Boleto"),
-                ft.dropdown.Option("Cartão de Crédito")
-            ],
-            value="Dinheiro",
-            on_change=lambda e: toggle_card_fields()
-        )
-        
-        # Credit Card Selectors
-        cartoes = db.get_cartoes()
-        card_options = []
-        for c in cartoes:
-            # card structure: id, nome, limite, dia_fechamento, dia_vencimento, cor, bandeira, dono, digitos
-            card_id, c_nome, c_lim, c_fech, c_venc, c_cor, c_band, c_dono, c_dig = c
-            card_options.append(ft.dropdown.Option(
-                key=f"{c_band}|{c_dono}", 
-                text=f"{c_nome} ({c_band} - {c_dono} •••• {c_dig})"
-            ))
-            
-        drop_cartao = ft.Dropdown(
-            label="Selecione o Cartão",
-            border_color="#475569",
-            text_style=ft.TextStyle(color="white"),
-            bgcolor="#0f172a",
-            options=card_options,
-            visible=False
-        )
-        
-        # Categories Dropdown
-        cats = db.get_categorias()
-        cat_options = []
-        for cat in cats:
-            c_id, c_nome, c_tipo, c_pid, c_has_sub = cat
-            if not c_has_sub: # leaf
-                cat_options.append(ft.dropdown.Option(key=str(c_id), text=f"{c_nome} ({c_tipo})"))
-                
-        drop_cat = ft.Dropdown(
-            label="Categoria",
-            border_color="#475569",
-            text_style=ft.TextStyle(color="white"),
-            bgcolor="#0f172a",
-            options=cat_options
-        )
-        if cat_options:
-            drop_cat.value = cat_options[0].key
-
-        # Dynamic Visibility Handler for Card Selector
-        def toggle_card_fields():
-            is_card = drop_metodo.value == "Cartão de Crédito"
-            drop_cartao.visible = is_card
-            txt_parcelas.visible = is_card
-            dialog.content.update()
-
-        # Save Transaction Handler
-        def salvar_lancamento(e):
-            desc = (txt_desc.value or "").strip()
-            valor_str = (txt_valor.value or "").strip()
-            data_str = (txt_data.value or "").strip()
-            tipo = drop_tipo.value
-            metodo = drop_metodo.value
-            cat_id_str = drop_cat.value
-            parcelas_str = (txt_parcelas.value or "").strip()
-            obs = (txt_obs.value or "").strip()
-            
-            if not desc or not valor_str or not data_str or not cat_id_str:
-                page.snack_bar = ft.SnackBar(
-                    content=ft.Text("Por favor, preencha a descrição, valor e data!", color="white"),
-                    bgcolor="#ef4444"
-                )
-                page.snack_bar.open = True
-                page.update()
-                return
-                
-            try:
-                valor = float(valor_str.replace(",", "."))
-                parcelas = int(parcelas_str) if metodo == "Cartão de Crédito" else 1
-            except ValueError:
-                page.snack_bar = ft.SnackBar(
-                    content=ft.Text("Valor ou número de parcelas inválido!", color="white"),
-                    bgcolor="#ef4444"
-                )
-                page.snack_bar.open = True
-                page.update()
-                return
-                
-            bandeira = ""
-            dono = ""
-            if metodo == "Cartão de Crédito":
-                if not drop_cartao.value:
-                    page.snack_bar = ft.SnackBar(
-                        content=ft.Text("Por favor, selecione um cartão de crédito!", color="white"),
-                        bgcolor="#ef4444"
-                    )
-                    page.snack_bar.open = True
-                    page.update()
-                    return
-                parts = drop_cartao.value.split("|")
-                bandeira = parts[0]
-                dono = parts[1]
-                
-            success, msg = db.inserir_transacao(
-                conta_id=None,
-                categoria_id=int(cat_id_str),
-                descricao=desc,
-                data_ini=data_str,
-                valor_total=valor,
-                tipo_transacao=tipo,
-                metodo=metodo,
-                parcelas=parcelas,
-                bandeira=bandeira,
-                dono=dono,
-                recorrencia=None,
-                divisoes=None,
-                observacao=obs
-            )
-            
-            if success:
-                page.snack_bar = ft.SnackBar(
-                    content=ft.Text("Lançamento adicionado com sucesso!", color="white"),
-                    bgcolor="#10b981"
-                )
-                # Close Dialog
-                dialog.open = False
-                page.update()
-                # Re-render dashboard
-                render_dashboard()
-            else:
-                page.snack_bar = ft.SnackBar(
-                    content=ft.Text(f"Erro ao salvar: {msg}", color="white"),
-                    bgcolor="#ef4444"
-                )
-                page.snack_bar.open = True
-                page.update()
-
-        def fechar_dialog(e):
-            dialog.open = False
-            page.update()
-
-        # Dialog structure
-        dialog_content = ft.Container(
-            width=400,
-            height=450,
-            content=ft.ListView(
-                spacing=15,
-                controls=[
-                    txt_desc,
-                    txt_valor,
-                    txt_data,
-                    drop_tipo,
-                    drop_metodo,
-                    drop_cartao,
-                    txt_parcelas,
-                    drop_cat,
-                    txt_obs
-                ]
-            )
-        )
-
-        dialog = ft.AlertDialog(
-            title=ft.Text("Novo Lançamento", color="white", weight=ft.FontWeight.BOLD),
-            content=dialog_content,
-            bgcolor="#1e293b",
-            actions=[
-                ft.TextButton(content="Cancelar", on_click=fechar_dialog),
-                ft.Button(
-                    content="Salvar Lançamento",
-                    bgcolor="#3b82f6",
-                    color="white",
-                    on_click=salvar_lancamento
-                )
-            ]
-        )
-        
-        page.dialog = dialog
-        dialog.open = True
-        page.update()
-    
     page.add(layout)
     page.update()
 
