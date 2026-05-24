@@ -714,71 +714,81 @@ class Database:
     # ==========================
     
     def add_cartao(self, nome, limite, dia_fechamento, dia_vencimento, cor, bandeira, dono, digitos):
+        conn = self.get_connection()
         try:
-            with self.get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    INSERT INTO Cartoes (nome, limite, dia_fechamento, dia_vencimento, cor, bandeira, dono, digitos)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (nome, limite, dia_fechamento, dia_vencimento, cor, bandeira, dono, digitos))
-                conn.commit()
-                return True, "Cartão adicionado com sucesso."
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO Cartoes (nome, limite, dia_fechamento, dia_vencimento, cor, bandeira, dono, digitos)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (nome, limite, dia_fechamento, dia_vencimento, cor, bandeira, dono, digitos))
+            conn.commit()
+            return True, "Cartão adicionado com sucesso."
         except Exception as e:
             logger.error("Erro ao adicionar cartão", exc_info=True)
             return False, str(e)
+        finally:
+            conn.close()
 
     def get_cartoes(self):
+        conn = self.get_connection()
         try:
-            with self.get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("SELECT id, nome, limite, dia_fechamento, dia_vencimento, cor, bandeira, dono, digitos FROM Cartoes ORDER BY nome")
-                return cursor.fetchall()
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, nome, limite, dia_fechamento, dia_vencimento, cor, bandeira, dono, digitos FROM Cartoes ORDER BY nome")
+            return cursor.fetchall()
         except Exception:
             logger.error("Erro ao obter cartões", exc_info=True)
             return []
+        finally:
+            conn.close()
 
     def update_cartao(self, cartao_id, nome, limite, dia_fechamento, dia_vencimento, cor, bandeira, dono, digitos):
+        conn = self.get_connection()
         try:
-            with self.get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    UPDATE Cartoes 
-                    SET nome = ?, limite = ?, dia_fechamento = ?, dia_vencimento = ?, cor = ?, bandeira = ?, dono = ?, digitos = ?
-                    WHERE id = ?
-                ''', (nome, limite, dia_fechamento, dia_vencimento, cor, bandeira, dono, digitos, cartao_id))
-                conn.commit()
-                return True, "Cartão atualizado com sucesso."
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE Cartoes 
+                SET nome = ?, limite = ?, dia_fechamento = ?, dia_vencimento = ?, cor = ?, bandeira = ?, dono = ?, digitos = ?
+                WHERE id = ?
+            ''', (nome, limite, dia_fechamento, dia_vencimento, cor, bandeira, dono, digitos, cartao_id))
+            conn.commit()
+            return True, "Cartão atualizado com sucesso."
         except Exception as e:
             logger.error("Erro ao atualizar cartão", exc_info=True)
             return False, str(e)
+        finally:
+            conn.close()
 
     def delete_cartao(self, cartao_id):
+        conn = self.get_connection()
         try:
-            with self.get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("DELETE FROM Cartoes WHERE id = ?", (cartao_id,))
-                conn.commit()
-                return True, "Cartão excluído com sucesso."
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM Cartoes WHERE id = ?", (cartao_id,))
+            conn.commit()
+            return True, "Cartão excluído com sucesso."
         except Exception as e:
             logger.error("Erro ao excluir cartão", exc_info=True)
             return False, str(e)
+        finally:
+            conn.close()
 
     def get_gasto_cartao_mes(self, bandeira, dono, mes_num, ano):
+        conn = self.get_connection()
         try:
-            with self.get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("""
-                    SELECT SUM(valor_total) FROM Transacoes 
-                    WHERE (bandeira_cartao = ? AND dono_cartao = ?) 
-                      AND tipo_transacao LIKE 'Despesa%'
-                      AND substr(data, 4, 2) = ? 
-                      AND substr(data, 7, 4) = ?
-                """, (bandeira, dono, mes_num, str(ano)))
-                res = cursor.fetchone()
-                return res[0] if res[0] is not None else 0.0
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT SUM(valor_total) FROM Transacoes 
+                WHERE (bandeira_cartao = ? AND dono_cartao = ?) 
+                  AND tipo_transacao LIKE 'Despesa%'
+                  AND substr(data, 4, 2) = ? 
+                  AND substr(data, 7, 4) = ?
+            """, (bandeira, dono, mes_num, str(ano)))
+            res = cursor.fetchone()
+            return res[0] if res[0] is not None else 0.0
         except Exception:
             logger.error("Erro ao calcular gasto do cartão no mês", exc_info=True)
             return 0.0
+        finally:
+            conn.close()
 
 if __name__ == "__main__":
     db = Database()
