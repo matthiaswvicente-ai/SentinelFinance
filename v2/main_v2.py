@@ -184,11 +184,19 @@ def main(page: ft.Page):
             valor = t[3]
             cat = t[4]
             tipo_t = t[5]
+            parc_atual = t[6]   # parcela_atual
+            parc_total = t[7]   # total_parcelas
+            
             if tipo_t == "Investimento":
                 icone_cor = "#3b82f6"
             else:
                 icone_cor = "#ef4444" if eh_despesa else "#10b981"
             icone_tipo = get_icone_categoria(cat)
+
+            # Monta subtítulo com parcela se aplicável
+            subtitle = f"{data_str} • {cat.strip().title()}"
+            if parc_total and parc_total > 1:
+                subtitle += f" • Parcela {parc_atual} de {parc_total}"
             
             itens.append(
                 ft.Container(
@@ -218,7 +226,7 @@ def main(page: ft.Page):
                                         spacing=2,
                                         controls=[
                                             ft.Text(desc, size=14, weight=ft.FontWeight.BOLD, color="white", max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
-                                            ft.Text(f"{data_str} • {cat.strip().title()}", size=12, color="#64748b", max_lines=1, overflow=ft.TextOverflow.ELLIPSIS)
+                                            ft.Text(subtitle, size=12, color="#64748b", max_lines=1, overflow=ft.TextOverflow.ELLIPSIS)
                                         ]
                                     )
                                 ]
