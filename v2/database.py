@@ -160,7 +160,22 @@ class Database:
                 cursor.execute("ALTER TABLE Cartoes ADD COLUMN digitos TEXT DEFAULT '1234'")
             except sqlite3.OperationalError:
                 pass
-                
+
+            # Tabela de Carteira de Investimentos
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS Carteira_Investimentos (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ticker TEXT NOT NULL,
+                    tipo_ativo TEXT NOT NULL,
+                    operacao TEXT NOT NULL,
+                    quantidade REAL NOT NULL,
+                    preco_unitario REAL NOT NULL,
+                    data TEXT NOT NULL,
+                    corretora TEXT,
+                    observacao TEXT
+                )
+            ''')
+
             conn.commit()
             
         # Garante a inserção inicial das categorias da planilha
@@ -786,6 +801,121 @@ class Database:
             return res[0] if res[0] is not None else 0.0
         except Exception:
             logger.error("Erro ao calcular gasto do cartão no mês", exc_info=True)
+            return 0.0
+        finally:
+            conn.close()
+
+    # ── INVESTIMENTOS ────────────────────────────────────────────
+
+    def get_total_investido_cumulativo(self, perfil_nome="Eu"):
+        """Soma acumulada de todos os lançamentos do tipo Investimento (todos os períodos)."""
+        conn = self.get_connection()
+        try:
+            cursor = conn.cursor()
+            query = """
+                SELECT SUM(
+                    CASE
+                        WHEN d.id IS NULL AND ? = 'Eu' THEN t.valor_total
+                        WHEN u.nome = ? THEN d.valor_cota
+                        ELSE 0
+                    END
+                )
+                FROM Transacoes t
+                JOIN Categorias c ON t.categoria_id = c.id
+                LEFT JOIN Divisoes_Transacao d ON t.id = d.transacao_id
+                LEFT JOIN Usuarios_Familia u ON d.usuario_id = u.id
+                WHERE t.tipo_transacao = 'Investimento'
+                AND (u.nome = ? OR d.id IS NULL)
+            """
+            cursor.execute(query, [perfil_nome, perfil_nome, perfil_nome])
+            result = cursor.fetchone()[0]
+            return result or 0.0
+        except Exception:
+            logger.error("Erro ao obter total investido", exc_info=True)
+            return 0.0
+        finally:
+            conn.close()
+
+    def get_carteira(self):
+        """Retorna todas as operações de compra/venda registradas na carteira."""
+        conn = self.get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, ticker, tipo_ativo, operacao, quantidade, preco_unitario, data, corretora, observacao
+                FROM Carteira_Investimentos
+                ORDER BY data DESC
+            """)
+            return cursor.fetchall()
+        except Exception:
+            logger.error("Erro ao obter carteira", exc_info=True)
+            return []
+        finally:
+            conn.close()
+
+    def add_operacao_carteira(self, ticker, tipo_ativo, operacao, quantidade, preco_unitario, data, corretora=None, observacao=None):
+        """Registra uma operação de compra ou venda de ativo."""
+        conn = self.get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO Carteira_Investimentos
+                    (ticker, tipo_ativo, operacao, quantidade, preco_unitario, data, corretora, observacao)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, [ticker.upper(), tipo_ativo, operacao, quantidade, preco_unitario, data, corretora, observacao])
+            conn.commit()
+            return cursor.lastrowid
+        except Exception as e:
+            logger.error("Erro ao adicionar operação", exc_info=True)
+            return None
+        finally:
+            conn.close()
+
+    def delete_operacao_carteira(self, op_id):
+        """Remove permanentemente uma operação da carteira."""
+        conn = self.get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM Carteira_Investimentos WHERE id = ?", [op_id])
+            conn.commit()
+            return True
+        except Exception:
+            logger.error("Erro ao excluir operação", exc_info=True)
+            return False
+        finally:
+            conn.close()
+
+    def get_dividendos_mes(self, mes, ano, perfil_nome="Eu"):
+        """Soma de dividendos/rendimentos de ações e FIIs no mês/ano informado."""
+        months_map = {"Janeiro":"01","Fevereiro":"02","Março":"03","Abril":"04","Maio":"05","Junho":"06",
+                      "Julho":"07","Agosto":"08","Setembro":"09","Outubro":"10","Novembro":"11","Dezembro":"12"}
+        mes_num = months_map.get(mes, "01")
+        conn = self.get_connection()
+        try:
+            cursor = conn.cursor()
+            query = """
+                SELECT SUM(
+                    CASE
+                        WHEN d.id IS NULL AND ? = 'Eu' THEN t.valor_total
+                        WHEN u.nome = ? THEN d.valor_cota
+                        ELSE 0
+                    END
+                )
+                FROM Transacoes t
+                JOIN Categorias c ON t.categoria_id = c.id
+                LEFT JOIN Divisoes_Transacao d ON t.id = d.transacao_id
+                LEFT JOIN Usuarios_Familia u ON d.usuario_id = u.id
+                WHERE t.tipo_transacao = 'Receita Variável'
+                AND c.nome IN ('Rendimentos de Ações', 'Rendimentos de FIIs')
+                AND substr(t.data, 4, 2) = ?
+                AND substr(t.data, 7, 4) = ?
+                AND (u.nome = ? OR d.id IS NULL)
+            """
+            cursor.execute(query, [perfil_nome, perfil_nome, mes_num, str(ano), perfil_nome])
+            result = cursor.fetchone()[0]
+            return result or 0.0
+        except Exception:
+            logger.error("Erro ao obter dividendos do mês", exc_info=True)
             return 0.0
         finally:
             conn.close()

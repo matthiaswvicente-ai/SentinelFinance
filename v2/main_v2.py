@@ -4,6 +4,9 @@ import os
 import datetime
 import io
 import base64
+import urllib.request
+import json
+import threading
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -48,7 +51,10 @@ def main(page: ft.Page):
         "form_vencimento": "",
         "transacoes_view_mode": "mensal",
         "transacoes_tab_active": "pilar_categoria",
-        "transacoes_locked": True
+        "transacoes_locked": True,
+        "investimentos_tab_active": "carteira",
+        "cotacoes_cache": {},
+        "cotacoes_status": "idle",
     }
     
     despesas_colors = ["#f87171", "#fb923c", "#fbbf24", "#f472b6", "#c084fc", "#a78bfa", "#fca5a5"]
@@ -112,6 +118,9 @@ def main(page: ft.Page):
         elif e.control.icon == ft.icons.Icons.LIST_ALT_ROUNDED:
             state["active_tab"] = "transacoes"
             render_transacoes()
+        elif e.control.icon == ft.icons.Icons.SAVINGS_ROUNDED:
+            state["active_tab"] = "investimentos"
+            render_investimentos()
         else:
             titulo = e.control.tooltip
             body.content = ft.Column(
@@ -2335,6 +2344,671 @@ def main(page: ft.Page):
         page.floating_action_button = None
         
         body.content = cartoes_view
+        page.update()
+
+    def render_investimentos():
+        mes_atual = meses_pt[state["mes_idx"]]
+        ano_atual = str(state["ano"])
+        tab_active = state.get("investimentos_tab_active", "carteira")
+        cotacoes_cache = state.get("cotacoes_cache", {})
+        cotacoes_status = state.get("cotacoes_status", "idle")
+
+        def fmt(val):
+            return f"R$ {val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+        tipo_cores = {
+            "Ação": "#3b82f6", "FII": "#10b981", "ETF": "#a78bfa",
+            "Tesouro": "#fbbf24", "CDB": "#fb923c", "Cripto": "#f472b6",
+        }
+        tipo_ordem = ["Ação", "FII", "ETF", "Tesouro", "CDB", "Cripto"]
+
+        # ── DADOS ────────────────────────────────────────────────────
+        total_aportado = db.get_total_investido_cumulativo(state["perfil"])
+        carteira_ops = db.get_carteira()
+        dividendos = db.get_dividendos_mes(mes_atual, ano_atual, state["perfil"])
+
+        posicoes = {}
+        for op in carteira_ops:
+            op_id, ticker, tipo, operacao, qtd, preco, data_op, corretora, obs = op
+            if ticker not in posicoes:
+                posicoes[ticker] = {"qtd": 0.0, "custo_total": 0.0, "tipo": tipo, "ops": []}
+            mult = 1.0 if operacao == "Compra" else -1.0
+            posicoes[ticker]["qtd"] += mult * qtd
+            posicoes[ticker]["custo_total"] += mult * qtd * preco
+            posicoes[ticker]["ops"].append(op)
+
+        posicoes_ativas = {k: v for k, v in posicoes.items() if v["qtd"] > 0.0001}
+        patrimonio_custo = sum(p["custo_total"] for p in posicoes_ativas.values())
+        saldo_disponivel = max(0.0, total_aportado - patrimonio_custo)
+
+        valor_mercado = 0.0
+        for ticker, pos in posicoes_ativas.items():
+            cot_p = cotacoes_cache.get(ticker, {}).get("preco")
+            valor_mercado += pos["qtd"] * cot_p if cot_p else pos["custo_total"]
+        variacao_total = valor_mercado - patrimonio_custo
+
+        # ── FUNÇÕES INTERNAS ─────────────────────────────────────────
+        def buscar_cotacoes():
+            if not posicoes_ativas:
+                state["cotacoes_cache"] = {}
+                state["cotacoes_status"] = "idle"
+                render_investimentos()
+                return
+            tickers_str = ",".join(posicoes_ativas.keys())
+            try:
+                url = f"https://brapi.dev/api/quote/{tickers_str}?token=demo"
+                req = urllib.request.Request(url, headers={"User-Agent": "SentinelFinance/2.0"})
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    data_api = json.loads(resp.read().decode())
+                cache = {}
+                for item in data_api.get("results", []):
+                    sym = item.get("symbol", "")
+                    cache[sym] = {
+                        "preco": item.get("regularMarketPrice"),
+                        "variacao": item.get("regularMarketChangePercent"),
+                        "nome": item.get("longName") or item.get("shortName") or sym,
+                    }
+                state["cotacoes_cache"] = cache
+                state["cotacoes_status"] = "online"
+            except Exception:
+                state["cotacoes_status"] = "offline"
+            render_investimentos()
+
+        def set_tab_inv(tab_name):
+            state["investimentos_tab_active"] = tab_name
+            if tab_name == "cotacoes" and posicoes_ativas:
+                state["cotacoes_status"] = "idle"
+                render_investimentos()
+                threading.Thread(target=buscar_cotacoes, daemon=True).start()
+            else:
+                render_investimentos()
+
+        def _close_dlg():
+            if page.dialog:
+                page.dialog.open = False
+            page.update()
+
+        def _do_del_op(oid):
+            _close_dlg()
+            db.delete_operacao_carteira(oid)
+            fechar_overlay()
+            render_investimentos()
+
+        def confirm_delete_op(oid):
+            page.dialog = ft.AlertDialog(
+                modal=True,
+                title=ft.Text("Confirmar Exclusão", color="white"),
+                content=ft.Text("Excluir esta operação permanentemente?", color="#94a3b8"),
+                bgcolor="#1e293b",
+                actions=[
+                    ft.TextButton("CANCELAR", on_click=lambda e: _close_dlg()),
+                    ft.TextButton("EXCLUIR", style=ft.ButtonStyle(color="#ef4444"),
+                                  on_click=lambda e: _do_del_op(oid))
+                ]
+            )
+            page.dialog.open = True
+            page.update()
+
+        def mostrar_operacoes_ticker(ticker, pos):
+            while len(overlay_stack.controls) > 1:
+                overlay_stack.controls.pop()
+            ops = pos["ops"]
+            cor_tipo = tipo_cores.get(pos["tipo"], "#3b82f6")
+            preco_medio = pos["custo_total"] / pos["qtd"] if pos["qtd"] > 0 else 0.0
+
+            op_rows = []
+            for op in ops:
+                op_id, _t, _tipo, operacao, qtd, preco, data_op, corretora, _obs = op
+                total = qtd * preco
+                op_cor = "#10b981" if operacao == "Compra" else "#ef4444"
+                op_rows.append(
+                    ft.Container(
+                        padding=ft.Padding(10, 8, 10, 8),
+                        border=ft.Border(bottom=ft.BorderSide(1, "#1e293b")),
+                        content=ft.Row(
+                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                            controls=[
+                                ft.Column(spacing=2, controls=[
+                                    ft.Row([
+                                        ft.Container(
+                                            padding=ft.Padding(5, 2, 5, 2),
+                                            bgcolor=op_cor + "22", border_radius=4,
+                                            content=ft.Text(operacao.upper(), size=10, color=op_cor, weight=ft.FontWeight.BOLD)
+                                        ),
+                                        ft.Text(data_op, size=12, color="#94a3b8")
+                                    ], spacing=8),
+                                    ft.Text(
+                                        f"{qtd:,.0f} un × {fmt(preco)}",
+                                        size=11, color="#64748b"
+                                    )
+                                ]),
+                                ft.Row([
+                                    ft.Column(spacing=0, horizontal_alignment=ft.CrossAxisAlignment.END, controls=[
+                                        ft.Text(fmt(total), size=13, weight=ft.FontWeight.BOLD, color="white"),
+                                        ft.Text(corretora or "—", size=10, color="#475569")
+                                    ]),
+                                    ft.IconButton(
+                                        icon=ft.icons.Icons.DELETE_OUTLINE_ROUNDED,
+                                        icon_color="#ef4444", icon_size=18,
+                                        tooltip="Excluir operação",
+                                        on_click=lambda e, oid=op_id: confirm_delete_op(oid)
+                                    )
+                                ], spacing=0)
+                            ]
+                        )
+                    )
+                )
+
+            modal = ft.Container(
+                width=500, height=520, bgcolor="#111827", border_radius=16,
+                border=ft.border.Border(
+                    top=ft.border.BorderSide(1.5, "#1f2937"),
+                    bottom=ft.border.BorderSide(1.5, "#1f2937"),
+                    left=ft.border.BorderSide(3, cor_tipo),
+                    right=ft.border.BorderSide(1.5, "#1f2937"),
+                ),
+                padding=ft.Padding(25, 20, 25, 20),
+                content=ft.Column(expand=True, spacing=10, controls=[
+                    ft.Row(alignment=ft.MainAxisAlignment.SPACE_BETWEEN, controls=[
+                        ft.Column(spacing=2, controls=[
+                            ft.Text(ticker, size=20, weight=ft.FontWeight.BOLD, color="white"),
+                            ft.Text(f"{pos['qtd']:,.0f} un  •  PM: {fmt(preco_medio)}", size=12, color="#94a3b8")
+                        ]),
+                        ft.Row([
+                            ft.ElevatedButton(
+                                "NOVA COMPRA", bgcolor="#3b82f6", color="white",
+                                style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)),
+                                on_click=lambda e, tk=ticker, tp=pos["tipo"]: [
+                                    fechar_overlay(),
+                                    abrir_form_operacao_inv(None, prefill_ticker=tk, prefill_tipo=tp)
+                                ]
+                            ),
+                            ft.IconButton(ft.icons.Icons.CLOSE_ROUNDED, icon_color="#94a3b8", on_click=fechar_overlay)
+                        ], spacing=5)
+                    ]),
+                    ft.Divider(color="#1f2937", height=12),
+                    ft.Text("HISTÓRICO DE OPERAÇÕES", size=11, color="#64748b", weight=ft.FontWeight.BOLD),
+                    ft.Container(expand=True, content=ft.Column(
+                        expand=True, scroll=ft.ScrollMode.ADAPTIVE, spacing=0,
+                        controls=op_rows if op_rows else [ft.Text("Nenhuma operação.", color="#64748b")]
+                    ))
+                ])
+            )
+            shield = ft.Container(expand=True, bgcolor="#cc090d16", on_click=fechar_overlay)
+            overlay_stack.controls.append(shield)
+            overlay_stack.controls.append(modal)
+            page.update()
+
+        def abrir_form_operacao_inv(e, editing_op=None, prefill_ticker=None, prefill_tipo=None):
+            while len(overlay_stack.controls) > 1:
+                overlay_stack.controls.pop()
+
+            txt_ticker_inv = ft.TextField(
+                label="Ticker", hint_text="Ex: PETR4, MXRF11",
+                value=prefill_ticker or (editing_op[1] if editing_op else ""),
+                border_color="#374151", focused_border_color="#3b82f6",
+                text_style=ft.TextStyle(color="white", size=14), label_style=ft.TextStyle(size=12),
+                height=48, expand=True, content_padding=ft.Padding(10, 5, 10, 5), bgcolor="#0f172a",
+                capitalization=ft.TextCapitalization.CHARACTERS
+            )
+            drop_tipo_inv = ft.Dropdown(
+                label="Tipo de Ativo",
+                value=prefill_tipo or (editing_op[2] if editing_op else "Ação"),
+                border_color="#374151", focused_border_color="#3b82f6",
+                text_style=ft.TextStyle(color="white", size=14), label_style=ft.TextStyle(size=12),
+                height=48, expand=True, content_padding=ft.Padding(10, 5, 10, 5), bgcolor="#0f172a",
+                options=[ft.dropdown.Option(t) for t in tipo_ordem]
+            )
+            drop_operacao_inv = ft.Dropdown(
+                label="Operação",
+                value=editing_op[3] if editing_op else "Compra",
+                border_color="#374151", focused_border_color="#3b82f6",
+                text_style=ft.TextStyle(color="white", size=14), label_style=ft.TextStyle(size=12),
+                height=48, expand=True, content_padding=ft.Padding(10, 5, 10, 5), bgcolor="#0f172a",
+                options=[ft.dropdown.Option("Compra"), ft.dropdown.Option("Venda")]
+            )
+            txt_qtd_inv = ft.TextField(
+                label="Quantidade", hint_text="Ex: 100",
+                value=str(editing_op[4]) if editing_op else "",
+                border_color="#374151", focused_border_color="#3b82f6",
+                text_style=ft.TextStyle(color="white", size=14), label_style=ft.TextStyle(size=12),
+                height=48, expand=True, content_padding=ft.Padding(10, 5, 10, 5), bgcolor="#0f172a",
+                keyboard_type=ft.KeyboardType.NUMBER
+            )
+            txt_preco_inv = ft.TextField(
+                label="Preço Unitário (R$)", hint_text="Ex: 36.50",
+                value=str(editing_op[5]) if editing_op else "",
+                border_color="#374151", focused_border_color="#3b82f6",
+                text_style=ft.TextStyle(color="white", size=14), label_style=ft.TextStyle(size=12),
+                height=48, expand=True, content_padding=ft.Padding(10, 5, 10, 5), bgcolor="#0f172a",
+                keyboard_type=ft.KeyboardType.NUMBER
+            )
+            txt_data_inv = ft.TextField(
+                label="Data (DD/MM/AAAA)",
+                value=editing_op[6] if editing_op else datetime.datetime.now().strftime("%d/%m/%Y"),
+                border_color="#374151", focused_border_color="#3b82f6",
+                text_style=ft.TextStyle(color="white", size=14), label_style=ft.TextStyle(size=12),
+                height=48, expand=True, content_padding=ft.Padding(10, 5, 10, 5), bgcolor="#0f172a"
+            )
+            txt_corretora_inv = ft.TextField(
+                label="Corretora (Opcional)", hint_text="Ex: XP, Rico, Clear",
+                value=editing_op[7] or "" if editing_op else "",
+                border_color="#374151", focused_border_color="#3b82f6",
+                text_style=ft.TextStyle(color="white", size=14), label_style=ft.TextStyle(size=12),
+                height=48, expand=True, content_padding=ft.Padding(10, 5, 10, 5), bgcolor="#0f172a"
+            )
+            txt_obs_inv = ft.TextField(
+                label="Observação (Opcional)",
+                value=editing_op[8] or "" if editing_op else "",
+                border_color="#374151", focused_border_color="#3b82f6",
+                text_style=ft.TextStyle(color="white", size=14), label_style=ft.TextStyle(size=12),
+                height=48, expand=True, content_padding=ft.Padding(10, 5, 10, 5), bgcolor="#0f172a"
+            )
+
+            def salvar_operacao_inv(e):
+                ticker_val = (txt_ticker_inv.value or "").strip().upper()
+                tipo_val = drop_tipo_inv.value or "Ação"
+                op_val = drop_operacao_inv.value or "Compra"
+                data_val = (txt_data_inv.value or "").strip()
+                erros = []
+                if not ticker_val:
+                    erros.append("Ticker obrigatório")
+                try:
+                    qtd_val = float((txt_qtd_inv.value or "").replace(",", "."))
+                    if qtd_val <= 0:
+                        erros.append("Quantidade deve ser > 0")
+                except Exception:
+                    erros.append("Quantidade inválida")
+                    qtd_val = 0.0
+                try:
+                    preco_val = float((txt_preco_inv.value or "").replace(",", "."))
+                    if preco_val <= 0:
+                        erros.append("Preço deve ser > 0")
+                except Exception:
+                    erros.append("Preço inválido")
+                    preco_val = 0.0
+                if erros:
+                    page.snack_bar = ft.SnackBar(
+                        content=ft.Text("  •  ".join(erros), color="white"),
+                        bgcolor="#ef4444"
+                    )
+                    page.snack_bar.open = True
+                    page.update()
+                    return
+                if editing_op:
+                    db.delete_operacao_carteira(editing_op[0])
+                db.add_operacao_carteira(
+                    ticker=ticker_val, tipo_ativo=tipo_val, operacao=op_val,
+                    quantidade=qtd_val, preco_unitario=preco_val, data=data_val,
+                    corretora=(txt_corretora_inv.value or "").strip() or None,
+                    observacao=(txt_obs_inv.value or "").strip() or None
+                )
+                fechar_overlay()
+                render_investimentos()
+
+            title_str = "✏️ Editar Operação" if editing_op else "📈 Nova Operação"
+            modal_card = ft.Container(
+                width=540, height=560, bgcolor="#111827", border_radius=16,
+                border=ft.border.Border(
+                    top=ft.border.BorderSide(1.5, "#1f2937"),
+                    bottom=ft.border.BorderSide(1.5, "#1f2937"),
+                    left=ft.border.BorderSide(3, "#3b82f6"),
+                    right=ft.border.BorderSide(1.5, "#1f2937"),
+                ),
+                padding=ft.Padding(25, 20, 25, 20),
+                content=ft.Column(expand=True, spacing=10, controls=[
+                    ft.Row(alignment=ft.MainAxisAlignment.SPACE_BETWEEN, controls=[
+                        ft.Text(title_str, size=18, weight=ft.FontWeight.BOLD, color="white"),
+                        ft.IconButton(ft.icons.Icons.CLOSE_ROUNDED, icon_color="#94a3b8", icon_size=22, on_click=fechar_overlay)
+                    ]),
+                    ft.Divider(color="#1f2937", height=12),
+                    ft.Container(expand=True, content=ft.Column(
+                        spacing=12, scroll=ft.ScrollMode.ADAPTIVE, expand=True,
+                        controls=[
+                            ft.Row([txt_ticker_inv, drop_tipo_inv], spacing=10),
+                            ft.Row([drop_operacao_inv, txt_qtd_inv], spacing=10),
+                            ft.Row([txt_preco_inv, txt_data_inv], spacing=10),
+                            txt_corretora_inv,
+                            txt_obs_inv,
+                            ft.Container(height=5),
+                            ft.Row(alignment=ft.MainAxisAlignment.END, controls=[
+                                ft.ElevatedButton(
+                                    "SALVAR OPERAÇÃO", bgcolor="#3b82f6", color="white",
+                                    style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)),
+                                    on_click=salvar_operacao_inv
+                                )
+                            ])
+                        ]
+                    ))
+                ])
+            )
+            shield = ft.Container(expand=True, bgcolor="#cc090d16", on_click=fechar_overlay)
+            overlay_stack.controls.append(shield)
+            overlay_stack.controls.append(modal_card)
+            page.update()
+
+        # ── HEADER ───────────────────────────────────────────────────
+        header_row = ft.Row(
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            controls=[
+                ft.Text("Investimentos", size=24, weight=ft.FontWeight.BOLD, color="white"),
+                ft.Row(spacing=8, controls=[
+                    ft.ElevatedButton(
+                        content=ft.Row([
+                            ft.Icon(ft.icons.Icons.ADD_ROUNDED, color="white", size=16),
+                            ft.Text("NOVA OPERAÇÃO", size=12, color="white", weight=ft.FontWeight.BOLD)
+                        ], spacing=5),
+                        bgcolor="#3b82f6",
+                        style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)),
+                        on_click=abrir_form_operacao_inv
+                    ),
+                    ft.IconButton(ft.icons.Icons.CHEVRON_LEFT_ROUNDED, icon_color="#94a3b8", on_click=prev_month),
+                    ft.Container(
+                        bgcolor="#1e293b", padding=ft.Padding(15, 8, 15, 8), border_radius=20,
+                        content=ft.Row(spacing=10, controls=[
+                            ft.Icon(ft.icons.Icons.CALENDAR_MONTH_ROUNDED, color="#94a3b8", size=18),
+                            ft.Text(f"{mes_atual} {ano_atual}", size=16, weight=ft.FontWeight.W_500, color="#94a3b8")
+                        ])
+                    ),
+                    ft.IconButton(ft.icons.Icons.CHEVRON_RIGHT_ROUNDED, icon_color="#94a3b8", on_click=next_month),
+                ])
+            ]
+        )
+
+        # ── TOP CARDS ────────────────────────────────────────────────
+        var_cor_total = "#10b981" if variacao_total >= 0 else "#ef4444"
+        var_sinal = "+" if variacao_total >= 0 else ""
+        var_pct_total = (variacao_total / patrimonio_custo * 100) if patrimonio_custo > 0 else 0.0
+
+        top_cards = ft.Row(spacing=15, controls=[
+            criar_card_resumo("💰 Saldo Disponível", saldo_disponivel, "#3b82f6"),
+            criar_card_resumo("📊 Patrimônio (Custo)", patrimonio_custo, "#a78bfa"),
+            ft.Container(
+                expand=True, bgcolor="#1e293b", border_radius=12, padding=20,
+                content=ft.Column(spacing=4, controls=[
+                    ft.Text("💎 Valor de Mercado", size=14, color="#94a3b8", weight=ft.FontWeight.W_500),
+                    ft.Text(fmt(valor_mercado), size=28, color="#10b981", weight=ft.FontWeight.BOLD),
+                    ft.Text(
+                        f"{var_sinal}{fmt(abs(variacao_total))}  ({var_sinal}{var_pct_total:.1f}%)",
+                        size=12, color=var_cor_total
+                    )
+                ])
+            ),
+            criar_card_resumo("🎯 Dividendos do Mês", dividendos, "#fbbf24"),
+        ])
+
+        # ── TAB SWITCHER ─────────────────────────────────────────────
+        def make_tab_inv(label, icon_name, tab_name):
+            active = tab_active == tab_name
+            return ft.Container(
+                content=ft.Row([
+                    ft.Icon(icon_name, color="white" if active else "#64748b", size=16),
+                    ft.Text(label, size=12, color="white" if active else "#64748b", weight=ft.FontWeight.BOLD),
+                ], alignment=ft.MainAxisAlignment.CENTER, spacing=8),
+                padding=ft.Padding(20, 12, 20, 12),
+                bgcolor="#1e293b" if active else "transparent",
+                border_radius=10, expand=True, ink=True,
+                on_click=lambda e, t=tab_name: set_tab_inv(t)
+            )
+
+        tab_switcher_inv = ft.Container(
+            bgcolor="#0f172a", border_radius=12, padding=5,
+            content=ft.Row(spacing=5, controls=[
+                make_tab_inv("CARTEIRA", ft.icons.Icons.PIE_CHART_OUTLINE_ROUNDED, "carteira"),
+                make_tab_inv("COTAÇÕES EM TEMPO REAL", ft.icons.Icons.SHOW_CHART_ROUNDED, "cotacoes"),
+            ])
+        )
+
+        # ── ABA: CARTEIRA ─────────────────────────────────────────────
+        content_view_inv = ft.Container(expand=True)
+
+        if tab_active == "carteira":
+            if not posicoes_ativas:
+                content_view_inv.content = ft.Column(
+                    expand=True,
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    controls=[
+                        ft.Icon(ft.icons.Icons.ACCOUNT_BALANCE_ROUNDED, size=60, color="#334155"),
+                        ft.Text("Carteira vazia", size=16, color="#64748b", weight=ft.FontWeight.BOLD),
+                        ft.Text("Clique em \"Nova Operação\" para registrar sua primeira compra.", size=12, color="#475569")
+                    ]
+                )
+            else:
+                left_items_inv = []
+                right_items_inv = []
+
+                for ticker, pos in sorted(posicoes_ativas.items()):
+                    cor_tp = tipo_cores.get(pos["tipo"], "#475569")
+                    cot_item = cotacoes_cache.get(ticker, {})
+                    preco_cot_item = cot_item.get("preco")
+                    preco_medio_item = pos["custo_total"] / pos["qtd"] if pos["qtd"] > 0 else 0.0
+                    valor_inv_item = pos["custo_total"]
+                    valor_merc_item = pos["qtd"] * preco_cot_item if preco_cot_item else valor_inv_item
+                    var_item = ((valor_merc_item - valor_inv_item) / valor_inv_item * 100) if valor_inv_item > 0 else 0.0
+                    var_cor_item = "#10b981" if var_item >= 0 else "#ef4444"
+
+                    left_items_inv.append(
+                        ft.Container(
+                            padding=ft.Padding(12, 10, 12, 10),
+                            bgcolor="#0f172a", border_radius=8,
+                            border=ft.Border(left=ft.BorderSide(3, cor_tp)),
+                            ink=True,
+                            on_click=lambda e, tk=ticker, p=pos: mostrar_operacoes_ticker(tk, p),
+                            content=ft.Row(
+                                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                                controls=[
+                                    ft.Row(controls=[
+                                        ft.Container(
+                                            width=52, height=36, bgcolor=cor_tp + "22",
+                                            border_radius=6, alignment=ft.alignment.center,
+                                            content=ft.Text(ticker[:6], size=11, weight=ft.FontWeight.BOLD,
+                                                            color=cor_tp, text_align=ft.TextAlign.CENTER)
+                                        ),
+                                        ft.Container(width=8),
+                                        ft.Column(spacing=1, controls=[
+                                            ft.Row([
+                                                ft.Text(ticker, size=13, weight=ft.FontWeight.BOLD, color="white"),
+                                                ft.Container(
+                                                    padding=ft.Padding(4, 1, 4, 1),
+                                                    bgcolor=cor_tp + "22", border_radius=4,
+                                                    content=ft.Text(pos["tipo"], size=9, color=cor_tp, weight=ft.FontWeight.W_600)
+                                                )
+                                            ], spacing=6),
+                                            ft.Text(f"{pos['qtd']:,.0f} un  •  PM: {fmt(preco_medio_item)}",
+                                                    size=11, color="#64748b")
+                                        ])
+                                    ]),
+                                    ft.Column(spacing=1, horizontal_alignment=ft.CrossAxisAlignment.END, controls=[
+                                        ft.Text(fmt(valor_merc_item), size=13, weight=ft.FontWeight.BOLD, color="white"),
+                                        ft.Text(f"{'+' if var_item >= 0 else ''}{var_item:.1f}%",
+                                                size=11, color=var_cor_item, weight=ft.FontWeight.W_600)
+                                    ])
+                                ]
+                            )
+                        )
+                    )
+
+                # Composição por tipo
+                total_port = valor_mercado if valor_mercado > 0 else patrimonio_custo
+                tipos_presentes = {}
+                for tk, pos in posicoes_ativas.items():
+                    cot_p2 = cotacoes_cache.get(tk, {}).get("preco")
+                    val2 = pos["qtd"] * cot_p2 if cot_p2 else pos["custo_total"]
+                    tipos_presentes[pos["tipo"]] = tipos_presentes.get(pos["tipo"], 0) + val2
+
+                for tipo in [t for t in tipo_ordem if t in tipos_presentes]:
+                    cor = tipo_cores[tipo]
+                    val = tipos_presentes[tipo]
+                    pct = (val / total_port * 100) if total_port > 0 else 0
+                    right_items_inv.append(
+                        ft.Container(
+                            padding=ft.Padding(12, 10, 12, 10),
+                            bgcolor="#0f172a", border_radius=8,
+                            content=ft.Column(spacing=6, controls=[
+                                ft.Row(alignment=ft.MainAxisAlignment.SPACE_BETWEEN, controls=[
+                                    ft.Row([
+                                        ft.Container(width=10, height=10, bgcolor=cor, border_radius=2),
+                                        ft.Text(tipo, size=13, weight=ft.FontWeight.W_600, color="white")
+                                    ], spacing=8),
+                                    ft.Column(spacing=0, horizontal_alignment=ft.CrossAxisAlignment.END, controls=[
+                                        ft.Text(fmt(val), size=13, weight=ft.FontWeight.BOLD, color="white"),
+                                        ft.Text(f"{pct:.1f}%", size=11, color=cor)
+                                    ])
+                                ]),
+                                ft.Container(
+                                    height=6, border_radius=3, bgcolor="#1e293b",
+                                    content=ft.Row(spacing=0, controls=[
+                                        ft.Container(expand=max(1, int(pct)), height=6, bgcolor=cor, border_radius=3),
+                                        ft.Container(expand=max(0, 100 - int(pct)))
+                                    ])
+                                )
+                            ])
+                        )
+                    )
+
+                content_view_inv.content = ft.Row(expand=True, spacing=20, controls=[
+                    ft.Container(
+                        expand=True, bgcolor="#1e293b", border_radius=12,
+                        padding=ft.Padding(15, 10, 15, 12),
+                        content=ft.Column(expand=True, controls=[
+                            ft.Row([
+                                ft.Icon(ft.icons.Icons.TRENDING_UP_ROUNDED, color="#3b82f6", size=16),
+                                ft.Text("MINHA CARTEIRA", size=12, weight=ft.FontWeight.BOLD, color="white"),
+                                ft.Container(expand=True),
+                                ft.Text(f"{len(posicoes_ativas)} ativo(s)", size=11, color="#64748b")
+                            ], spacing=6),
+                            ft.Divider(color="#334155", height=1),
+                            ft.ListView(expand=True, spacing=8,
+                                        padding=ft.Padding(right=15, left=0, top=0, bottom=0),
+                                        controls=left_items_inv)
+                        ])
+                    ),
+                    ft.Container(
+                        expand=True, bgcolor="#1e293b", border_radius=12,
+                        padding=ft.Padding(15, 10, 15, 12),
+                        content=ft.Column(expand=True, controls=[
+                            ft.Row([
+                                ft.Icon(ft.icons.Icons.DONUT_LARGE_ROUNDED, color="#a78bfa", size=16),
+                                ft.Text("COMPOSIÇÃO DA CARTEIRA", size=12, weight=ft.FontWeight.BOLD, color="white")
+                            ], spacing=6),
+                            ft.Divider(color="#334155", height=1),
+                            ft.ListView(expand=True, spacing=8,
+                                        padding=ft.Padding(right=15, left=0, top=0, bottom=0),
+                                        controls=right_items_inv if right_items_inv else [ft.Text("Sem dados.", color="#64748b", size=12)])
+                        ])
+                    )
+                ])
+
+        # ── ABA: COTAÇÕES ─────────────────────────────────────────────
+        else:
+            status_map = {
+                "online":  (ft.icons.Icons.WIFI_ROUNDED,     "#10b981", "Online"),
+                "offline": (ft.icons.Icons.WIFI_OFF_ROUNDED, "#ef4444", "Sem conexão"),
+                "idle":    (ft.icons.Icons.SYNC_ROUNDED,     "#94a3b8", "Atualizando..."),
+            }
+            s_icon, s_color, s_text = status_map.get(cotacoes_status, status_map["idle"])
+
+            cotacao_cards = []
+            for ticker, pos in posicoes_ativas.items():
+                cot_c = cotacoes_cache.get(ticker, {})
+                preco_cot_c = cot_c.get("preco")
+                variacao_cot = cot_c.get("variacao")
+                nome_cot = cot_c.get("nome", ticker)
+                cor_tp = tipo_cores.get(pos["tipo"], "#3b82f6")
+                preco_medio_c = pos["custo_total"] / pos["qtd"] if pos["qtd"] > 0 else 0.0
+
+                if preco_cot_c is not None:
+                    v_cor_c = "#10b981" if (variacao_cot or 0) >= 0 else "#ef4444"
+                    v_str_c = f"{'+' if (variacao_cot or 0) >= 0 else ''}{variacao_cot:.2f}%" if variacao_cot is not None else "—"
+                    preco_str_c = fmt(preco_cot_c)
+                    pnl_c = pos["qtd"] * preco_cot_c - pos["custo_total"]
+                    pnl_cor_c = "#10b981" if pnl_c >= 0 else "#ef4444"
+                    pnl_str_c = f"{'+' if pnl_c >= 0 else ''}{fmt(abs(pnl_c))}"
+                else:
+                    v_cor_c = "#64748b"; v_str_c = "Sem cotação"
+                    preco_str_c = "—"; pnl_str_c = "—"; pnl_cor_c = "#64748b"
+
+                cotacao_cards.append(
+                    ft.Container(
+                        padding=ft.Padding(16, 12, 16, 12),
+                        bgcolor="#0f172a", border_radius=10,
+                        border=ft.Border(left=ft.BorderSide(3, cor_tp)),
+                        content=ft.Row(alignment=ft.MainAxisAlignment.SPACE_BETWEEN, controls=[
+                            ft.Column(spacing=3, controls=[
+                                ft.Row([
+                                    ft.Text(ticker, size=15, weight=ft.FontWeight.BOLD, color="white"),
+                                    ft.Container(
+                                        padding=ft.Padding(4, 1, 4, 1), bgcolor=cor_tp + "22", border_radius=4,
+                                        content=ft.Text(pos["tipo"], size=9, color=cor_tp, weight=ft.FontWeight.W_600)
+                                    )
+                                ], spacing=8),
+                                ft.Text(nome_cot[:45], size=11, color="#64748b",
+                                        max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
+                                ft.Text(f"{pos['qtd']:,.0f} un  •  PM: {fmt(preco_medio_c)}", size=11, color="#475569")
+                            ]),
+                            ft.Column(spacing=3, horizontal_alignment=ft.CrossAxisAlignment.END, controls=[
+                                ft.Text(preco_str_c, size=20, weight=ft.FontWeight.BOLD, color="white"),
+                                ft.Text(v_str_c, size=13, color=v_cor_c, weight=ft.FontWeight.W_600),
+                                ft.Text(f"P&L: {pnl_str_c}", size=11, color=pnl_cor_c)
+                            ])
+                        ])
+                    )
+                )
+
+            cotacoes_bar = ft.Row(alignment=ft.MainAxisAlignment.SPACE_BETWEEN, controls=[
+                ft.Row([
+                    ft.Icon(s_icon, color=s_color, size=16),
+                    ft.Text(s_text, size=13, color=s_color, weight=ft.FontWeight.W_500)
+                ], spacing=6),
+                ft.ElevatedButton(
+                    content=ft.Row([
+                        ft.Icon(ft.icons.Icons.REFRESH_ROUNDED, size=14, color="white"),
+                        ft.Text("ATUALIZAR", size=11, color="white", weight=ft.FontWeight.BOLD)
+                    ], spacing=5),
+                    bgcolor="#1e293b",
+                    style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)),
+                    on_click=lambda e: threading.Thread(target=buscar_cotacoes, daemon=True).start()
+                )
+            ])
+
+            if not posicoes_ativas:
+                cotacoes_inner = ft.Column(
+                    expand=True, alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    controls=[
+                        ft.Icon(ft.icons.Icons.SHOW_CHART_ROUNDED, size=60, color="#334155"),
+                        ft.Text("Nenhum ativo na carteira", size=16, color="#64748b", weight=ft.FontWeight.BOLD),
+                        ft.Text("Adicione ativos na aba Carteira para ver cotações.", size=12, color="#475569")
+                    ]
+                )
+            else:
+                cotacoes_inner = ft.Column(expand=True, controls=[
+                    cotacoes_bar,
+                    ft.Container(height=12),
+                    ft.ListView(expand=True, spacing=8,
+                                padding=ft.Padding(right=15, left=0, top=0, bottom=0),
+                                controls=cotacao_cards)
+                ])
+
+            content_view_inv.content = ft.Container(
+                expand=True, bgcolor="#1e293b", border_radius=12, padding=20,
+                content=cotacoes_inner
+            )
+
+        # ── MONTAGEM FINAL ────────────────────────────────────────────
+        investimentos_layout = ft.Column(expand=True, controls=[
+            header_row,
+            ft.Container(height=10),
+            top_cards,
+            ft.Container(height=15),
+            tab_switcher_inv,
+            ft.Container(height=15),
+            content_view_inv
+        ])
+
+        page.floating_action_button = None
+        body.content = investimentos_layout
         page.update()
 
     def render_transacoes():
