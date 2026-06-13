@@ -5,6 +5,13 @@ import shutil
 import glob
 from logger import logger
 
+class ClosingConnection(sqlite3.Connection):
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        try:
+            super().__exit__(exc_type, exc_val, exc_tb)
+        finally:
+            self.close()
+
 class Database:
     def __init__(self, db_name="financas.db"):
         self.db_name = db_name
@@ -41,7 +48,7 @@ class Database:
             return False, str(e)
 
     def get_connection(self):
-        return sqlite3.connect(self.db_name)
+        return sqlite3.connect(self.db_name, factory=ClosingConnection)
 
     def close(self):
         """No caso de banco em arquivo, garante que não há conexões pendentes"""
@@ -176,10 +183,59 @@ class Database:
                 )
             ''')
 
+            # Tabela de Metas de Investimentos
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS Metas_Investimentos (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    descricao TEXT NOT NULL,
+                    tipo_meta TEXT NOT NULL,
+                    valor_objetivo REAL NOT NULL,
+                    aporte_mensal REAL NOT NULL,
+                    target_ticker TEXT,
+                    target_categoria TEXT,
+                    perfil TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                )
+            ''')
+
+            # Tabela de Financiamentos
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS Financiamentos (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    credor TEXT NOT NULL,
+                    data_inicio TEXT NOT NULL,
+                    valor_total REAL NOT NULL,
+                    total_parcelas INTEGER NOT NULL,
+                    taxa_juros REAL NOT NULL,
+                    tipo_juros TEXT NOT NULL,
+                    sistema_amortizacao TEXT NOT NULL,
+                    conta_id INTEGER,
+                    credito_transacao_id INTEGER,
+                    perfil_nome TEXT NOT NULL,
+                    observacao TEXT,
+                    FOREIGN KEY (conta_id) REFERENCES Contas(id)
+                )
+            ''')
+
+            # Tabela de Parcelas do Financiamento
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS Parcelas_Financiamento (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    financiamento_id INTEGER,
+                    transacao_id INTEGER,
+                    numero_parcela INTEGER NOT NULL,
+                    valor_amortizacao REAL NOT NULL,
+                    valor_juros REAL NOT NULL,
+                    FOREIGN KEY (financiamento_id) REFERENCES Financiamentos(id) ON DELETE CASCADE,
+                    FOREIGN KEY (transacao_id) REFERENCES Transacoes(id) ON DELETE CASCADE
+                )
+            ''')
+
             conn.commit()
             
         # Garante a inserção inicial das categorias da planilha
         self.seed_categorias_iniciais()
+        self.seed_contas_iniciais()
 
     def seed_categorias_iniciais(self):
         with self.get_connection() as conn:
@@ -260,6 +316,14 @@ class Database:
                     ('Combustível', 'Despesa Variável', map_pais.get('VEÍCULO'), 0)
                 ]
                 cursor.executemany("INSERT INTO Categorias (nome, tipo, parent_id, has_subcategories) VALUES (?, ?, ?, ?)", filhos_e_avulsos)
+                conn.commit()
+
+    def seed_contas_iniciais(self):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM Contas")
+            if cursor.fetchone()[0] == 0:
+                cursor.execute("INSERT INTO Contas (nome_conta, tipo_conta) VALUES (?, ?)", ("Principal", "Corrente"))
                 conn.commit()
 
     def get_categorias(self):
@@ -418,8 +482,23 @@ class Database:
         try:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("DELETE FROM Divisoes_Transacao WHERE transacao_id = ?", (transacao_id,))
-                cursor.execute("DELETE FROM Transacoes WHERE id = ?", (transacao_id,))
+                
+                # Buscar o grupo_id da transação
+                cursor.execute("SELECT grupo_id FROM Transacoes WHERE id = ?", (transacao_id,))
+                row = cursor.fetchone()
+                grupo_id = row[0] if row else None
+                
+                if grupo_id:
+                    # Selecionar todos os IDs das transações do grupo
+                    cursor.execute("SELECT id FROM Transacoes WHERE grupo_id = ?", (grupo_id,))
+                    ids = [r[0] for r in cursor.fetchall()]
+                    for tid in ids:
+                        cursor.execute("DELETE FROM Divisoes_Transacao WHERE transacao_id = ?", (tid,))
+                        cursor.execute("DELETE FROM Transacoes WHERE id = ?", (tid,))
+                else:
+                    cursor.execute("DELETE FROM Divisoes_Transacao WHERE transacao_id = ?", (transacao_id,))
+                    cursor.execute("DELETE FROM Transacoes WHERE id = ?", (transacao_id,))
+                    
                 conn.commit()
                 return True, "Transação excluída."
         except Exception as e:
@@ -460,23 +539,75 @@ class Database:
         try:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute('''
-                    UPDATE Transacoes 
-                    SET categoria_id=?, descricao=?, data=?, valor_total=?, tipo_transacao=?, 
-                        metodo_pagamento=?, bandeira_cartao=?, dono_cartao=?, observacao=?
-                    WHERE id=?
-                ''', (categoria_id, descricao, data, valor_total, tipo_transacao, metodo, bandeira, dono, observacao, transacao_id))
                 
-                cursor.execute("DELETE FROM Divisoes_Transacao WHERE transacao_id = ?", (transacao_id,))
+                # Buscar o grupo_id e a data antiga da transação
+                cursor.execute("SELECT grupo_id, data FROM Transacoes WHERE id = ?", (transacao_id,))
+                row = cursor.fetchone()
+                grupo_id = row[0] if row else None
+                old_data_str = row[1] if row else None
                 
-                if divisoes:
-                    for nome_usuario, valor_cota in divisoes.items():
-                        if valor_cota > 0:
-                            usuario_id = self.obter_ou_criar_usuario(cursor, nome_usuario)
-                            cursor.execute('''
-                                INSERT INTO Divisoes_Transacao (transacao_id, usuario_id, valor_cota)
-                                VALUES (?, ?, ?)
-                            ''', (transacao_id, usuario_id, valor_cota))
+                diff_months = 0
+                if old_data_str and data:
+                    try:
+                        dt1 = datetime.datetime.strptime(old_data_str, "%d/%m/%Y")
+                        dt2 = datetime.datetime.strptime(data, "%d/%m/%Y")
+                        diff_months = (dt2.year - dt1.year) * 12 + dt2.month - dt1.month
+                    except Exception:
+                        pass
+                
+                if grupo_id:
+                    # Atualizar todas as parcelas do grupo
+                    cursor.execute("SELECT id, data FROM Transacoes WHERE grupo_id = ?", (grupo_id,))
+                    group_rows = cursor.fetchall()
+                    for g_id, g_data_str in group_rows:
+                        new_g_data = g_data_str
+                        if diff_months != 0:
+                            try:
+                                g_dt = datetime.datetime.strptime(g_data_str, "%d/%m/%Y")
+                                mes = g_dt.month + diff_months
+                                ano = g_dt.year + (mes - 1) // 12
+                                mes = (mes - 1) % 12 + 1
+                                dia = min(g_dt.day, 28)
+                                new_g_dt = datetime.datetime(ano, mes, dia)
+                                new_g_data = new_g_dt.strftime("%d/%m/%Y")
+                            except Exception:
+                                pass
+                        
+                        cursor.execute('''
+                            UPDATE Transacoes 
+                            SET categoria_id=?, descricao=?, data=?, valor_total=?, tipo_transacao=?, 
+                                metodo_pagamento=?, bandeira_cartao=?, dono_cartao=?, observacao=?
+                            WHERE id=?
+                        ''', (categoria_id, descricao, new_g_data, valor_total, tipo_transacao, metodo, bandeira, dono, observacao, g_id))
+                        
+                        cursor.execute("DELETE FROM Divisoes_Transacao WHERE transacao_id = ?", (g_id,))
+                        if divisoes:
+                            for nome_usuario, valor_cota in divisoes.items():
+                                if valor_cota > 0:
+                                    usuario_id = self.obter_ou_criar_usuario(cursor, nome_usuario)
+                                    cursor.execute('''
+                                        INSERT INTO Divisoes_Transacao (transacao_id, usuario_id, valor_cota)
+                                        VALUES (?, ?, ?)
+                                    ''', (g_id, usuario_id, valor_cota))
+                else:
+                    # Atualizar apenas esta transação
+                    cursor.execute('''
+                        UPDATE Transacoes 
+                        SET categoria_id=?, descricao=?, data=?, valor_total=?, tipo_transacao=?, 
+                            metodo_pagamento=?, bandeira_cartao=?, dono_cartao=?, observacao=?
+                        WHERE id=?
+                    ''', (categoria_id, descricao, data, valor_total, tipo_transacao, metodo, bandeira, dono, observacao, transacao_id))
+                    
+                    cursor.execute("DELETE FROM Divisoes_Transacao WHERE transacao_id = ?", (transacao_id,))
+                    if divisoes:
+                        for nome_usuario, valor_cota in divisoes.items():
+                            if valor_cota > 0:
+                                usuario_id = self.obter_ou_criar_usuario(cursor, nome_usuario)
+                                cursor.execute('''
+                                    INSERT INTO Divisoes_Transacao (transacao_id, usuario_id, valor_cota)
+                                    VALUES (?, ?, ?)
+                                ''', (transacao_id, usuario_id, valor_cota))
+                                
                 conn.commit()
                 return True, "Transação atualizada."
         except Exception as e:
@@ -917,6 +1048,691 @@ class Database:
         except Exception:
             logger.error("Erro ao obter dividendos do mês", exc_info=True)
             return 0.0
+        finally:
+            conn.close()
+
+    # ── MÉTODOS ADICIONAIS DO PERFIL E METAS ──────────────────────────────────
+    def adicionar_usuario(self, nome):
+        if not nome or not nome.strip():
+            return False, "Nome do perfil não pode ser vazio."
+        nome = nome.strip()
+        conn = self.get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM Usuarios_Familia WHERE nome = ?", (nome,))
+            if cursor.fetchone():
+                return False, "Este perfil já existe."
+            cursor.execute("INSERT INTO Usuarios_Familia (nome) VALUES (?)", (nome,))
+            conn.commit()
+            return True, "Perfil adicionado com sucesso."
+        except Exception as e:
+            logger.error("Erro ao adicionar usuário", exc_info=True)
+            return False, str(e)
+        finally:
+            conn.close()
+
+    def excluir_usuario(self, nome):
+        if nome == "Eu":
+            return False, "O perfil principal 'Eu' não pode ser excluído."
+        conn = self.get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM Usuarios_Familia WHERE nome = ?", (nome,))
+            res = cursor.fetchone()
+            if not res:
+                return False, "Perfil não encontrado."
+            u_id = res[0]
+            cursor.execute("SELECT COUNT(*) FROM Divisoes_Transacao WHERE usuario_id = ?", (u_id,))
+            count = cursor.fetchone()[0]
+            if count > 0:
+                return False, f"Este perfil possui {count} transações associadas e não pode ser excluído."
+            cursor.execute("DELETE FROM Usuarios_Familia WHERE id = ?", (u_id,))
+            conn.commit()
+            return True, "Perfil excluído com sucesso."
+        except Exception as e:
+            logger.error("Erro ao excluir usuário", exc_info=True)
+            return False, str(e)
+        finally:
+            conn.close()
+
+    def get_categoria_id_by_nome(self, nome):
+        conn = self.get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM Categorias WHERE nome = ?", (nome,))
+            res = cursor.fetchone()
+            return res[0] if res else None
+        finally:
+            conn.close()
+
+    def get_dividendos_detalhados_mes(self, mes, ano, perfil_nome="Eu"):
+        months_map = {"Janeiro":"01","Fevereiro":"02","Março":"03","Abril":"04","Maio":"05","Junho":"06",
+                      "Julho":"07","Agosto":"08","Setembro":"09","Outubro":"10","Novembro":"11","Dezembro":"12"}
+        mes_num = months_map.get(mes, "01")
+        conn = self.get_connection()
+        try:
+            cursor = conn.cursor()
+            query = """
+                SELECT t.id, t.data, t.descricao, 
+                       CASE WHEN d.id IS NULL THEN t.valor_total ELSE d.valor_cota END as valor,
+                       c.nome, t.observacao
+                FROM Transacoes t
+                JOIN Categorias c ON t.categoria_id = c.id
+                LEFT JOIN Divisoes_Transacao d ON t.id = d.transacao_id
+                LEFT JOIN Usuarios_Familia u ON d.usuario_id = u.id
+                WHERE t.tipo_transacao = 'Receita Variável'
+                AND c.nome IN ('Rendimentos de Ações', 'Rendimentos de FIIs')
+                AND substr(t.data, 4, 2) = ?
+                AND substr(t.data, 7, 4) = ?
+                AND (u.nome = ? OR (d.id IS NULL AND ? = 'Eu'))
+                ORDER BY substr(t.data, 7, 4) DESC, substr(t.data, 4, 2) DESC, substr(t.data, 1, 2) DESC
+            """
+            cursor.execute(query, [mes_num, str(ano), perfil_nome, perfil_nome])
+            return cursor.fetchall()
+        except Exception:
+            logger.error("Erro ao obter detalhe de dividendos", exc_info=True)
+            return []
+        finally:
+            conn.close()
+
+    def get_metas(self, perfil_nome="Eu"):
+        conn = self.get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, descricao, tipo_meta, valor_objetivo, aporte_mensal, target_ticker, target_categoria, created_at
+                FROM Metas_Investimentos
+                WHERE perfil = ?
+                ORDER BY id DESC
+            """, [perfil_nome])
+            return cursor.fetchall()
+        except Exception:
+            logger.error("Erro ao obter metas de investimento", exc_info=True)
+            return []
+        finally:
+            conn.close()
+
+    def add_meta(self, descricao, tipo_meta, valor_objetivo, aporte_mensal, target_ticker=None, target_categoria=None, perfil_nome="Eu"):
+        import datetime
+        conn = self.get_connection()
+        try:
+            cursor = conn.cursor()
+            created_at = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+            cursor.execute("""
+                INSERT INTO Metas_Investimentos (descricao, tipo_meta, valor_objetivo, aporte_mensal, target_ticker, target_categoria, perfil, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, [descricao, tipo_meta, valor_objetivo, aporte_mensal, target_ticker, target_categoria, perfil_nome, created_at])
+            conn.commit()
+            return cursor.lastrowid
+        except Exception:
+            logger.error("Erro ao adicionar meta de investimento", exc_info=True)
+            return None
+        finally:
+            conn.close()
+
+    def delete_meta(self, meta_id):
+        conn = self.get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM Metas_Investimentos WHERE id = ?", [meta_id])
+            conn.commit()
+            return True
+        except Exception:
+            logger.error("Erro ao excluir meta de investimento", exc_info=True)
+            return False
+        finally:
+            conn.close()
+
+    def atualizar_cdi_sgs(self):
+        import urllib.request
+        import json
+        import ssl
+        import datetime
+        hoje = datetime.date.today()
+        ref_mes = hoje.strftime("%Y-%m")
+        last_fetch = self.get_preferencia("cdi_last_fetch", "")
+        if last_fetch == ref_mes:
+            try:
+                return float(self.get_preferencia("cdi_latest_rate", "10.50"))
+            except ValueError:
+                return 10.50
+        try:
+            context = ssl._create_unverified_context()
+            url = "https://api.bcb.gov.br/dados/serie/bcdata.sgs.4389/dados/ultimos/1?formato=json"
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, context=context, timeout=5) as response:
+                data = json.loads(response.read().decode())
+                if data and isinstance(data, list) and len(data) > 0:
+                    valor_str = data[0].get("valor")
+                    if valor_str:
+                        valor = float(valor_str)
+                        self.set_preferencia("cdi_latest_rate", f"{valor:.2f}")
+                        self.set_preferencia("cdi_last_fetch", ref_mes)
+                        logger.info(f"CDI updated successfully to {valor:.2f}% (ref: {ref_mes})")
+                        return valor
+        except Exception as e:
+            logger.error(f"Erro ao buscar CDI na API: {e}", exc_info=True)
+        try:
+            return float(self.get_preferencia("cdi_latest_rate", "10.50"))
+        except ValueError:
+            return 10.50
+
+    # ── MÉTODOS DO MÓDULO DE FINANCIAMENTOS ──────────────────────────────────
+    def get_ou_criar_categoria_emprestimo(self):
+        conn = self.get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM Categorias WHERE nome = ? AND tipo = ?", ("Empréstimo", "Despesa Fixa"))
+            res = cursor.fetchone()
+            if res:
+                return res[0]
+            
+            cursor.execute("SELECT id FROM Categorias WHERE nome = ?", ("FIXOS OUTROS",))
+            parent = cursor.fetchone()
+            parent_id = parent[0] if parent else None
+            
+            cursor.execute("INSERT INTO Categorias (nome, tipo, parent_id, has_subcategories) VALUES (?, ?, ?, 0)",
+                           ("Empréstimo", "Despesa Fixa", parent_id))
+            conn.commit()
+            return cursor.lastrowid
+        except Exception:
+            logger.error("Erro ao obter/criar categoria empréstimo despesa", exc_info=True)
+            return None
+        finally:
+            conn.close()
+
+    def get_contas(self):
+        conn = self.get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, nome_conta, tipo_conta FROM Contas ORDER BY nome_conta")
+            return cursor.fetchall()
+        except Exception:
+            logger.error("Erro ao obter contas", exc_info=True)
+            return []
+        finally:
+            conn.close()
+
+    def add_financiamento(self, credor, data_inicio, valor_total, total_parcelas, taxa_juros, tipo_juros, sistema_amortizacao, conta_id, perfil_nome, observacao):
+        conn = self.get_connection()
+        import datetime
+        try:
+            cursor = conn.cursor()
+            
+            # 1. Get or create category "Empréstimo (Entrada)" (Receita Fixa)
+            cursor.execute("SELECT id FROM Categorias WHERE nome = ? AND tipo = ?", ("Empréstimo (Entrada)", "Receita Fixa"))
+            cat_receita_row = cursor.fetchone()
+            if cat_receita_row:
+                cat_receita_id = cat_receita_row[0]
+            else:
+                cursor.execute("SELECT id FROM Categorias WHERE nome = ?", ("RENDA",))
+                parent_row = cursor.fetchone()
+                parent_id = parent_row[0] if parent_row else None
+                cursor.execute("INSERT INTO Categorias (nome, tipo, parent_id, has_subcategories) VALUES (?, ?, ?, 0)",
+                               ("Empréstimo (Entrada)", "Receita Fixa", parent_id))
+                cat_receita_id = cursor.lastrowid
+            
+            # 2. Insert the inflow transaction
+            desc_credito = f"Crédito Empréstimo - {credor}"
+            cursor.execute('''
+                INSERT INTO Transacoes (conta_id, categoria_id, descricao, data, valor_total, tipo_transacao, 
+                                        metodo_pagamento, parcela_atual, total_parcelas, observacao)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 1, 1, ?)
+            ''', (conta_id, cat_receita_id, desc_credito, data_inicio, valor_total, "Receita Fixa", "Dinheiro", observacao))
+            credito_trans_id = cursor.lastrowid
+            
+            # If perfil_nome != "Eu", create division
+            if perfil_nome != "Eu":
+                cursor.execute("SELECT id FROM Usuarios_Familia WHERE nome = ?", (perfil_nome,))
+                user_row = cursor.fetchone()
+                if user_row:
+                    user_id = user_row[0]
+                else:
+                    cursor.execute("INSERT INTO Usuarios_Familia (nome) VALUES (?)", (perfil_nome,))
+                    user_id = cursor.lastrowid
+                
+                cursor.execute('''
+                    INSERT INTO Divisoes_Transacao (transacao_id, usuario_id, valor_cota)
+                    VALUES (?, ?, ?)
+                ''', (credito_trans_id, user_id, valor_total))
+
+            # 3. Insert the financing contract
+            cursor.execute('''
+                INSERT INTO Financiamentos (credor, data_inicio, valor_total, total_parcelas, taxa_juros, tipo_juros, 
+                                            sistema_amortizacao, conta_id, credito_transacao_id, perfil_nome, observacao)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (credor, data_inicio, valor_total, total_parcelas, taxa_juros, tipo_juros, 
+                  sistema_amortizacao, conta_id, credito_trans_id, perfil_nome, observacao))
+            financiamento_id = cursor.lastrowid
+            
+            # 4. Generate future parcels if NOT Flexible
+            if sistema_amortizacao != "Flexível":
+                # Get or create category "Empréstimo" (Despesa Fixa)
+                cursor.execute("SELECT id FROM Categorias WHERE nome = ? AND tipo = ?", ("Empréstimo", "Despesa Fixa"))
+                cat_despesa_row = cursor.fetchone()
+                if cat_despesa_row:
+                    cat_despesa_id = cat_despesa_row[0]
+                else:
+                    cursor.execute("SELECT id FROM Categorias WHERE nome = ?", ("FIXOS OUTROS",))
+                    parent_row = cursor.fetchone()
+                    parent_id = parent_row[0] if parent_row else None
+                    cursor.execute("INSERT INTO Categorias (nome, tipo, parent_id, has_subcategories) VALUES (?, ?, ?, 0)",
+                                   ("Empréstimo", "Despesa Fixa", parent_id))
+                    cat_despesa_id = cursor.lastrowid
+                
+                try:
+                    dt_base = datetime.datetime.strptime(data_inicio, "%d/%m/%Y")
+                except Exception:
+                    dt_base = datetime.datetime.now()
+                    
+                def add_months(dt, m):
+                    month = dt.month + m
+                    year = dt.year + (month - 1) // 12
+                    month = (month - 1) % 12 + 1
+                    day = min(dt.day, 28)
+                    return datetime.datetime(year, month, day)
+                
+                rate = taxa_juros / 100.0
+                if tipo_juros == "Anual":
+                    rate = rate / 12.0
+                
+                amortization_const = round(valor_total / total_parcelas, 2)
+                
+                if sistema_amortizacao == "Price":
+                    if rate > 0:
+                        val_prestacao_price = round(valor_total * (rate * (1 + rate)**total_parcelas) / ((1 + rate)**total_parcelas - 1), 2)
+                    else:
+                        val_prestacao_price = round(valor_total / total_parcelas, 2)
+                
+                saldo_devedor = valor_total
+                
+                for k in range(1, total_parcelas + 1):
+                    dt_parcela = add_months(dt_base, k)
+                    data_str = dt_parcela.strftime("%d/%m/%Y")
+                    
+                    if sistema_amortizacao == "SAC":
+                        val_amortizacao = amortization_const if k < total_parcelas else round(saldo_devedor, 2)
+                        val_juros = round(saldo_devedor * rate, 2)
+                        val_prestacao = round(val_amortizacao + val_juros, 2)
+                        saldo_devedor = round(saldo_devedor - val_amortizacao, 2)
+                    elif sistema_amortizacao == "Price":
+                        val_juros = round(saldo_devedor * rate, 2)
+                        if k < total_parcelas:
+                            val_amortizacao = round(val_prestacao_price - val_juros, 2)
+                        else:
+                            val_amortizacao = round(saldo_devedor, 2)
+                        val_prestacao = round(val_amortizacao + val_juros, 2)
+                        saldo_devedor = round(saldo_devedor - val_amortizacao, 2)
+                    else: # Sem Juros
+                        val_juros = 0.0
+                        val_amortizacao = amortization_const if k < total_parcelas else round(saldo_devedor, 2)
+                        val_prestacao = val_amortizacao
+                        saldo_devedor = round(saldo_devedor - val_amortizacao, 2)
+                    
+                    desc_despesa = f"{credor} - Parcela {k}/{total_parcelas}"
+                    cursor.execute('''
+                        INSERT INTO Transacoes (conta_id, categoria_id, descricao, data, valor_total, tipo_transacao, 
+                                                metodo_pagamento, parcela_atual, total_parcelas, observacao)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (conta_id, cat_despesa_id, desc_despesa, data_str, val_prestacao, "Despesa Fixa", "Dinheiro", k, total_parcelas, observacao))
+                    trans_id = cursor.lastrowid
+                    
+                    if perfil_nome != "Eu":
+                        cursor.execute('''
+                            INSERT INTO Divisoes_Transacao (transacao_id, usuario_id, valor_cota)
+                            VALUES (?, ?, ?)
+                        ''', (trans_id, user_id, val_prestacao))
+                        
+                    cursor.execute('''
+                        INSERT INTO Parcelas_Financiamento (financiamento_id, transacao_id, numero_parcela, valor_amortizacao, valor_juros)
+                        VALUES (?, ?, ?, ?, ?)
+                    ''', (financiamento_id, trans_id, k, val_amortizacao, val_juros))
+
+            conn.commit()
+            return True, "Financiamento lançado com sucesso."
+        except Exception as e:
+            logger.error("Erro ao adicionar financiamento", exc_info=True)
+            conn.rollback()
+            return False, str(e)
+        finally:
+            conn.close()
+
+    def add_amortizacao_manual(self, financiamento_id, valor, data_op, conta_id):
+        conn = self.get_connection()
+        try:
+            cursor = conn.cursor()
+            
+            # Fetch financing info
+            cursor.execute("SELECT credor, perfil_nome FROM Financiamentos WHERE id = ?", (financiamento_id,))
+            fin_row = cursor.fetchone()
+            if not fin_row:
+                return False, "Financiamento não encontrado."
+            credor, perfil_nome = fin_row
+            
+            # Get next parcel number
+            cursor.execute("SELECT COUNT(*) FROM Parcelas_Financiamento WHERE financiamento_id = ?", (financiamento_id,))
+            num_parcelas = cursor.fetchone()[0]
+            next_parcel_num = num_parcelas + 1
+            
+            # Get or create category "Empréstimo" (Despesa Fixa)
+            cursor.execute("SELECT id FROM Categorias WHERE nome = ? AND tipo = ?", ("Empréstimo", "Despesa Fixa"))
+            cat_row = cursor.fetchone()
+            if cat_row:
+                cat_despesa_id = cat_row[0]
+            else:
+                cursor.execute("SELECT id FROM Categorias WHERE nome = ?", ("FIXOS OUTROS",))
+                parent_row = cursor.fetchone()
+                parent_id = parent_row[0] if parent_row else None
+                cursor.execute("INSERT INTO Categorias (nome, tipo, parent_id, has_subcategories) VALUES (?, ?, ?, 0)",
+                               ("Empréstimo", "Despesa Fixa", parent_id))
+                cat_despesa_id = cursor.lastrowid
+                
+            # Insert transaction
+            desc = f"Amortização Empréstimo - {credor}"
+            cursor.execute('''
+                INSERT INTO Transacoes (conta_id, categoria_id, descricao, data, valor_total, tipo_transacao, 
+                                        metodo_pagamento, parcela_atual, total_parcelas, observacao)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (conta_id, cat_despesa_id, desc, data_op, valor, "Despesa Fixa", "Dinheiro", next_parcel_num, next_parcel_num, "Amortização Manual"))
+            trans_id = cursor.lastrowid
+            
+            # Division if profile != "Eu"
+            if perfil_nome != "Eu":
+                cursor.execute("SELECT id FROM Usuarios_Familia WHERE nome = ?", (perfil_nome,))
+                user_row = cursor.fetchone()
+                if user_row:
+                    user_id = user_row[0]
+                else:
+                    cursor.execute("INSERT INTO Usuarios_Familia (nome) VALUES (?)", (perfil_nome,))
+                    user_id = cursor.lastrowid
+                cursor.execute('''
+                    INSERT INTO Divisoes_Transacao (transacao_id, usuario_id, valor_cota)
+                    VALUES (?, ?, ?)
+                ''', (trans_id, user_id, valor))
+                
+            # Insert Parcela
+            cursor.execute('''
+                INSERT INTO Parcelas_Financiamento (financiamento_id, transacao_id, numero_parcela, valor_amortizacao, valor_juros)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (financiamento_id, trans_id, next_parcel_num, valor, 0.0))
+            
+            conn.commit()
+            return True, "Amortização registrada com sucesso."
+        except Exception as e:
+            logger.error("Erro ao registrar amortização manual", exc_info=True)
+            return False, str(e)
+        finally:
+            conn.close()
+
+    def update_financiamento(self, fid, credor, data_inicio, valor_total, total_parcelas, taxa_juros, tipo_juros, sistema_amortizacao, conta_id, observacao):
+        conn = self.get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE Financiamentos
+                SET credor = ?, data_inicio = ?, valor_total = ?, total_parcelas = ?, 
+                    taxa_juros = ?, tipo_juros = ?, sistema_amortizacao = ?, conta_id = ?, 
+                    observacao = ?
+                WHERE id = ?
+            """, (credor, data_inicio, valor_total, total_parcelas, taxa_juros, tipo_juros, sistema_amortizacao, conta_id, observacao, fid))
+            conn.commit()
+            return True, "Financiamento atualizado com sucesso."
+        except Exception as e:
+            logger.error("Erro ao atualizar financiamento", exc_info=True)
+            return False, str(e)
+        finally:
+            conn.close()
+
+    def delete_financiamento(self, financiamento_id):
+        conn = self.get_connection()
+        try:
+            cursor = conn.cursor()
+            
+            # Get inflow credit transaction ID
+            cursor.execute("SELECT credito_transacao_id FROM Financiamentos WHERE id = ?", (financiamento_id,))
+            fin_row = cursor.fetchone()
+            inflow_trans_id = fin_row[0] if fin_row else None
+            
+            # Get all amortization transaction IDs
+            cursor.execute("SELECT transacao_id FROM Parcelas_Financiamento WHERE financiamento_id = ?", (financiamento_id,))
+            trans_ids = [row[0] for row in cursor.fetchall() if row[0] is not None]
+            
+            # Combine all transaction IDs to delete
+            all_trans_ids = []
+            if inflow_trans_id:
+                all_trans_ids.append(inflow_trans_id)
+            all_trans_ids.extend(trans_ids)
+            
+            # Delete divisions and transactions
+            if all_trans_ids:
+                placeholders = ",".join("?" for _ in all_trans_ids)
+                cursor.execute(f"DELETE FROM Divisoes_Transacao WHERE transacao_id IN ({placeholders})", all_trans_ids)
+                cursor.execute(f"DELETE FROM Transacoes WHERE id IN ({placeholders})", all_trans_ids)
+                
+            # Delete parcels and the financing contract itself
+            cursor.execute("DELETE FROM Parcelas_Financiamento WHERE financiamento_id = ?", (financiamento_id,))
+            cursor.execute("DELETE FROM Financiamentos WHERE id = ?", (financiamento_id,))
+            
+            conn.commit()
+            return True, "Financiamento excluído com sucesso."
+        except Exception as e:
+            logger.error("Erro ao excluir financiamento", exc_info=True)
+            return False, str(e)
+        finally:
+            conn.close()
+
+    def get_financiamentos(self, perfil_nome="Eu"):
+        conn = self.get_connection()
+        import datetime
+        hoje = datetime.date.today()
+        
+        def parse_date(d_str):
+            try:
+                return datetime.datetime.strptime(d_str, "%d/%m/%Y").date()
+            except Exception:
+                return hoje
+                
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT f.id, f.credor, f.data_inicio, f.valor_total, f.total_parcelas, 
+                       f.taxa_juros, f.tipo_juros, f.sistema_amortizacao, f.conta_id, 
+                       c.nome_conta, f.observacao, f.credito_transacao_id
+                FROM Financiamentos f
+                LEFT JOIN Contas c ON f.conta_id = c.id
+                WHERE f.perfil_nome = ?
+                ORDER BY f.id DESC
+            """, (perfil_nome,))
+            rows = cursor.fetchall()
+            
+            result = []
+            for r in rows:
+                fid, credor, data_inicio, valor_total, total_parcelas, taxa_juros, tipo_juros, sistema, conta_id, nome_conta, observacao, credito_transacao_id = r
+                
+                # Fetch all parcels for this financing
+                cursor.execute("""
+                    SELECT pf.valor_amortizacao, pf.valor_juros, t.data
+                    FROM Parcelas_Financiamento pf
+                    JOIN Transacoes t ON pf.transacao_id = t.id
+                    WHERE pf.financiamento_id = ?
+                """, (fid,))
+                parcels = cursor.fetchall()
+                
+                total_amortizado = 0.0
+                total_juros = 0.0
+                total_pago = 0.0
+                
+                for p_amort, p_juros, t_data in parcels:
+                    dt = parse_date(t_data)
+                    if dt <= hoje:
+                        total_amortizado += p_amort
+                        total_juros += p_juros
+                        total_pago += (p_amort + p_juros)
+                
+                saldo_devedor = max(0.0, round(valor_total - total_amortizado, 2))
+                quitado = (saldo_devedor <= 0.05)
+                
+                result.append({
+                    "id": fid,
+                    "credor": credor,
+                    "data_inicio": data_inicio,
+                    "valor_total": valor_total,
+                    "total_parcelas": total_parcelas,
+                    "taxa_juros": taxa_juros,
+                    "tipo_juros": tipo_juros,
+                    "sistema_amortizacao": sistema,
+                    "conta_id": conta_id,
+                    "nome_conta": nome_conta or "Sem Conta",
+                    "observacao": observacao or "",
+                    "credito_transacao_id": credito_transacao_id,
+                    "total_amortizado": round(total_amortizado, 2),
+                    "total_juros": round(total_juros, 2),
+                    "total_pago": round(total_pago, 2),
+                    "saldo_devedor": saldo_devedor,
+                    "quitado": quitado
+                })
+            return result
+        except Exception:
+            logger.error("Erro ao obter financiamentos", exc_info=True)
+            return []
+        finally:
+            conn.close()
+
+    def get_financiamento_detalhes(self, financiamento_id):
+        conn = self.get_connection()
+        import datetime
+        hoje = datetime.date.today()
+        
+        def parse_date(d_str):
+            try:
+                return datetime.datetime.strptime(d_str, "%d/%m/%Y").date()
+            except Exception:
+                return hoje
+                
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT credor, valor_total FROM Financiamentos WHERE id = ?", (financiamento_id,))
+            fin_row = cursor.fetchone()
+            if not fin_row:
+                return None
+            credor, valor_total = fin_row
+            
+            cursor.execute("""
+                SELECT pf.numero_parcela, t.data, pf.valor_amortizacao, pf.valor_juros, pf.transacao_id
+                FROM Parcelas_Financiamento pf
+                JOIN Transacoes t ON pf.transacao_id = t.id
+                WHERE pf.financiamento_id = ?
+                ORDER BY pf.numero_parcela ASC
+            """, (financiamento_id,))
+            rows = cursor.fetchall()
+            
+            parcelas = []
+            saldo_restante = valor_total
+            for r in rows:
+                num_parcela, t_data, valor_amort, valor_juros, trans_id = r
+                dt = parse_date(t_data)
+                pago = (dt <= hoje)
+                
+                saldo_restante = round(saldo_restante - valor_amort, 2)
+                
+                parcelas.append({
+                    "numero_parcela": num_parcela,
+                    "data": t_data,
+                    "valor_prestacao": round(valor_amort + valor_juros, 2),
+                    "valor_amortizacao": round(valor_amort, 2),
+                    "valor_juros": round(valor_juros, 2),
+                    "saldo_devedor_restante": max(0.0, saldo_restante),
+                    "transacao_id": trans_id,
+                    "pago": pago
+                })
+                
+            return {
+                "credor": credor,
+                "parcelas": parcelas
+            }
+        except Exception:
+            logger.error("Erro ao obter detalhes do financiamento", exc_info=True)
+            return None
+        finally:
+            conn.close()
+
+    def get_abatimentos_pagos(self, perfil_nome="Eu"):
+        conn = self.get_connection()
+        import datetime
+        hoje = datetime.date.today()
+        
+        def parse_date(d_str):
+            try:
+                return datetime.datetime.strptime(d_str, "%d/%m/%Y").date()
+            except Exception:
+                return hoje
+                
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT f.credor, pf.numero_parcela, t.data, pf.valor_amortizacao, pf.valor_juros, pf.transacao_id, t.conta_id
+                FROM Parcelas_Financiamento pf
+                JOIN Financiamentos f ON pf.financiamento_id = f.id
+                JOIN Transacoes t ON pf.transacao_id = t.id
+                WHERE f.perfil_nome = ?
+                ORDER BY substr(t.data, 7, 4) DESC, substr(t.data, 4, 2) DESC, substr(t.data, 1, 2) DESC
+            """, (perfil_nome,))
+            rows = cursor.fetchall()
+            
+            result = []
+            for r in rows:
+                credor, num_parcela, t_data, valor_amort, valor_juros, trans_id, conta_id = r
+                dt = parse_date(t_data)
+                if dt <= hoje:
+                    result.append({
+                        "credor": credor,
+                        "numero_parcela": f"Parcela {num_parcela}" if num_parcela > 0 else "Avulsa",
+                        "raw_numero_parcela": num_parcela,
+                        "data": t_data,
+                        "valor_pago": round(valor_amort + valor_juros, 2),
+                        "valor_amortizacao": round(valor_amort, 2),
+                        "valor_juros": round(valor_juros, 2),
+                        "transacao_id": trans_id,
+                        "conta_id": conta_id
+                    })
+            return result
+        except Exception as e:
+            logger.error("Erro ao obter abatimentos pagos", exc_info=True)
+            return []
+        finally:
+            conn.close()
+
+    def update_parcela_paga(self, trans_id, valor, data_op, conta_id):
+        conn = self.get_connection()
+        try:
+            cursor = conn.cursor()
+            # Fetch existing parcel info
+            cursor.execute("SELECT valor_juros FROM Parcelas_Financiamento WHERE transacao_id = ?", (trans_id,))
+            p_row = cursor.fetchone()
+            juros = p_row[0] if p_row else 0.0
+            
+            # Amortizacao is new total value minus juros
+            amort = max(0.0, round(valor - juros, 2))
+            
+            # Update Transacoes
+            cursor.execute("""
+                UPDATE Transacoes
+                SET data = ?, valor_total = ?, conta_id = ?
+                WHERE id = ?
+            """, (data_op, valor, conta_id, trans_id))
+            
+            # Update Parcelas_Financiamento
+            cursor.execute("""
+                UPDATE Parcelas_Financiamento
+                SET valor_amortizacao = ?
+                WHERE transacao_id = ?
+            """, (amort, trans_id))
+            
+            conn.commit()
+            return True, "Parcela atualizada com sucesso."
+        except Exception as e:
+            logger.error("Erro ao atualizar parcela paga", exc_info=True)
+            return False, str(e)
         finally:
             conn.close()
 

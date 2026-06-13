@@ -6,3 +6,5 @@ google-generativeai
 requests
 python-dateutil
 flet
+pystray
+
