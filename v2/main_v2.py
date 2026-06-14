@@ -69,6 +69,40 @@ def main(page: ft.Page):
     db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "financas.db")
     db = Database(db_name=db_path)
     
+    def _criar_backup_sessao():
+        try:
+            import datetime
+            import shutil
+            base_dir = os.path.dirname(os.path.abspath(db_path))
+            backup_dir = os.path.join(base_dir, "session_backups")
+            if not os.path.exists(backup_dir):
+                os.makedirs(backup_dir)
+            
+            # Limpa backups antigos de sessão (mantém por 7 dias)
+            agora = datetime.datetime.now()
+            limite = agora - datetime.timedelta(days=7)
+            if os.path.exists(backup_dir):
+                for f in os.listdir(backup_dir):
+                    fpath = os.path.join(backup_dir, f)
+                    if os.path.isfile(fpath) and f.startswith("backup_sessao_") and f.endswith(".db"):
+                        try:
+                            mtime = datetime.datetime.fromtimestamp(os.path.getmtime(fpath))
+                            if mtime < limite:
+                                os.remove(fpath)
+                        except Exception:
+                            pass
+            
+            # Cria o backup da sessão atual se o BD já existir
+            if os.path.exists(db_path):
+                timestamp = agora.strftime("%Y%m%d_%H%M%S")
+                backup_file = os.path.join(backup_dir, f"backup_sessao_{timestamp}.db")
+                shutil.copy2(db_path, backup_file)
+        except Exception as e:
+            from logger import logger
+            logger.error(f"Erro ao criar backup de sessão: {e}", exc_info=True)
+
+    _criar_backup_sessao()
+    
     # Inicialização dinâmica de tema e cor de fundo
     pref_theme = db.get_preferencia("theme_mode", "dark")
     page.theme_mode = ft.ThemeMode.LIGHT if pref_theme == "light" else ft.ThemeMode.DARK
@@ -436,13 +470,37 @@ def main(page: ft.Page):
             "Apresenta uma visão analítica e comparativa detalhada da evolução financeira mensal. Útil para identificar padrões de consumo e tendências ao longo do tempo.": "Presents a detailed analytical and comparative view of monthly financial evolution. Useful for identifying consumption patterns and trends over time.",
             "Aqui você realiza os lançamentos diários de despesas e receitas. É possível filtrar as transações de forma detalhada por Mês, Ano, Perfil Familiar (Membros) e Categorias. O sistema permite travar transações para evitar edições acidentais.": "Here you log your daily income and expense entries. You can filter transactions in detail by Month, Year, Family Profile (Members), and Categories. The system allows locking transactions to prevent accidental edits.",
             "O Sentinel Finance suporta múltiplos perfis na mesma base. Você pode cadastrar dependentes ou cônjuges para separar as despesas de cada membro da família. Na aba de Categorias, você gerencia e cria subcategorias personalizadas para o seu controle financeiro.": "Sentinel Finance supports multiple profiles on the same database. You can register dependents or spouses to separate each family member's expenses. In the Categories tab, you manage and create custom subcategories.",
-            "Todos os seus dados são guardados localmente no seu computador em um banco de dados SQLite (arquivo financas.db). Nenhuma informação financeira é enviada a servidores externos. Recomendamos exportar cópias de segurança periodicamente através do botão de 'Exportar Backup' na aba de Banco de Dados.": "All your data is stored locally on your computer in an SQLite database (financas.db file). No financial information is sent to external servers. We recommend exporting backups periodically using the 'Export Backup' button.",
+            "Todos os seus dados são guardados localmente no seu computador em um banco de dados SQLite (arquivo financas.db). Nenhuma informação financeira é enviada a servidores externos. Recomendamos exportar cópias de segurança periodicamente através do botão de 'Exportar Backup' na aba de Banco de Dados.": "All your data is stored locally on your computer in an SQLite database (financas.db file). No financial information is sent to external servers. We recommend exporting backups periodically using the 'Export Backup' button in the Database tab.",
             "📊 Dashboard (Painel Geral)": "📊 Dashboard (General Panel)",
             "📈 Investimentos (Carteira)": "📈 Investments (Portfolio)",
             "🎨 Gráficos Comparativos": "🎨 Comparative Charts",
             "📝 Transações e Lançamentos": "📝 Transactions and Entries",
             "👥 Perfis Familiares e Categorias": "👥 Family Profiles & Categories",
-            "💾 Backup e Privacidade Absoluta": "💾 Backup & Absolute Privacy"
+            "💾 Backup e Privacidade Absoluta": "💾 Backup & Absolute Privacy",
+            "Anotações do Subperfil": "Sub-profile Notes",
+            "Digite aqui suas anotações para este subperfil (compras futuras, mudanças de valores, etc.)...": "Enter your notes for this sub-profile here (future purchases, value changes, etc.)...",
+            "Histórico de Backups de Sessão": "Session Backups History",
+            "Os backups são gerados automaticamente cada vez que o aplicativo é iniciado. Eles são mantidos por no máximo 7 dias para permitir a reversão de alterações indesejadas.": "Backups are generated automatically each time the application is started. They are kept for a maximum of 7 days to allow reverting undesired changes.",
+            "Reverter": "Revert",
+            "Excluir Backup": "Delete Backup",
+            "Nenhum backup de sessão disponível no momento.": "No session backups currently available.",
+            "CONFIRMAR RESTAURAÇÃO ⚠️": "CONFIRM RESTORATION ⚠️",
+            "Deseja realmente reverter as alterações para esta sessão? Todos os dados gravados após este backup serão substituídos.": "Are you sure you want to revert changes to this session? All data saved after this backup will be replaced.",
+            "Alterações revertidas com sucesso! Recarregando...": "Changes reverted successfully! Reloading...",
+            "Backup de sessão excluído com sucesso!": "Session backup deleted successfully!",
+            "Backup": "Backup",
+            "Abatimento excluído/revertido com sucesso!": "Amortization deleted/reverted successfully!",
+            "Deseja realmente excluir ou reverter este abatimento?": "Are you sure you want to delete or revert this amortization?",
+            "REVERTER": "REVERT",
+            "Erro ao excluir": "Error deleting",
+            "Mês": "Month",
+            "Usado": "Used",
+            "Resumo Anual": "Annual Summary",
+            "Soma dos Selecionados (Absoluto):": "Sum of Selected (Absolute):",
+            "Selecione os cards para consolidar e somar seus totais anuais:": "Select the cards to consolidate and sum their annual totals:",
+            "Saldo Inicial": "Initial Balance",
+            "Saldo inicial atualizado com sucesso!": "Initial balance updated successfully!",
+            "Por favor, digite um valor numérico válido!": "Please enter a valid numeric value!"
         },
         "de": {
             "Dashboard": "Dashboard",
@@ -760,7 +818,32 @@ def main(page: ft.Page):
             "🎨 Gráficos Comparativos": "🎨 Vergleichende Diagramme",
             "📝 Transações e Lançamentos": "📝 Transaktionen und Einträge",
             "👥 Perfis Familiares e Categorias": "👥 Familienprofile & Kategorien",
-            "💾 Backup e Privacidade Absoluta": "💾 Backup & Absolute Privatsphäre"
+            "💾 Backup e Privacidade Absoluta": "💾 Backup & Absolute Privatsphäre",
+            "Histórico de Backups de Sessão": "Verlauf der Sitzungs-Backups",
+            "Os backups são gerados automaticamente cada vez que o aplicativo é iniciado. Eles são mantidos por no máximo 7 dias para permitir a reversão de alterações indesejadas.": "Backups werden automatisch bei jedem Start der Anwendung erstellt. Sie werden maximal 7 Tage aufbewahrt, um unerwünschte Änderungen rückgängig zu machen.",
+            "Reverter": "Rückgängig machen",
+            "Excluir Backup": "Backup löschen",
+            "Nenhum backup de sessão disponível no momento.": "Derzeit sind keine Sitzungs-Backups verfügbar.",
+            "CONFIRMAR RESTAURAÇÃO ⚠️": "WIEDERHERSTELLUNG BESTÄTIGEN ⚠️",
+            "Deseja realmente reverter as alterações para esta sessão? Todos os dados gravados após este backup serão substituídos.": "Möchten Sie die Änderungen für diese Sitzung wirklich rückgängig machen? Alle nach diesem Backup gespeicherten Daten werden überschrieben.",
+            "Alterações revertidas com sucesso! Recarregando...": "Änderungen erfolgreich rückgängig gemacht! Wird neu geladen...",
+            "Backup de sessão excluído com sucesso!": "Sitzungs-Backup erfolgreich gelöscht!",
+            "Backup": "Sicherung",
+            "Anotações do Subperfil": "Notizen des Subprofils",
+            "Digite aqui suas anotações para este subperfil (compras futuras, mudanças de valores, etc.)...": "Geben Sie hier Ihre Notizen für dieses Subprofil ein (zukünftige Einkäufe, Wertänderungen usw.)...",
+            "Abatimento excluído/revertido com sucesso!": "Tilgung erfolgreich gelöscht/rückgängig gemacht!",
+            "CONFIRMAR EXCLUSÃO ⚠️": "LÖSCHEN BESTÄTIGEN ⚠️",
+            "Deseja realmente excluir ou reverter este abatimento?": "Möchten Sie diese Tilgung wirklich löschen oder rückgängig machen?",
+            "REVERTER": "RÜCKGÄNGIG MACHEN",
+            "Erro ao excluir": "Fehler beim Löschen",
+            "Mês": "Monat",
+            "Usado": "Gesamt",
+            "Resumo Anual": "Jahresübersicht",
+            "Soma dos Selecionados (Absoluto):": "Summe der Ausgewählten (Absolut):",
+            "Selecione os cards para consolidar e somar seus totais anuais:": "Wählen Sie die Karten aus, um ihre Jahressummen zu konsolidieren und zu addieren:",
+            "Saldo Inicial": "Anfangsbestand",
+            "Saldo inicial atualizado com sucesso!": "Anfangsbestand erfolgreich aktualisiert!",
+            "Por favor, digite um valor numérico válido!": "Bitte geben Sie einen gültigen numerischen Wert ein!"
         },
         "es": {
             "Dashboard": "Tablero",
@@ -1078,7 +1161,32 @@ def main(page: ft.Page):
             "🎨 Gráficos Comparativos": "🎨 Gráficos Comparativos",
             "📝 Transações e Lançamentos": "📝 Transacciones y Registros",
             "👥 Perfis Familiares e Categorias": "👥 Perfiles Familiares y Categorías",
-            "💾 Backup e Privacidade Absoluta": "💾 Respaldo y Privacidad Absoluta"
+            "💾 Backup e Privacidade Absoluta": "💾 Respaldo y Privacidad Absoluta",
+            "Anotações do Subperfil": "Notas del Subperfil",
+            "Digite aqui suas anotações para este subperfil (compras futuras, mudanças de valores, etc.)...": "Ingrese sus notas para este subperfil aquí (compras futuras, cambios de valor, etc.)....",
+            "Histórico de Backups de Sessão": "Historial de Respaldos de Sesión",
+            "Os backups são gerados automaticamente cada vez que se inicia o aplicativo. Eles são mantidos por no máximo 7 dias para permitir a reversão de alterações indesejadas.": "Los respaldos se generan automáticamente cada vez que se inicia la aplicación. Se conservan durante un máximo de 7 días para permitir revertir cambios no deseados.",
+            "Reverter": "Revertir",
+            "Excluir Backup": "Eliminar Respaldo",
+            "Nenhum backup de sessão disponível no momento.": "Ningún respaldo de sesión disponible en este momento.",
+            "CONFIRMAR RESTAURAÇÃO ⚠️": "CONFIRMAR RESTAURACIÓN ⚠️",
+            "Deseja realmente reverter as alterações para esta sessão? Todos os dados gravados após este backup serão substituídos.": "¿De verdad desea revertir los cambios para esta sesión? Todos los datos guardados después de este respaldo serán reemplazados.",
+            "Alterações revertidas com sucesso! Recarregando...": "¡Cambios revertidos con éxito! Recargando...",
+            "Backup de sessão excluído com sucesso!": "¡Respaldo de sesión eliminado con éxito!",
+            "Backup": "Respaldo",
+            "Abatimento excluído/revertido com sucesso!": "¡Amortización eliminada/revertida con éxito!",
+            "CONFIRMAR EXCLUSÃO ⚠️": "CONFIRMAR ELIMINACIÓN ⚠️",
+            "Deseja realmente excluir ou reverter este abatimento?": "¿De verdad desea eliminar o revertir esta amortización?",
+            "REVERTER": "REVERTIR",
+            "Erro ao excluir": "Error al eliminar",
+            "Mês": "Mes",
+            "Usado": "Usado",
+            "Resumo Anual": "Resumen Anual",
+            "Soma dos Selecionados (Absoluto):": "Suma de Seleccionados (Absoluto):",
+            "Selecione os cards para consolidar e somar seus totais anuais:": "Seleccione las tarjetas para consolidar y sumar sus totales anuales:",
+            "Saldo Inicial": "Saldo Inicial",
+            "Saldo inicial atualizado com sucesso!": "¡Saldo inicial actualizado con éxito!",
+            "Por favor, digite um valor numérico válido!": "¡Por favor, introduzca un valor numérico válido!"
         }
     }
     def _t(text):
@@ -1090,6 +1198,17 @@ def main(page: ft.Page):
         lang_dict = TRANSLATIONS.get(lang, {})
         return lang_dict.get(text, text)
     
+
+    def build_safe_date(d, m, y):
+        try:
+            return datetime.datetime(y, m, d).strftime("%d/%m/%Y")
+        except ValueError:
+            for day_clamp in range(d - 1, 27, -1):
+                try:
+                    return datetime.datetime(y, m, day_clamp).strftime("%d/%m/%Y")
+                except ValueError:
+                    pass
+            return f"28/{m:02d}/{y}"
 
     def get_colors():
         is_light = (page.theme_mode == ft.ThemeMode.LIGHT)
@@ -1170,7 +1289,7 @@ def main(page: ft.Page):
         elif e.control.icon == ft.icons.Icons.SETTINGS_ROUNDED:
             state["active_tab"] = "configuracoes"
             render_configuracoes()
-        elif e.control.icon == ft.icons.Icons.CREDIT_SCORE_ROUNDED:
+        elif e.control.icon == ft.icons.Icons.ACCOUNT_BALANCE_ROUNDED:
             state["active_tab"] = "financiamentos"
             render_financiamentos()
         else:
@@ -1187,6 +1306,339 @@ def main(page: ft.Page):
             )
             page.update()
 
+    def refresh_current_view(e=None):
+        active = state.get("active_tab", "dashboard")
+        if active == "dashboard" or active == "charts":
+            render_dashboard()
+        elif active == "cartoes":
+            render_cartoes()
+        elif active == "transacoes":
+            render_transacoes()
+        elif active == "investimentos":
+            render_investimentos()
+        elif active == "financiamentos":
+            render_financiamentos()
+        elif active == "configuracoes":
+            render_configuracoes()
+        else:
+            render_dashboard()
+
+    def build_sidebar_controls():
+        order_str = db.get_preferencia("sidebar_order", "dashboard,investimentos,charts,transacoes,cartoes,financiamentos,ia")
+        order = order_str.split(",")
+        
+        items_map = {
+            "dashboard": ft.IconButton(
+                icon=ft.icons.Icons.DASHBOARD_ROUNDED,
+                tooltip=_t("Dashboard"),
+                icon_color="white" if state["active_tab"] == "dashboard" else "#64748b",
+                icon_size=24,
+                on_click=on_nav_click
+            ),
+            "investimentos": ft.IconButton(
+                icon=ft.icons.Icons.SAVINGS_ROUNDED,
+                tooltip=_t("Investimentos"),
+                icon_color="white" if state["active_tab"] == "investimentos" else "#64748b",
+                icon_size=24,
+                on_click=on_nav_click
+            ),
+            "charts": ft.IconButton(
+                icon=ft.icons.Icons.PIE_CHART_ROUNDED,
+                tooltip=_t("Gráficos"),
+                icon_color="white" if state["active_tab"] == "charts" else "#64748b",
+                icon_size=24,
+                on_click=on_nav_click
+            ),
+            "transacoes": ft.IconButton(
+                icon=ft.icons.Icons.LIST_ALT_ROUNDED,
+                tooltip=_t("Transações"),
+                icon_color="white" if state["active_tab"] == "transacoes" else "#64748b",
+                icon_size=24,
+                on_click=on_nav_click
+            ),
+            "cartoes": ft.IconButton(
+                icon=ft.icons.Icons.CREDIT_CARD_ROUNDED,
+                tooltip=_t("Cartões"),
+                icon_color="white" if state["active_tab"] == "cartoes" else "#64748b",
+                icon_size=24,
+                on_click=on_nav_click
+            ),
+            "financiamentos": ft.IconButton(
+                icon=ft.icons.Icons.ACCOUNT_BALANCE_ROUNDED,
+                tooltip=_t("Financiamentos"),
+                icon_color="white" if state["active_tab"] == "financiamentos" else "#64748b",
+                icon_size=24,
+                on_click=on_nav_click
+            ),
+            "ia": ft.IconButton(
+                icon=ft.icons.Icons.AUTO_AWESOME_ROUNDED,
+                tooltip=_t("Assistente IA"),
+                icon_color="white" if state["active_tab"] == "ia" else "#64748b",
+                icon_size=24,
+                on_click=on_nav_click
+            ),
+        }
+        
+        controls = [logo_widget, ft.Divider(height=40, color="transparent")]
+        for item_id in order:
+            if item_id in items_map:
+                controls.append(items_map[item_id])
+                
+        controls.append(ft.Container(expand=True))
+        
+        # Reorder Button
+        controls.append(
+            ft.IconButton(
+                icon=ft.icons.Icons.SWAP_VERT_ROUNDED,
+                tooltip=_t("Personalizar Menu"),
+                icon_color="#64748b",
+                icon_size=24,
+                on_click=abrir_reordenar_menu
+            )
+        )
+        
+        # Refresh Button
+        controls.append(
+            ft.IconButton(
+                icon=ft.icons.Icons.REFRESH_ROUNDED,
+                tooltip=_t("Atualizar"),
+                icon_color="#64748b",
+                icon_size=24,
+                on_click=refresh_current_view
+            )
+        )
+        
+        # Settings Button
+        controls.append(
+            ft.IconButton(
+                icon=ft.icons.Icons.SETTINGS_ROUNDED,
+                tooltip=_t("Configurações"),
+                icon_color="white" if state["active_tab"] == "configuracoes" else "#64748b",
+                icon_size=24,
+                on_click=on_nav_click
+            )
+        )
+        
+        return controls
+
+    def abrir_reordenar_menu(e):
+        order_str = db.get_preferencia("sidebar_order", "dashboard,investimentos,charts,transacoes,cartoes,financiamentos,ia")
+        current_order = order_str.split(",")
+        
+        items_info = {
+            "dashboard": {"label": "Dashboard", "icon": ft.icons.Icons.DASHBOARD_ROUNDED},
+            "investimentos": {"label": "Investimentos", "icon": ft.icons.Icons.SAVINGS_ROUNDED},
+            "charts": {"label": "Gráficos", "icon": ft.icons.Icons.PIE_CHART_ROUNDED},
+            "transacoes": {"label": "Transações", "icon": ft.icons.Icons.LIST_ALT_ROUNDED},
+            "cartoes": {"label": "Cartões", "icon": ft.icons.Icons.CREDIT_CARD_ROUNDED},
+            "financiamentos": {"label": "Financiamentos", "icon": ft.icons.Icons.ACCOUNT_BALANCE_ROUNDED},
+            "ia": {"label": "Assistente IA", "icon": ft.icons.Icons.AUTO_AWESOME_ROUNDED},
+        }
+        
+        for k in items_info:
+            if k not in current_order:
+                current_order.append(k)
+                
+        local_order = list(current_order)
+        list_container = ft.Column(spacing=10, width=320)
+        dialog = None
+        
+        def rebuild_list():
+            list_container.controls.clear()
+            for idx, item_id in enumerate(local_order):
+                if item_id not in items_info:
+                    continue
+                info = items_info[item_id]
+                
+                btn_up = ft.IconButton(
+                    icon=ft.icons.Icons.ARROW_UPWARD_ROUNDED,
+                    icon_color="#3b82f6" if idx > 0 else "#64748b",
+                    disabled=idx == 0,
+                    data=idx,
+                    on_click=move_up,
+                    icon_size=16
+                )
+                
+                btn_down = ft.IconButton(
+                    icon=ft.icons.Icons.ARROW_DOWNWARD_ROUNDED,
+                    icon_color="#3b82f6" if idx < len(local_order) - 1 else "#64748b",
+                    disabled=idx == len(local_order) - 1,
+                    data=idx,
+                    on_click=move_down,
+                    icon_size=16
+                )
+                
+                row = ft.Container(
+                    bgcolor=get_colors()["bg"],
+                    padding=ft.Padding(10, 5, 10, 5),
+                    border_radius=8,
+                    border=ft.border.all(1, get_colors()["border"]),
+                    content=ft.Row(
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                        controls=[
+                            ft.Row(
+                                controls=[
+                                    ft.Icon(info["icon"], color="#3b82f6", size=20),
+                                    ft.Text(_t(info["label"]), color=get_colors()["text"], size=14, weight=ft.FontWeight.BOLD),
+                                ]
+                            ),
+                            ft.Row(
+                                spacing=0,
+                                controls=[btn_up, btn_down]
+                            )
+                        ]
+                    )
+                )
+                list_container.controls.append(row)
+            
+            if dialog:
+                dialog.update()
+                
+        def move_up(e):
+            idx = e.control.data
+            if idx > 0:
+                local_order[idx], local_order[idx-1] = local_order[idx-1], local_order[idx]
+                rebuild_list()
+                
+        def move_down(e):
+            idx = e.control.data
+            if idx < len(local_order) - 1:
+                local_order[idx], local_order[idx+1] = local_order[idx+1], local_order[idx]
+                rebuild_list()
+                
+        def fechar_dialog(e):
+            page.pop_dialog()
+            
+        def salvar_ordem(e):
+            new_order_str = ",".join(local_order)
+            db.set_preferencia("sidebar_order", new_order_str)
+            sidebar.content.controls = build_sidebar_controls()
+            sidebar.update()
+            page.pop_dialog()
+            
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text(_t("Personalizar Menu Lateral"), size=16, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+            content=list_container,
+            bgcolor=get_colors()["surface"],
+            actions=[
+                ft.TextButton(_t("CANCELAR"), on_click=fechar_dialog, style=ft.ButtonStyle(color="white")),
+                ft.ElevatedButton(_t("SALVAR"), on_click=salvar_ordem, bgcolor="#3b82f6", color="white", style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)))
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        
+        page.show_dialog(dialog)
+        rebuild_list()
+
+    def abrir_criar_categoria_modal(e=None):
+        categorias = db.get_categorias()
+        
+        txt_nome = ft.TextField(
+            label=_t("Nome da Categoria"),
+            hint_text=_t("Ex: Alimentação, Transporte..."),
+            border_color="#475569",
+            focused_border_color="#3b82f6",
+            label_style=ft.TextStyle(color="#94a3b8"),
+            text_style=ft.TextStyle(color=get_colors()["text"]),
+            bgcolor=get_colors()["bg"],
+            height=48,
+            content_padding=ft.Padding(10, 5, 10, 5),
+            text_size=12
+        )
+        
+        drop_type = ft.Dropdown(
+            label=_t("Tipo"),
+            options=[
+                ft.dropdown.Option(key="Receita Fixa", text=_t("Receita Fixa")),
+                ft.dropdown.Option(key="Receita Variável", text=_t("Receita Variável")),
+                ft.dropdown.Option(key="Despesa Fixa", text=_t("Despesa Fixa")),
+                ft.dropdown.Option(key="Despesa Variável", text=_t("Despesa Variável")),
+                ft.dropdown.Option(key="Investimento", text=_t("Investimento"))
+            ],
+            value="Despesa Variável",
+            border_color="#475569",
+            focused_border_color="#3b82f6",
+            label_style=ft.TextStyle(color="#94a3b8"),
+            text_style=ft.TextStyle(color=get_colors()["text"]),
+            bgcolor=get_colors()["bg"],
+            height=48,
+            content_padding=ft.Padding(10, 5, 10, 5),
+            text_size=12
+        )
+        
+        parents = [c for c in categorias if c[3] is None]
+        parent_options = [ft.dropdown.Option(key="None", text=_t("Pai Root"))]
+        for p_cat in parents:
+            parent_options.append(ft.dropdown.Option(key=str(p_cat[0]), text=p_cat[1]))
+            
+        drop_parent = ft.Dropdown(
+            label=_t("Categoria Pai"),
+            options=parent_options,
+            value="None",
+            border_color="#475569",
+            focused_border_color="#3b82f6",
+            label_style=ft.TextStyle(color="#94a3b8"),
+            text_style=ft.TextStyle(color=get_colors()["text"]),
+            bgcolor=get_colors()["bg"],
+            height=48,
+            content_padding=ft.Padding(10, 5, 10, 5),
+            text_size=12
+        )
+        
+        def fechar_dialog(e):
+            page.pop_dialog()
+            
+        def run_salvar(e):
+            nome = (txt_nome.value or "").strip()
+            tipo = drop_type.value
+            p_val = drop_parent.value
+            parent_id = None if p_val == "None" else int(p_val)
+            
+            if not nome:
+                page.snack_bar = ft.SnackBar(content=ft.Text(_t("Por favor, digite o nome da categoria!"), color=get_colors()["text"]), bgcolor="#ef4444")
+                page.snack_bar.open = True
+                page.update()
+                return
+                
+            success, msg = db.inserir_categoria(nome, tipo, parent_id)
+            if success:
+                page.snack_bar = ft.SnackBar(content=ft.Text(_t("Categoria adicionada com sucesso!"), color=get_colors()["text"]), bgcolor="#10b981")
+                page.pop_dialog()
+                if state.get("active_tab") == "configuracoes":
+                    render_configuracoes()
+                elif state.get("active_tab") in ["dashboard", "charts"]:
+                    render_dashboard()
+            else:
+                page.snack_bar = ft.SnackBar(content=ft.Text(f"{_t('Erro:')} {msg}", color=get_colors()["text"]), bgcolor="#ef4444")
+                
+            page.snack_bar.open = True
+            page.update()
+            
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text(_t("Criar Nova Categoria"), size=16, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+            content=ft.Column(
+                controls=[
+                    txt_nome,
+                    ft.Container(height=5),
+                    drop_type,
+                    ft.Container(height=5),
+                    drop_parent
+                ],
+                tight=True,
+                spacing=10
+            ),
+            bgcolor=get_colors()["surface"],
+            actions=[
+                ft.TextButton(_t("CANCELAR"), on_click=fechar_dialog, style=ft.ButtonStyle(color="white")),
+                ft.ElevatedButton(_t("CRIAR"), on_click=run_salvar, bgcolor="#3b82f6", color="white", style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)))
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        
+        page.show_dialog(dialog)
+
     sidebar = ft.Container(
         width=100,
         bgcolor=get_colors()["surface"],
@@ -1195,32 +1647,15 @@ def main(page: ft.Page):
         content=ft.Column(
             alignment=ft.MainAxisAlignment.START,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            controls=[
-                logo_widget,
-                ft.Divider(height=40, color="transparent"),
-                ft.IconButton(icon=ft.icons.Icons.DASHBOARD_ROUNDED, tooltip=_t("Dashboard"), icon_color="white", icon_size=24, on_click=on_nav_click),
-                ft.IconButton(icon=ft.icons.Icons.SAVINGS_ROUNDED, tooltip=_t("Investimentos"), icon_color="#64748b", icon_size=24, on_click=on_nav_click),
-                ft.IconButton(icon=ft.icons.Icons.PIE_CHART_ROUNDED, tooltip=_t("Gráficos"), icon_color="#64748b", icon_size=24, on_click=on_nav_click),
-                ft.IconButton(icon=ft.icons.Icons.LIST_ALT_ROUNDED, tooltip=_t("Transações"), icon_color="#64748b", icon_size=24, on_click=on_nav_click),
-                ft.IconButton(icon=ft.icons.Icons.CREDIT_CARD_ROUNDED, tooltip=_t("Cartões"), icon_color="#64748b", icon_size=24, on_click=on_nav_click),
-                ft.IconButton(icon=ft.icons.Icons.CREDIT_SCORE_ROUNDED, tooltip=_t("Financiamentos"), icon_color="#64748b", icon_size=24, on_click=on_nav_click),
-                ft.IconButton(icon=ft.icons.Icons.AUTO_AWESOME_ROUNDED, tooltip=_t("Assistente IA"), icon_color="#64748b", icon_size=24, on_click=on_nav_click),
-                ft.Container(expand=True),
-                ft.IconButton(icon=ft.icons.Icons.SETTINGS_ROUNDED, tooltip=_t("Configurações"), icon_color="#64748b", icon_size=24, on_click=on_nav_click)
-            ]
+            controls=[]
         )
     )
+    sidebar.content.controls = build_sidebar_controls()
 
     def atualizar_textos_globais():
         try:
-            sidebar.content.controls[2].tooltip = _t("Dashboard")
-            sidebar.content.controls[3].tooltip = _t("Investimentos")
-            sidebar.content.controls[4].tooltip = _t("Gráficos")
-            sidebar.content.controls[5].tooltip = _t("Transações")
-            sidebar.content.controls[6].tooltip = _t("Cartões")
-            sidebar.content.controls[7].tooltip = _t("Financiamentos")
-            sidebar.content.controls[8].tooltip = _t("Assistente IA")
-            sidebar.content.controls[10].tooltip = _t("Configurações")
+            sidebar.content.controls = build_sidebar_controls()
+            sidebar.update()
         except Exception as ex:
             pass
 
@@ -1255,7 +1690,7 @@ def main(page: ft.Page):
             )
         )
 
-    def criar_card_resumo(titulo, valor, cor_valor=None, cor_fundo=None, small=False):
+    def criar_card_resumo(titulo, valor, cor_valor=None, cor_fundo=None, small=False, subtexto=None):
         colors = get_colors()
         if cor_fundo is None:
             cor_fundo = colors["surface"]
@@ -1264,6 +1699,14 @@ def main(page: ft.Page):
         pad = 12 if small else 20
         t_sz = 11 if small else 14
         v_sz = 18 if small else 28
+        
+        controls = [
+            ft.Text(titulo, size=t_sz, color=colors["subtext"], weight=ft.FontWeight.W_500),
+            ft.Text(f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), size=v_sz, color=cor_valor, weight=ft.FontWeight.BOLD)
+        ]
+        if subtexto:
+            controls.append(ft.Text(subtexto, size=10, color=colors["subtext"]))
+            
         return ft.Container(
             expand=True,
             bgcolor=cor_fundo,
@@ -1272,10 +1715,7 @@ def main(page: ft.Page):
             padding=pad,
             content=ft.Column(
                 spacing=4 if small else None,
-                controls=[
-                    ft.Text(titulo, size=t_sz, color=colors["subtext"], weight=ft.FontWeight.W_500),
-                    ft.Text(f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), size=v_sz, color=cor_valor, weight=ft.FontWeight.BOLD)
-                ]
+                controls=controls
             )
         )
     
@@ -1295,7 +1735,7 @@ def main(page: ft.Page):
 
     def criar_lista_transacoes(titulo, transacoes, eh_despesa=True):
         itens = []
-        for t in transacoes[:15]: # Limite de 15 para o dashboard
+        for t in transacoes: # Exibe todos os lançamentos
             data_str = t[1][:5] # Apenas dd/mm
             desc = t[2]
             valor = t[3]
@@ -1951,6 +2391,52 @@ def main(page: ft.Page):
             bgcolor=get_colors()["bg"]
         )
 
+        months_short = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
+        chks_lote = []
+        for i, m_name in enumerate(months_short, start=1):
+            chk = ft.Checkbox(
+                label=m_name,
+                value=False,
+                label_style=ft.TextStyle(size=12, font_family="Segoe UI", color=get_colors()["text"]),
+            )
+            chk.data = i
+            chks_lote.append(chk)
+
+        lote_container = ft.Column(
+            visible=False,
+            spacing=5,
+            controls=[
+                ft.Text(_t("Lançar em Lote (Selecione os meses)"), size=12, weight=ft.FontWeight.BOLD, color=theme_color),
+                ft.Row(
+                    wrap=True,
+                    spacing=5,
+                    run_spacing=5,
+                    controls=chks_lote
+                ),
+                ft.Container(height=5)
+            ]
+        )
+
+        def sync_date_with_lote(e=None):
+            val = txt_data.value
+            try:
+                day_str, month_str, year_str = val.split("/")
+                m = int(month_str)
+                if 1 <= m <= 12:
+                    for chk in chks_lote:
+                        chk.value = (chk.data == m)
+                    page.update()
+            except Exception:
+                pass
+
+        txt_data.on_change = sync_date_with_lote
+
+        def toggle_lote_visibility():
+            if details:
+                lote_container.visible = False
+            else:
+                lote_container.visible = (drop_pilar.value == "Receita Fixa")
+
         def update_cats_receita(set_initial=None):
             pilar = drop_pilar.value
             cats = categorias_por_pilar.get(pilar, {})
@@ -1966,6 +2452,7 @@ def main(page: ft.Page):
                 drop_cat.value = None
                 drop_sub.options = [ft.dropdown.Option(key="Geral", text="Geral")]
                 drop_sub.value = "Geral"
+            toggle_lote_visibility()
             page.update()
 
         def update_subs_receita(set_initial=None):
@@ -2044,21 +2531,61 @@ def main(page: ft.Page):
                     divisoes={"Eu": valor}
                 )
             else:
-                success, msg = db.inserir_transacao(
-                    conta_id=None,
-                    categoria_id=final_cat_id,
-                    descricao=desc,
-                    data_ini=data_str,
-                    valor_total=valor,
-                    tipo_transacao=pilar,
-                    metodo="Dinheiro",
-                    parcelas=1,
-                    bandeira="",
-                    dono="",
-                    recorrencia=None,
-                    divisoes={"Eu": valor},
-                    observacao=obs
-                )
+                selected_months = [chk.data for chk in chks_lote if chk.value] if (pilar == "Receita Fixa") else []
+                if selected_months:
+                    try:
+                        day_str, month_str, year_str = data_str.split("/")
+                        dia = int(day_str)
+                        ano = int(year_str)
+                    except Exception:
+                        page.snack_bar = ft.SnackBar(
+                            content=ft.Text(_t("Data inválida! Use o formato DD/MM/AAAA"), color=get_colors()["text"]),
+                            bgcolor="#ef4444"
+                        )
+                        page.snack_bar.open = True
+                        page.update()
+                        return
+
+                    success = True
+                    errors = []
+                    for m in selected_months:
+                        data_lote = build_safe_date(dia, m, ano)
+                        ok, msg = db.inserir_transacao(
+                            conta_id=None,
+                            categoria_id=final_cat_id,
+                            descricao=desc,
+                            data_ini=data_lote,
+                            valor_total=valor,
+                            tipo_transacao=pilar,
+                            metodo="Dinheiro",
+                            parcelas=1,
+                            bandeira="",
+                            dono="",
+                            recorrencia=None,
+                            divisoes={"Eu": valor},
+                            observacao=obs
+                        )
+                        if not ok:
+                            success = False
+                            errors.append(f"{months_short[m-1]}: {msg}")
+                    if not success:
+                        msg = ", ".join(errors)
+                else:
+                    success, msg = db.inserir_transacao(
+                        conta_id=None,
+                        categoria_id=final_cat_id,
+                        descricao=desc,
+                        data_ini=data_str,
+                        valor_total=valor,
+                        tipo_transacao=pilar,
+                        metodo="Dinheiro",
+                        parcelas=1,
+                        bandeira="",
+                        dono="",
+                        recorrencia=None,
+                        divisoes={"Eu": valor},
+                        observacao=obs
+                    )
 
             if success:
                 page.snack_bar = ft.SnackBar(
@@ -2194,6 +2721,7 @@ def main(page: ft.Page):
                     ft.Container(width=15)
                 ]
             ),
+            lote_container,
             ft.Row([ft.Container(expand=True, content=txt_obs), ft.Container(width=15)]),
             ft.Container(height=10),
             ft.Row(
@@ -2204,8 +2732,11 @@ def main(page: ft.Page):
             )
         ]
 
+        sync_date_with_lote()
+
         if details:
-            update_cats_receita(set_initial=details["parent_id"])
+            initial_parent = details["parent_id"] if details["parent_id"] is not None else details["categoria_id"]
+            update_cats_receita(set_initial=initial_parent)
         else:
             update_cats_receita()
 
@@ -2402,8 +2933,7 @@ def main(page: ft.Page):
                         ft.Container(width=15)
                     ],
                     spacing=10
-                ),
-                ft.Row([chk_compartilhar, ft.Container(width=15)])
+                )
             ]
         )
 
@@ -2702,6 +3232,52 @@ def main(page: ft.Page):
 
         inputs_individuais = {}
 
+        months_short = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
+        chks_lote = []
+        for i, m_name in enumerate(months_short, start=1):
+            chk = ft.Checkbox(
+                label=m_name,
+                value=False,
+                label_style=ft.TextStyle(size=12, font_family="Segoe UI", color=get_colors()["text"]),
+            )
+            chk.data = i
+            chks_lote.append(chk)
+
+        lote_container = ft.Column(
+            visible=False,
+            spacing=5,
+            controls=[
+                ft.Text(_t("Lançar em Lote (Selecione os meses)"), size=12, weight=ft.FontWeight.BOLD, color="#ef4444"),
+                ft.Row(
+                    wrap=True,
+                    spacing=5,
+                    run_spacing=5,
+                    controls=chks_lote
+                ),
+                ft.Container(height=5)
+            ]
+        )
+
+        def sync_date_with_lote(e=None):
+            val = txt_data.value
+            try:
+                day_str, month_str, year_str = val.split("/")
+                m = int(month_str)
+                if 1 <= m <= 12:
+                    for chk in chks_lote:
+                        chk.value = (chk.data == m)
+                    page.update()
+            except Exception:
+                pass
+
+        txt_data.on_change = sync_date_with_lote
+
+        def toggle_lote_visibility():
+            if details:
+                lote_container.visible = False
+            else:
+                lote_container.visible = (drop_pilar.value == "Despesa Fixa")
+
         def update_cats_despesa(set_initial=None):
             pilar = drop_pilar.value
             cats = categorias_por_pilar.get(pilar, {})
@@ -2717,6 +3293,7 @@ def main(page: ft.Page):
                 drop_cat.value = None
                 drop_sub.options = [ft.dropdown.Option(key="Geral", text="Geral")]
                 drop_sub.value = "Geral"
+            toggle_lote_visibility()
             page.update()
 
         def update_subs_despesa(set_initial=None):
@@ -2749,15 +3326,11 @@ def main(page: ft.Page):
         def toggle_metodo_fields():
             is_cartao = drop_metodo.value == "Cartão"
             cartao_container.visible = is_cartao
-            if not is_cartao:
-                sharing_container.visible = False
-                chk_compartilhar.value = False
-            else:
-                toggle_sharing_fields()
+            toggle_sharing_fields()
             page.update()
 
         def toggle_sharing_fields():
-            is_shared = chk_compartilhar.value == True and drop_metodo.value == "Cartão"
+            is_shared = chk_compartilhar.value == True
             sharing_container.visible = is_shared
             if is_shared:
                 rebuild_sharing_inputs()
@@ -2910,7 +3483,7 @@ def main(page: ft.Page):
             divisoes = {}
             novo_nome = (txt_novo_perfil.value or "").strip() if txt_novo_perfil.visible else ""
 
-            if metodo == "Cartão" and chk_compartilhar.value == True:
+            if chk_compartilhar.value == True:
                 selected = [chk.data for chk in member_checks if chk.value == True]
                 if not selected:
                     page.snack_bar = ft.SnackBar(
@@ -2983,21 +3556,61 @@ def main(page: ft.Page):
                     divisoes=divisoes
                 )
             else:
-                success, msg = db.inserir_transacao(
-                    conta_id=None,
-                    categoria_id=final_cat_id,
-                    descricao=desc,
-                    data_ini=data_str,
-                    valor_total=valor,
-                    tipo_transacao=pilar,
-                    metodo=metodo,
-                    parcelas=parcelas,
-                    bandeira=bandeira,
-                    dono=dono,
-                    recorrencia=None,
-                    divisoes=divisoes,
-                    observacao=obs
-                )
+                selected_months = [chk.data for chk in chks_lote if chk.value] if (pilar == "Despesa Fixa") else []
+                if selected_months:
+                    try:
+                        day_str, month_str, year_str = data_str.split("/")
+                        dia = int(day_str)
+                        ano = int(year_str)
+                    except Exception:
+                        page.snack_bar = ft.SnackBar(
+                            content=ft.Text(_t("Data inválida! Use o formato DD/MM/AAAA"), color=get_colors()["text"]),
+                            bgcolor="#ef4444"
+                        )
+                        page.snack_bar.open = True
+                        page.update()
+                        return
+
+                    success = True
+                    errors = []
+                    for m in selected_months:
+                        data_lote = build_safe_date(dia, m, ano)
+                        ok, msg = db.inserir_transacao(
+                            conta_id=None,
+                            categoria_id=final_cat_id,
+                            descricao=desc,
+                            data_ini=data_lote,
+                            valor_total=valor,
+                            tipo_transacao=pilar,
+                            metodo=metodo,
+                            parcelas=parcelas,
+                            bandeira=bandeira,
+                            dono=dono,
+                            recorrencia=None,
+                            divisoes=divisoes,
+                            observacao=obs
+                        )
+                        if not ok:
+                            success = False
+                            errors.append(f"{months_short[m-1]}: {msg}")
+                    if not success:
+                        msg = ", ".join(errors)
+                else:
+                    success, msg = db.inserir_transacao(
+                        conta_id=None,
+                        categoria_id=final_cat_id,
+                        descricao=desc,
+                        data_ini=data_str,
+                        valor_total=valor,
+                        tipo_transacao=pilar,
+                        metodo=metodo,
+                        parcelas=parcelas,
+                        bandeira=bandeira,
+                        dono=dono,
+                        recorrencia=None,
+                        divisoes=divisoes,
+                        observacao=obs
+                    )
 
             if success:
                 page.snack_bar = ft.SnackBar(
@@ -3077,9 +3690,12 @@ def main(page: ft.Page):
                 cartao_container.visible = True
                 drop_cartao.value = f"{details['bandeira_cartao']}|{details['dono_cartao']}"
                 txt_parcelas.value = str(details["total_parcelas"])
-                if details["divisoes"] and len(details["divisoes"]) > 1:
-                    chk_compartilhar.value = True
-                    sharing_container.visible = True
+            
+            # Ativa compartilhamento se houver divisões com outros membros cadastrados
+            has_other_members = details["divisoes"] and (len(details["divisoes"]) > 1 or "Eu" not in details["divisoes"])
+            if has_other_members:
+                chk_compartilhar.value = True
+                sharing_container.visible = True
 
         # Action buttons layout
         action_buttons = []
@@ -3142,7 +3758,9 @@ def main(page: ft.Page):
                 ]
             ),
             cartao_container,
+            ft.Row([chk_compartilhar, ft.Container(width=15)]),
             sharing_container,
+            lote_container,
             ft.Row([ft.Container(expand=True, content=txt_obs), ft.Container(width=15)]),
             ft.Container(height=10),
             ft.Row(
@@ -3153,10 +3771,12 @@ def main(page: ft.Page):
             )
         ]
 
+        sync_date_with_lote()
+
         if details:
-            update_cats_despesa(set_initial=details["parent_id"])
-            if details["metodo_pagamento"] == "Cartão":
-                toggle_metodo_fields()
+            initial_parent = details["parent_id"] if details["parent_id"] is not None else details["categoria_id"]
+            update_cats_despesa(set_initial=initial_parent)
+            toggle_metodo_fields()
         else:
             update_cats_despesa()
 
@@ -3170,6 +3790,9 @@ def main(page: ft.Page):
         despesas = resumo.get("Despesa Fixa", 0) + resumo.get("Despesa Variável", 0)
         investido = resumo.get("Investimento", 0)
         saldo = receitas - despesas - investido
+        saldo_anterior = db.get_saldo_acumulado_anterior(mes_atual, ano_atual, state["perfil"])
+        saldo_total = saldo_anterior + saldo
+        subtexto = f"Saldo Mês: R$ {saldo:,.2f} | Ant: R$ {saldo_anterior:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if saldo_anterior != 0 else None
 
         todas_transacoes = db.get_transacoes(mes=mes_atual, ano=ano_atual, perfil_nome=state["perfil"])
         lista_despesas = [t for t in todas_transacoes if "Despesa" in t[5]]
@@ -3178,7 +3801,7 @@ def main(page: ft.Page):
         top_cards = ft.Row(
             spacing=20,
             controls=[
-                criar_card_resumo(_t("Saldo Total"), saldo, "#10b981" if saldo >= 0 else "#ef4444"),
+                criar_card_resumo(_t("Saldo Total"), saldo_total, "#10b981" if saldo_total >= 0 else "#ef4444", subtexto=subtexto),
                 criar_card_resumo(_t("Despesas"), despesas, "#ef4444"),
                 criar_card_resumo(_t("Receitas"), receitas, "#10b981"),
                 criar_card_resumo(_t("Investido"), investido, "#3b82f6")
@@ -3205,12 +3828,46 @@ def main(page: ft.Page):
             return sorted(dias_totals.items(), key=lambda x: x[0])
             
         if state["active_tab"] == "dashboard":
+            if state["perfil"] == "Eu":
+                right_panel = criar_lista_transacoes(_t("Receitas do Mês"), lista_receitas, False)
+            else:
+                anotacoes_iniciais = db.get_anotacoes_usuario(state["perfil"])
+                txt_anotacoes = ft.TextField(
+                    multiline=True,
+                    min_lines=12,
+                    max_lines=18,
+                    bgcolor=get_colors()["bg"],
+                    border_color=get_colors()["border"],
+                    focused_border_color="#3b82f6",
+                    text_style=ft.TextStyle(color=get_colors()["text"], size=14),
+                    hint_text=_t("Digite aqui suas anotações para este subperfil (compras futuras, mudanças de valores, etc.)..."),
+                    hint_style=ft.TextStyle(color="#64748b", size=14),
+                    value=anotacoes_iniciais,
+                    expand=True,
+                    on_change=lambda e: db.update_anotacoes_usuario(state["perfil"], e.control.value)
+                )
+                right_panel = ft.Container(
+                    expand=True,
+                    bgcolor=get_colors()["surface"],
+                    border=ft.border.all(1, get_colors()["border"]),
+                    border_radius=12,
+                    padding=20,
+                    content=ft.Column(
+                        expand=True,
+                        controls=[
+                            ft.Text(_t("Anotações do Subperfil"), size=18, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+                            ft.Divider(color="#334155"),
+                            ft.Container(expand=True, content=txt_anotacoes)
+                        ]
+                    )
+                )
+
             main_panels = ft.Row(
                 expand=True,
                 spacing=20,
                 controls=[
                     criar_lista_transacoes(_t("Despesas do Mês"), lista_despesas, True),
-                    criar_lista_transacoes(_t("Receitas do Mês"), lista_receitas, False)
+                    right_panel
                 ]
             )
         else: # charts
@@ -3298,6 +3955,182 @@ def main(page: ft.Page):
                 controls=[left_panel, right_panel]
             )
         
+        def abrir_resumo_anual_modal(e):
+            months_data = []
+            
+            # Fetch all 12 months' data
+            for mes_nome in meses_pt:
+                resumo = db.get_resumo_financeiro(mes_nome, str(state["ano"]), state["perfil"])
+                receitas = resumo.get("Receita Fixa", 0) + resumo.get("Receita Variável", 0)
+                despesas = resumo.get("Despesa Fixa", 0) + resumo.get("Despesa Variável", 0)
+                investido = resumo.get("Investimento", 0)
+                saldo_mes = receitas - despesas - investido
+                saldo_anterior = db.get_saldo_acumulado_anterior(mes_nome, str(state["ano"]), state["perfil"])
+                saldo_total = saldo_anterior + saldo_mes
+                
+                months_data.append({
+                    "name": mes_nome,
+                    "receitas": receitas,
+                    "despesas": despesas,
+                    "investido": investido,
+                    "saldo_total": saldo_total
+                })
+            
+            # Local state for selection
+            selection = {m: True for m in meses_pt}
+            
+            lbl_total_receitas = ft.Text("", size=12, weight=ft.FontWeight.BOLD, color="#10b981")
+            lbl_total_despesas = ft.Text("", size=12, weight=ft.FontWeight.BOLD, color="#ef4444")
+            lbl_total_investido = ft.Text("", size=12, weight=ft.FontWeight.BOLD, color="#3b82f6")
+            lbl_total_fluxo = ft.Text("", size=12, weight=ft.FontWeight.BOLD, color=get_colors()["text"])
+            
+            def atualizar_totais():
+                sum_rec = 0.0
+                sum_desp = 0.0
+                sum_inv = 0.0
+                
+                for m_data in months_data:
+                    if selection[m_data["name"]]:
+                        sum_rec += m_data["receitas"]
+                        sum_desp += m_data["despesas"]
+                        sum_inv += m_data["investido"]
+                        
+                sum_fluxo = sum_rec - sum_desp - sum_inv
+                
+                lbl_total_receitas.value = f"R$ {sum_rec:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                lbl_total_despesas.value = f"R$ {sum_desp:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                lbl_total_investido.value = f"R$ {sum_inv:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                lbl_total_fluxo.value = f"R$ {sum_fluxo:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                lbl_total_fluxo.color = "#10b981" if sum_fluxo >= 0 else "#ef4444"
+                
+                lbl_total_receitas.update()
+                lbl_total_despesas.update()
+                lbl_total_investido.update()
+                lbl_total_fluxo.update()
+                
+            def on_toggle_month(mes_nome, e):
+                selection[mes_nome] = e.control.value
+                atualizar_totais()
+                
+            # Create header
+            colors = get_colors()
+            header_tabela = ft.Container(
+                bgcolor=colors["bg"],
+                padding=ft.Padding(left=15, top=10, right=15, bottom=10),
+                border_radius=8,
+                content=ft.Row(
+                    controls=[
+                        ft.Container(content=ft.Text(_t("Mês"), size=11, weight=ft.FontWeight.BOLD, color=colors["text"]), width=120),
+                        ft.Container(content=ft.Text(_t("Receitas"), size=11, weight=ft.FontWeight.BOLD, color="#10b981"), width=120),
+                        ft.Container(content=ft.Text(_t("Despesas"), size=11, weight=ft.FontWeight.BOLD, color="#ef4444"), width=120),
+                        ft.Container(content=ft.Text(_t("Investido"), size=11, weight=ft.FontWeight.BOLD, color="#3b82f6"), width=120),
+                        ft.Container(content=ft.Text(_t("Saldo Total"), size=11, weight=ft.FontWeight.BOLD, color=colors["text"]), width=140),
+                    ]
+                )
+            )
+            
+            rows_controls = []
+            for m_data in months_data:
+                colors = get_colors()
+                val_rec = m_data["receitas"]
+                val_desp = m_data["despesas"]
+                val_inv = m_data["investido"]
+                val_saldo = m_data["saldo_total"]
+                
+                chk = ft.Checkbox(
+                    value=selection[m_data["name"]],
+                    on_change=lambda e, mn=m_data["name"]: on_toggle_month(mn, e),
+                    fill_color={"": "#3b82f6"},
+                    scale=0.8
+                )
+                
+                row_cont = ft.Container(
+                    padding=ft.Padding(left=10, top=4, right=10, bottom=4),
+                    border=ft.border.Border(bottom=ft.border.BorderSide(1, colors["border"])),
+                    content=ft.Row(
+                        controls=[
+                            ft.Container(
+                                content=ft.Row([
+                                    chk,
+                                    ft.Text(_t(m_data["name"]), size=12, color=colors["text"], weight=ft.FontWeight.W_500)
+                                ], spacing=2),
+                                width=120
+                            ),
+                            ft.Container(content=ft.Text(f"R$ {val_rec:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), size=12, color="#10b981"), width=120),
+                            ft.Container(content=ft.Text(f"R$ {val_desp:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), size=12, color="#ef4444"), width=120),
+                            ft.Container(content=ft.Text(f"R$ {val_inv:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), size=12, color="#3b82f6"), width=120),
+                            ft.Container(content=ft.Text(f"R$ {val_saldo:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), size=12, color="#10b981" if val_saldo >= 0 else "#ef4444", weight=ft.FontWeight.BOLD), width=140),
+                        ]
+                    )
+                )
+                rows_controls.append(row_cont)
+                
+            list_container = ft.Container(
+                height=260,
+                content=ft.Column(
+                    scroll=ft.ScrollMode.ADAPTIVE,
+                    controls=rows_controls,
+                    spacing=0
+                )
+            )
+            
+            totals_row = ft.Container(
+                bgcolor=get_colors()["bg"],
+                padding=ft.Padding(left=15, top=10, right=15, bottom=10),
+                border_radius=8,
+                content=ft.Row(
+                    controls=[
+                        ft.Container(content=ft.Text(_t("Total Selecionado"), size=11, weight=ft.FontWeight.BOLD, color=get_colors()["text"]), width=120),
+                        ft.Container(content=lbl_total_receitas, width=120),
+                        ft.Container(content=lbl_total_despesas, width=120),
+                        ft.Container(content=lbl_total_investido, width=120),
+                        ft.Container(content=lbl_total_fluxo, width=140),
+                    ]
+                )
+            )
+            
+            # Set initial values
+            sum_rec_ini = sum(m["receitas"] for m in months_data)
+            sum_desp_ini = sum(m["despesas"] for m in months_data)
+            sum_inv_ini = sum(m["investido"] for m in months_data)
+            sum_fluxo_ini = sum_rec_ini - sum_desp_ini - sum_inv_ini
+            
+            lbl_total_receitas.value = f"R$ {sum_rec_ini:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            lbl_total_despesas.value = f"R$ {sum_desp_ini:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            lbl_total_investido.value = f"R$ {sum_inv_ini:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            lbl_total_fluxo.value = f"R$ {sum_fluxo_ini:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            lbl_total_fluxo.color = "#10b981" if sum_fluxo_ini >= 0 else "#ef4444"
+            
+            dialog = ft.AlertDialog(
+                modal=True,
+                title=ft.Row(
+                    spacing=8,
+                    controls=[
+                        ft.Icon(ft.icons.Icons.ANALYTICS_ROUNDED, color="#3b82f6", size=22),
+                        ft.Text(f"{_t('Resumo Anual')} - {state['ano']}", size=18, weight=ft.FontWeight.BOLD, color=get_colors()["text"])
+                    ]
+                ),
+                content=ft.Container(
+                    width=680,
+                    height=380,
+                    content=ft.Column(
+                        spacing=12,
+                        controls=[
+                            ft.Text(_t("Selecione os meses para consolidar os totais anuais:"), size=11, color=get_colors()["subtext"]),
+                            header_tabela,
+                            list_container,
+                            totals_row
+                        ]
+                    )
+                ),
+                bgcolor=get_colors()["surface"],
+                actions=[
+                    ft.TextButton(_t("Fechar"), on_click=lambda e: page.pop_dialog(), style=ft.ButtonStyle(color="white"))
+                ],
+                actions_alignment=ft.MainAxisAlignment.END
+            )
+            page.show_dialog(dialog)
+
         def on_change_perfil_dash(e):
             state["perfil"] = e.control.value
             render_dashboard()
@@ -3311,7 +4144,21 @@ def main(page: ft.Page):
                 ft.Row(
                     spacing=15,
                     controls=[
+                        ft.TextButton(
+                            content=ft.Row([
+                                ft.Icon(ft.icons.Icons.ANALYTICS_ROUNDED, color="#3b82f6", size=18),
+                                ft.Text(_t("Resumo Anual"), size=13, weight=ft.FontWeight.BOLD, color=get_colors()["text"])
+                            ], spacing=5),
+                            on_click=abrir_resumo_anual_modal
+                        ),
                         seletor_perfil,
+                        ft.IconButton(
+                            icon=ft.icons.Icons.CATEGORY_ROUNDED, 
+                            tooltip=_t("Criar Categoria"), 
+                            icon_color="#3b82f6", 
+                            icon_size=22,
+                            on_click=abrir_criar_categoria_modal
+                        ),
                         ft.Row(
                             spacing=5,
                             controls=[
@@ -3548,9 +4395,9 @@ def main(page: ft.Page):
             page.update()
 
         # Helper visual credit card inside the closure
-        def criar_card_fisico(cartao_id, nome, limite, dia_fechamento, dia_vencimento, cor, bandeira, dono, gasto_mes, digitos):
-            disponivel = limite - gasto_mes
-            pct_gasto = min(1.0, gasto_mes / limite) if limite > 0 else 0.0
+        def criar_card_fisico(cartao_id, nome, limite, dia_fechamento, dia_vencimento, cor, bandeira, dono, gasto_mes, gasto_total, digitos):
+            disponivel = limite - gasto_total
+            pct_gasto = min(1.0, gasto_total / limite) if limite > 0 else 0.0
             
             return ft.Container(
                 width=320,
@@ -3571,7 +4418,7 @@ def main(page: ft.Page):
                                     content=ft.Text(nome, size=15, weight=ft.FontWeight.BOLD, color=get_colors()["text"], max_lines=1, overflow=ft.TextOverflow.ELLIPSIS)
                                 ),
                                 ft.Container(
-                                    padding=ft.padding.Padding(left=8, top=2, right=8, bottom=2),
+                                    padding=ft.Padding(left=8, top=2, right=8, bottom=2),
                                     border_radius=6,
                                     bgcolor="#33ffffff", # 20% white
                                     content=ft.Text(bandeira.upper(), size=11, weight=ft.FontWeight.BOLD, color="white", max_lines=1, overflow=ft.TextOverflow.ELLIPSIS)
@@ -3638,8 +4485,9 @@ def main(page: ft.Page):
                                 ft.Row(
                                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                                     controls=[
-                                        ft.Text(f"Limite: R$ {limite:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), size=10, color="#ccffffff"),
-                                        ft.Text(f"Gasto: R$ {gasto_mes:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), size=10, color="#ccffffff")
+                                        ft.Text(f"{_t('Limite')}: R$ {limite:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), size=8.5, color="#ccffffff"),
+                                        ft.Text(f"{_t('Mês')}: R$ {gasto_mes:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), size=8.5, color="#ccffffff"),
+                                        ft.Text(f"{_t('Usado')}: R$ {gasto_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), size=8.5, color="#ccffffff")
                                     ]
                                 )
                             ]
@@ -3687,6 +4535,15 @@ def main(page: ft.Page):
 
         # Color Selector
         colors_list = [
+            ("#820ad1", "Roxo Nubank"),
+            ("#ff7a00", "Laranja Inter"),
+            ("#111111", "Preto C6 Carbon"),
+            ("#00d2f3", "Azul Neon"),
+            ("#cc092f", "Bradesco"),
+            ("#ec0000", "Santander"),
+            ("#ffe600", "BB Amarelo"),
+            ("#002f6c", "Itaú Navy"),
+            ("#d4af37", "Personnalité Dourado"),
             ("#1e293b", "Grafite"),
             ("#1e3a8a", "Azul"),
             ("#064e3b", "Verde"),
@@ -3801,8 +4658,9 @@ def main(page: ft.Page):
         for c in cartoes:
             card_id, nome_val, limite_val, dia_fechamento_val, dia_vencimento_val, cor_val, bandeira_val, dono_val, digitos_val = c
             gasto_mes = db.get_gasto_cartao_mes(bandeira_val, dono_val, mes_num, ano_atual)
+            gasto_total = db.get_gasto_cartao_total(bandeira_val, dono_val, mes_num, ano_atual)
             cards_list.append(
-                criar_card_fisico(card_id, nome_val, limite_val, dia_fechamento_val, dia_vencimento_val, cor_val, bandeira_val, dono_val, gasto_mes, digitos_val)
+                criar_card_fisico(card_id, nome_val, limite_val, dia_fechamento_val, dia_vencimento_val, cor_val, bandeira_val, dono_val, gasto_mes, gasto_total, digitos_val)
             )
 
         if not cards_list:
@@ -3866,7 +4724,7 @@ def main(page: ft.Page):
                         spacing=5,
                         controls=[
                             ft.Text("Cor do Cartão", size=12, color=get_colors()["subtext"], weight=ft.FontWeight.W_500),
-                            ft.Row(controls=color_selectors, spacing=8)
+                            ft.Row(controls=color_selectors, spacing=8, wrap=True)
                         ]
                     ),
                     ft.Container(height=5),
@@ -7539,6 +8397,36 @@ def main(page: ft.Page):
                         page.snack_bar.open = True
                         page.update()
                         
+                def confirmar_exclusao_parcela(e):
+                    def fechar_dialog(e):
+                        page.pop_dialog()
+                    
+                    def realizar_exclusao(e2):
+                        page.pop_dialog()
+                        success, msg = db.excluir_abatimento(ab["transacao_id"])
+                        if success:
+                            fechar_overlay()
+                            render_financiamentos()
+                            page.snack_bar = ft.SnackBar(content=ft.Text(_t("Abatimento excluído/revertido com sucesso!")), bgcolor="#10b981")
+                            page.snack_bar.open = True
+                        else:
+                            page.snack_bar = ft.SnackBar(content=ft.Text(f"{_t('Erro ao excluir')}: {msg}"), bgcolor="#ef4444")
+                            page.snack_bar.open = True
+                        page.update()
+
+                    dialog = ft.AlertDialog(
+                        modal=True,
+                        title=ft.Text(_t("CONFIRMAR EXCLUSÃO ⚠️"), size=16, weight=ft.FontWeight.BOLD, color=colors["text"]),
+                        content=ft.Text(_t("Deseja realmente excluir ou reverter este abatimento?"), size=14, color=colors["subtext"]),
+                        bgcolor=colors["surface"],
+                        actions=[
+                            ft.TextButton(_t("CANCELAR"), on_click=fechar_dialog, style=ft.ButtonStyle(color="white")),
+                            ft.ElevatedButton("EXCLUIR", on_click=realizar_exclusao, bgcolor="#ef4444", color="white", style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)))
+                        ],
+                        actions_alignment=ft.MainAxisAlignment.END,
+                    )
+                    page.show_dialog(dialog)
+                        
                 shield = ft.Container(
                     expand=True,
                     bgcolor="#cc090d16",  # Premium blurred matte dark backdrop
@@ -7587,19 +8475,28 @@ def main(page: ft.Page):
                             ),
                             ft.Divider(color="#1f2937", height=15),
                             ft.Row(
-                                alignment=ft.MainAxisAlignment.END,
-                                spacing=10,
+                                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                                 controls=[
                                     ft.TextButton(
-                                        _t("CANCELAR"), 
-                                        on_click=fechar_overlay
+                                        _t("EXCLUIR"), 
+                                        style=ft.ButtonStyle(color="#ef4444"),
+                                        on_click=lambda e: confirmar_exclusao_parcela(e)
                                     ),
-                                    ft.ElevatedButton(
-                                        _t("SALVAR"), 
-                                        bgcolor="#3b82f6", 
-                                        color="white", 
-                                        style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)),
-                                        on_click=lambda e: salvar_edicao_parcela(e)
+                                    ft.Row(
+                                        spacing=10,
+                                        controls=[
+                                            ft.TextButton(
+                                                _t("CANCELAR"), 
+                                                on_click=fechar_overlay
+                                            ),
+                                            ft.ElevatedButton(
+                                                _t("SALVAR"), 
+                                                bgcolor="#3b82f6", 
+                                                color="white", 
+                                                style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)),
+                                                on_click=lambda e: salvar_edicao_parcela(e)
+                                            )
+                                        ]
                                     )
                                 ]
                             )
@@ -7620,7 +8517,7 @@ def main(page: ft.Page):
             controls=[
                 ft.Row(
                     controls=[
-                        ft.Icon(ft.icons.Icons.CREDIT_SCORE_ROUNDED, size=28, color="#3b82f6"),
+                        ft.Icon(ft.icons.Icons.ACCOUNT_BALANCE_ROUNDED, size=28, color="#3b82f6"),
                         ft.Text(_t("Financiamentos"), size=24, weight=ft.FontWeight.BOLD, color=colors["text"])
                     ]
                 ),
@@ -7838,7 +8735,7 @@ def main(page: ft.Page):
                     content=ft.Column(
                         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                         controls=[
-                            ft.Icon(ft.icons.Icons.CREDIT_SCORE_ROUNDED, size=48, color=colors["subtext"]),
+                            ft.Icon(ft.icons.Icons.ACCOUNT_BALANCE_ROUNDED, size=48, color=colors["subtext"]),
                             ft.Text(_t("Nenhum financiamento cadastrado neste perfil."), color=colors["subtext"], size=14)
                         ]
                     )
@@ -8067,6 +8964,98 @@ def main(page: ft.Page):
             text_style=ft.TextStyle(color=get_colors()["text"], size=12),
             label_style=ft.TextStyle(color=get_colors()["text"], size=12),
             bgcolor=get_colors()["bg"]
+        )
+
+        months_options = [ft.dropdown.Option("", _t("Desde o início"))]
+        for m in ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]:
+            months_options.append(ft.dropdown.Option(m, _t(m)))
+            
+        current_year = datetime.datetime.now().year
+        years_options = [ft.dropdown.Option("", _t("Desde o início"))]
+        for y in range(current_year - 5, current_year + 10):
+            years_options.append(ft.dropdown.Option(str(y), str(y)))
+
+        def on_change_start_month(e):
+            val = e.control.value
+            db.set_preferencia("saldo_acumulado_inicio_mes", val)
+            page.snack_bar = ft.SnackBar(
+                content=ft.Text(_t("Mês de início do saldo acumulado atualizado!"), color=get_colors()["text"]),
+                bgcolor="#10b981"
+            )
+            page.snack_bar.open = True
+            page.update()
+
+        def on_change_start_year(e):
+            val = e.control.value
+            db.set_preferencia("saldo_acumulado_inicio_ano", val)
+            page.snack_bar = ft.SnackBar(
+                content=ft.Text(_t("Ano de início do saldo acumulado atualizado!"), color=get_colors()["text"]),
+                bgcolor="#10b981"
+            )
+            page.snack_bar.open = True
+            page.update()
+
+        dropdown_start_mes = ft.Dropdown(
+            label=_t("Mês Inicial"),
+            value=db.get_preferencia("saldo_acumulado_inicio_mes", ""),
+            on_select=on_change_start_month,
+            options=months_options,
+            width=200,
+            border_color="#475569",
+            focused_border_color="#3b82f6",
+            text_style=ft.TextStyle(color=get_colors()["text"], size=12),
+            label_style=ft.TextStyle(color=get_colors()["text"], size=12),
+            bgcolor=get_colors()["bg"]
+        )
+
+        dropdown_start_ano = ft.Dropdown(
+            label=_t("Ano Inicial"),
+            value=db.get_preferencia("saldo_acumulado_inicio_ano", ""),
+            on_select=on_change_start_year,
+            options=years_options,
+            width=200,
+            border_color="#475569",
+            focused_border_color="#3b82f6",
+            text_style=ft.TextStyle(color=get_colors()["text"], size=12),
+            label_style=ft.TextStyle(color=get_colors()["text"], size=12),
+            bgcolor=get_colors()["bg"]
+        )
+
+        def on_change_start_value(e):
+            val_str = (e.control.value or "").strip().replace(".", "").replace(",", ".")
+            try:
+                val = float(val_str) if val_str else 0.0
+                db.set_preferencia("saldo_acumulado_inicio_valor", val)
+                page.snack_bar = ft.SnackBar(
+                    content=ft.Text(_t("Saldo inicial atualizado com sucesso!"), color=get_colors()["text"]),
+                    bgcolor="#10b981"
+                )
+            except ValueError:
+                page.snack_bar = ft.SnackBar(
+                    content=ft.Text(_t("Por favor, digite um valor numérico válido!"), color=get_colors()["text"]),
+                    bgcolor="#ef4444"
+                )
+            page.snack_bar.open = True
+            page.update()
+
+        try:
+            start_val_pref = float(db.get_preferencia("saldo_acumulado_inicio_valor", "0.0"))
+        except Exception:
+            start_val_pref = 0.0
+
+        txt_start_value = ft.TextField(
+            label=_t("Saldo Inicial"),
+            value=f"{start_val_pref:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+            on_submit=on_change_start_value,
+            on_blur=on_change_start_value,
+            width=200,
+            border_color="#475569",
+            focused_border_color="#3b82f6",
+            label_style=ft.TextStyle(color=get_colors()["text"], size=12),
+            text_style=ft.TextStyle(color=get_colors()["text"], size=12),
+            bgcolor=get_colors()["bg"],
+            height=48,
+            content_padding=ft.Padding(10, 5, 10, 5)
         )
         
         def run_db_export(e):
@@ -8380,6 +9369,14 @@ def main(page: ft.Page):
                         ], spacing=20),
                         ft.Text(_t("Altere o tema visual e o idioma do aplicativo. Algumas alterações exigem o recarregamento da tela."), size=11, color="#64748b"),
                         ft.Divider(color="#334155"),
+                        ft.Text(_t("Cálculo do Saldo Acumulado"), size=12, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+                        ft.Row([
+                            dropdown_start_mes,
+                            dropdown_start_ano,
+                            txt_start_value
+                        ], spacing=20),
+                        ft.Text(_t("Defina a partir de qual mês/ano e com qual saldo inicial o cálculo do saldo acumulado deve começar a contar para evitar distorções por parcelas antigas."), size=11, color="#64748b"),
+                        ft.Divider(color="#334155"),
                         ft.Text(_t("Backup Manual do Banco de Dados"), size=12, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
                         ft.Text(_t("Exportar uma cópia de segurança do banco de dados para um local de sua escolha."), size=11, color="#64748b"),
                         ft.Row([btn_export], alignment=ft.MainAxisAlignment.END)
@@ -8524,7 +9521,7 @@ def main(page: ft.Page):
                 page.update()
                 
                 from update_manager import UpdateManager
-                updater = UpdateManager(current_version="1.0.0")
+                updater = UpdateManager(current_version="1.1.0")
                 tem_update, info = updater.check_for_updates()
                 
                 if tem_update and info:
@@ -8562,7 +9559,7 @@ def main(page: ft.Page):
                         
                     btn_apply_update.on_click = on_apply_click
                 else:
-                    lbl_status_update.value = "Seu aplicativo já está na versão mais recente (v1.0.0)."
+                    lbl_status_update.value = "Seu aplicativo já está na versão mais recente (v1.1.0)."
                     lbl_status_update.color = "#10b981"
                     
                 btn_check.disabled = False
@@ -8589,7 +9586,7 @@ def main(page: ft.Page):
                         ft.Divider(color="#334155"),
                         ft.Row([
                             ft.Text("Versão Atual:", size=12, color=get_colors()["subtext"]),
-                            ft.Text("v1.0.0 (Beta)", size=12, color="white", weight=ft.FontWeight.BOLD)
+                            ft.Text("v1.1.0 (Beta)", size=12, color="white", weight=ft.FontWeight.BOLD)
                         ]),
                         ft.Divider(color="#334155"),
                         lbl_status_update,
@@ -8603,6 +9600,160 @@ def main(page: ft.Page):
                 )
             )
             
+        elif active_config_tab == "backups_sessoes":
+            # Obter a lista de backups na pasta session_backups
+            import shutil
+            base_dir = os.path.dirname(os.path.abspath(original_prod_path))
+            backup_dir = os.path.join(base_dir, "session_backups")
+            os.makedirs(backup_dir, exist_ok=True)
+            
+            backups_disponiveis = []
+            if os.path.exists(backup_dir):
+                for f in os.listdir(backup_dir):
+                    if f.startswith("backup_sessao_") and f.endswith(".db"):
+                        fpath = os.path.join(backup_dir, f)
+                        try:
+                            mtime = os.path.getmtime(fpath)
+                            dt_mod = datetime.datetime.fromtimestamp(mtime)
+                            size_kb = os.path.getsize(fpath) / 1024.0
+                            backups_disponiveis.append({
+                                "filename": f,
+                                "filepath": fpath,
+                                "data_formatada": dt_mod.strftime("%d/%m/%Y %H:%M:%S"),
+                                "tamanho": f"{size_kb:.1f} KB",
+                                "mtime": mtime
+                            })
+                        except Exception:
+                            pass
+            
+            # Ordenar do mais recente para o mais antigo
+            backups_disponiveis.sort(key=lambda x: x["mtime"], reverse=True)
+            
+            def restaurar_backup_sessao(filepath):
+                def realizar_restauracao(e2):
+                    page.pop_dialog()
+                    try:
+                        # 1. Faz cópia de segurança antes de reverter
+                        shutil.copy2(original_prod_path, original_prod_path + ".bak")
+                        # 2. Copia o backup selecionado por cima do original
+                        shutil.copy2(filepath, original_prod_path)
+                        
+                        # Re-inicializa o banco
+                        db.switch_to_production()
+                        
+                        page.snack_bar = ft.SnackBar(
+                            content=ft.Text(_t("Alterações revertidas com sucesso! Recarregando..."), color="white"),
+                            bgcolor="#10b981"
+                        )
+                        page.snack_bar.open = True
+                        page.update()
+                        
+                        # Recarrega o app
+                        render_dashboard()
+                    except Exception as err:
+                        page.snack_bar = ft.SnackBar(
+                            content=ft.Text(f"Erro ao reverter alterações: {err}", color="white"),
+                            bgcolor="#ef4444"
+                        )
+                        page.snack_bar.open = True
+                        page.update()
+                
+                dialog = ft.AlertDialog(
+                    modal=True,
+                    title=ft.Text(_t("CONFIRMAR RESTAURAÇÃO ⚠️"), size=16, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+                    content=ft.Text(_t("Deseja realmente reverter as alterações para esta sessão? Todos os dados gravados após este backup serão substituídos."), size=14, color=get_colors()["subtext"]),
+                    bgcolor=get_colors()["surface"],
+                    actions=[
+                        ft.TextButton(_t("CANCELAR"), on_click=lambda e: page.pop_dialog(), style=ft.ButtonStyle(color="white")),
+                        ft.ElevatedButton(_t("REVERTER"), on_click=realizar_restauracao, bgcolor="#ef4444", color="white", style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)))
+                    ],
+                    actions_alignment=ft.MainAxisAlignment.END,
+                )
+                page.show_dialog(dialog)
+
+            def excluir_backup_sessao(filepath):
+                try:
+                    os.remove(filepath)
+                    page.snack_bar = ft.SnackBar(content=ft.Text(_t("Backup de sessão excluído com sucesso!")), bgcolor="#10b981")
+                    page.snack_bar.open = True
+                    render_configuracoes()
+                except Exception as err:
+                    page.snack_bar = ft.SnackBar(content=ft.Text(f"Erro ao excluir backup: {err}"), bgcolor="#ef4444")
+                    page.snack_bar.open = True
+                    page.update()
+
+            backups_rows = []
+            for b in backups_disponiveis:
+                backups_rows.append(
+                    ft.Container(
+                        bgcolor=get_colors()["bg"],
+                        border=ft.border.all(1, get_colors()["border"]),
+                        padding=ft.Padding(12, 10, 12, 10),
+                        border_radius=8,
+                        content=ft.Row(
+                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                            controls=[
+                                ft.Row([
+                                    ft.Icon(ft.icons.Icons.HISTORY_ROUNDED, color="#3b82f6", size=18),
+                                    ft.Column([
+                                        ft.Text(b["data_formatada"], size=12, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+                                        ft.Text(f"Tamanho: {b['tamanho']}", size=10, color=get_colors()["subtext"])
+                                    ], spacing=2)
+                                ], spacing=8),
+                                ft.Row([
+                                    ft.ElevatedButton(
+                                        _t("Reverter"),
+                                        bgcolor="#3b82f6",
+                                        color="white",
+                                        height=32,
+                                        style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=6)),
+                                        on_click=lambda e, fp=b["filepath"]: restaurar_backup_sessao(fp)
+                                    ),
+                                    ft.IconButton(
+                                        icon=ft.icons.Icons.DELETE_OUTLINE_ROUNDED,
+                                        icon_color="#ef4444",
+                                        icon_size=16,
+                                        tooltip=_t("Excluir Backup"),
+                                        on_click=lambda e, fp=b["filepath"]: excluir_backup_sessao(fp)
+                                    )
+                                ], spacing=5)
+                            ]
+                        )
+                    )
+                )
+            
+            if not backups_rows:
+                backups_rows.append(ft.Text(_t("Nenhum backup de sessão disponível no momento."), color="#64748b", size=12))
+
+            detail_panel = ft.Container(
+                bgcolor=get_colors()["surface"],
+                border=ft.border.all(1, get_colors()["border"]),
+                border_radius=12,
+                padding=20,
+                expand=True,
+                content=ft.Column(
+                    spacing=12,
+                    controls=[
+                        ft.Text(_t("Histórico de Backups de Sessão"), size=16, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+                        ft.Divider(color="#334155"),
+                        ft.Text(
+                            _t("Os backups são gerados automaticamente cada vez que o aplicativo é iniciado. Eles são mantidos por no máximo 7 dias para permitir a reversão de alterações indesejadas."),
+                            size=12,
+                            color=get_colors()["subtext"]
+                        ),
+                        ft.Divider(color="#334155"),
+                        ft.Container(
+                            expand=True,
+                            content=ft.Column(
+                                scroll=ft.ScrollMode.ADAPTIVE,
+                                spacing=8,
+                                controls=backups_rows
+                            )
+                        )
+                    ]
+                )
+            )
+
         else: # active_config_tab == "tutorial_faq"
             faq_items = [
                 (_t("📊 Dashboard (Painel Geral)"), 
@@ -8696,6 +9847,7 @@ def main(page: ft.Page):
             (_t("Banco de Dados"), ft.icons.Icons.STORAGE_ROUNDED, "banco_dados"),
             (_t("Perfis Familiares"), ft.icons.Icons.PEOPLE_ROUNDED, "perfis"),
             (_t("Categorias"), ft.icons.Icons.CATEGORY_ROUNDED, "categorias"),
+            (_t("Backup"), ft.icons.Icons.BACKUP_ROUNDED, "backups_sessoes"),
             (_t("Contrato Legal"), ft.icons.Icons.DESCRIPTION_ROUNDED, "contrato_legal"),
             (_t("Atualizações"), ft.icons.Icons.SYSTEM_UPDATE_ALT_ROUNDED, "atualizacoes"),
             (_t("Tutorial e FAQ"), ft.icons.Icons.HELP_OUTLINE_ROUNDED, "tutorial_faq")
@@ -8765,7 +9917,7 @@ def main(page: ft.Page):
             "charts": (ft.icons.Icons.PIE_CHART_ROUNDED, render_dashboard),
             "transacoes": (ft.icons.Icons.LIST_ALT_ROUNDED, render_transacoes),
             "cartoes": (ft.icons.Icons.CREDIT_CARD_ROUNDED, render_cartoes),
-            "financiamentos": (ft.icons.Icons.CREDIT_SCORE_ROUNDED, render_financiamentos),
+            "financiamentos": (ft.icons.Icons.ACCOUNT_BALANCE_ROUNDED, render_financiamentos),
             "assistente": (ft.icons.Icons.AUTO_AWESOME_ROUNDED, None),
             "configuracoes": (ft.icons.Icons.SETTINGS_ROUNDED, render_configuracoes)
         }

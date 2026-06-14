@@ -94,9 +94,16 @@ class Database:
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS Usuarios_Familia (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    nome TEXT NOT NULL
+                    nome TEXT NOT NULL,
+                    anotacoes TEXT DEFAULT ''
                 )
             ''')
+            
+            # Garante que a coluna 'anotacoes' existe se o banco já tiver sido criado
+            try:
+                cursor.execute("ALTER TABLE Usuarios_Familia ADD COLUMN anotacoes TEXT DEFAULT ''")
+            except sqlite3.OperationalError:
+                pass
             
             # Tabela de Transações (Atualizada para suportar Parcelamento e Recorrência)
             cursor.execute('''
@@ -720,6 +727,98 @@ class Database:
             
             return resumo
 
+    def get_saldo_acumulado_anterior(self, mes, ano, perfil_nome="Eu"):
+        months_map = {"Janeiro":"01","Fevereiro":"02","Março":"03","Abril":"04","Maio":"05","Junho":"06",
+                      "Julho":"07","Agosto":"08","Setembro":"09","Outubro":"10","Novembro":"11","Dezembro":"12"}
+        mes_num = months_map.get(mes, "01")
+        
+        start_mes = self.get_preferencia("saldo_acumulado_inicio_mes", "")
+        start_ano = self.get_preferencia("saldo_acumulado_inicio_ano", "")
+        
+        has_start_limit = False
+        initial_balance = 0.0
+        if start_mes and start_ano:
+            try:
+                start_mes_val = int(months_map.get(start_mes, "01"))
+                start_ano_val = int(start_ano)
+                target_mes_val = int(mes_num)
+                target_ano_val = int(ano)
+                
+                try:
+                    initial_balance = float(self.get_preferencia("saldo_acumulado_inicio_valor", "0.0"))
+                except Exception:
+                    initial_balance = 0.0
+
+                # Se o mês alvo for anterior ao limite, o saldo carry-over é 0
+                if (target_ano_val < start_ano_val) or (target_ano_val == start_ano_val and target_mes_val < start_mes_val):
+                    return 0.0
+                
+                # Se o mês alvo for exatamente o limite, o saldo carry-over é o saldo inicial
+                if target_ano_val == start_ano_val and target_mes_val == start_mes_val:
+                    return initial_balance
+                
+                has_start_limit = True
+                start_mes_str = f"{start_mes_val:02d}"
+                start_ano_str = str(start_ano_val)
+            except Exception:
+                has_start_limit = False
+
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            if has_start_limit:
+                query = """
+                    SELECT c.tipo, 
+                           SUM(CASE 
+                                WHEN u.nome = ? THEN d.valor_cota 
+                                WHEN d.id IS NULL AND ? = 'Eu' THEN t.valor_total
+                                ELSE 0 
+                               END) as cota_perfil
+                    FROM Transacoes t 
+                    JOIN Categorias c ON t.categoria_id = c.id
+                    LEFT JOIN Divisoes_Transacao d ON t.id = d.transacao_id
+                    LEFT JOIN Usuarios_Familia u ON d.usuario_id = u.id
+                    WHERE (
+                        (substr(t.data, 7, 4) > ?)
+                        OR (substr(t.data, 7, 4) = ? AND substr(t.data, 4, 2) >= ?)
+                    ) AND (
+                        (substr(t.data, 7, 4) < ?)
+                        OR (substr(t.data, 7, 4) = ? AND substr(t.data, 4, 2) < ?)
+                    )
+                    GROUP BY c.tipo
+                """
+                cursor.execute(query, [perfil_nome, perfil_nome, start_ano_str, start_ano_str, start_mes_str, str(ano), str(ano), mes_num])
+            else:
+                query = """
+                    SELECT c.tipo, 
+                           SUM(CASE 
+                                WHEN u.nome = ? THEN d.valor_cota 
+                                WHEN d.id IS NULL AND ? = 'Eu' THEN t.valor_total
+                                ELSE 0 
+                               END) as cota_perfil
+                    FROM Transacoes t 
+                    JOIN Categorias c ON t.categoria_id = c.id
+                    LEFT JOIN Divisoes_Transacao d ON t.id = d.transacao_id
+                    LEFT JOIN Usuarios_Familia u ON d.usuario_id = u.id
+                    WHERE (substr(t.data, 7, 4) < ?) 
+                       OR (substr(t.data, 7, 4) = ? AND substr(t.data, 4, 2) < ?)
+                    GROUP BY c.tipo
+                """
+                cursor.execute(query, [perfil_nome, perfil_nome, str(ano), str(ano), mes_num])
+            
+            resumo = {"Receita Fixa": 0, "Receita Variável": 0, "Despesa Fixa": 0, "Despesa Variável": 0, "Investimento": 0}
+            for tipo, cota_p in cursor.fetchall():
+                if tipo in resumo:
+                    resumo[tipo] = cota_p if cota_p is not None else 0
+                    
+            receitas = resumo.get("Receita Fixa", 0) + resumo.get("Receita Variável", 0)
+            despesas = resumo.get("Despesa Fixa", 0) + resumo.get("Despesa Variável", 0)
+            investido = resumo.get("Investimento", 0)
+            
+            result = receitas - despesas - investido
+            if has_start_limit:
+                result += initial_balance
+            return result
+
     def get_range_anos(self):
         current_year = datetime.datetime.now().year
         anos = {str(current_year)}
@@ -936,6 +1035,25 @@ class Database:
         finally:
             conn.close()
 
+    def get_gasto_cartao_total(self, bandeira, dono, mes_num, ano):
+        conn = self.get_connection()
+        try:
+            cursor = conn.cursor()
+            target_period = f"{str(ano)}-{str(mes_num).zfill(2)}"
+            cursor.execute("""
+                SELECT SUM(valor_total) FROM Transacoes 
+                WHERE (bandeira_cartao = ? AND dono_cartao = ?) 
+                  AND tipo_transacao LIKE 'Despesa%'
+                  AND (substr(data, 7, 4) || '-' || substr(data, 4, 2)) >= ?
+            """, (bandeira, dono, target_period))
+            res = cursor.fetchone()
+            return res[0] if res[0] is not None else 0.0
+        except Exception:
+            logger.error("Erro ao calcular gasto total do cartão", exc_info=True)
+            return 0.0
+        finally:
+            conn.close()
+
     # ── INVESTIMENTOS ────────────────────────────────────────────
 
     def get_total_investido_cumulativo(self, perfil_nome="Eu"):
@@ -1052,6 +1170,43 @@ class Database:
             conn.close()
 
     # ── MÉTODOS ADICIONAIS DO PERFIL E METAS ──────────────────────────────────
+    def get_anotacoes_usuario(self, nome):
+        if nome == "Eu":
+            return ""
+        conn = self.get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT anotacoes FROM Usuarios_Familia WHERE nome = ?", (nome,))
+            res = cursor.fetchone()
+            if res:
+                return res[0] or ""
+            return ""
+        except Exception as e:
+            logger.error("Erro ao obter anotações do usuário", exc_info=True)
+            return ""
+        finally:
+            conn.close()
+
+    def update_anotacoes_usuario(self, nome, anotacoes):
+        if nome == "Eu":
+            return False, "O perfil principal não possui anotações persistidas por esta rota."
+        conn = self.get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM Usuarios_Familia WHERE nome = ?", (nome,))
+            res = cursor.fetchone()
+            if not res:
+                cursor.execute("INSERT INTO Usuarios_Familia (nome, anotacoes) VALUES (?, ?)", (nome, anotacoes))
+            else:
+                cursor.execute("UPDATE Usuarios_Familia SET anotacoes = ? WHERE nome = ?", (anotacoes, nome))
+            conn.commit()
+            return True, "Anotações salvas com sucesso."
+        except Exception as e:
+            logger.error("Erro ao atualizar anotações do usuário", exc_info=True)
+            return False, str(e)
+        finally:
+            conn.close()
+
     def adicionar_usuario(self, nome):
         if not nome or not nome.strip():
             return False, "Nome do perfil não pode ser vazio."
@@ -1699,6 +1854,58 @@ class Database:
         except Exception as e:
             logger.error("Erro ao obter abatimentos pagos", exc_info=True)
             return []
+        finally:
+            conn.close()
+
+    def excluir_abatimento(self, transacao_id):
+        conn = self.get_connection()
+        try:
+            cursor = conn.cursor()
+            # 1. Buscar a parcela associada para identificar o financiamento e se é contratual
+            cursor.execute("""
+                SELECT pf.financiamento_id, pf.numero_parcela, f.sistema_amortizacao, f.total_parcelas, f.data_inicio
+                FROM Parcelas_Financiamento pf
+                JOIN Financiamentos f ON pf.financiamento_id = f.id
+                WHERE pf.transacao_id = ?
+            """, (transacao_id,))
+            row = cursor.fetchone()
+            if not row:
+                return False, "Abatimento não encontrado."
+            
+            financiamento_id, num_parcela, sistema_amort, total_parc, data_inicio = row
+            
+            # Verificar se a transação é uma amortização manual avulsa
+            cursor.execute("SELECT observacao FROM Transacoes WHERE id = ?", (transacao_id,))
+            t_row = cursor.fetchone()
+            observacao = t_row[0] if t_row else ""
+            
+            is_manual = (observacao == "Amortização Manual") or (sistema_amort == "Flexível")
+            
+            if is_manual:
+                # Exclusão física: o cascade delete removerá a Parcela_Financiamento e as Divisões automaticamente
+                cursor.execute("DELETE FROM Transacoes WHERE id = ?", (transacao_id,))
+            else:
+                # Exclusão lógica/reversão: redefine a data da parcela de volta para o vencimento original no futuro
+                try:
+                    import datetime
+                    dt_base = datetime.datetime.strptime(data_inicio, "%d/%m/%Y")
+                    # adiciona num_parcela meses
+                    month = dt_base.month + num_parcela
+                    year = dt_base.year + (month - 1) // 12
+                    month = (month - 1) % 12 + 1
+                    day = min(dt_base.day, 28)
+                    dt_futura = datetime.datetime(year, month, day)
+                    data_futura_str = dt_futura.strftime("%d/%m/%Y")
+                except Exception:
+                    data_futura_str = "01/01/2035" # Fallback para data futura
+                
+                cursor.execute("UPDATE Transacoes SET data = ? WHERE id = ?", (data_futura_str, transacao_id))
+            
+            conn.commit()
+            return True, "Abatimento excluído/revertido com sucesso."
+        except Exception as e:
+            logger.error("Erro ao excluir abatimento", exc_info=True)
+            return False, str(e)
         finally:
             conn.close()
 
