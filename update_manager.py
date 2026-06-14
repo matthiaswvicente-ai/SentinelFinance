@@ -85,21 +85,51 @@ class UpdateManager:
                     error_callback("URL de download inválida.")
                     return
 
-                progress_callback(0.1, "Iniciando download da nova versão...")
-                
-                # Download do zip em memória
+                progress_callback(0.05, "Iniciando download da nova versão...")
+
+                # Download do zip em memória com progresso em tempo real
                 req = urllib.request.Request(url, headers={'User-Agent': 'SentinelFinance-Updater'})
                 with urllib.request.urlopen(req, timeout=15) as response:
-                    zip_data = response.read()
+                    content_length = response.info().get('Content-Length')
+                    total_size = int(content_length) if content_length else None
+                    
+                    downloaded = 0
+                    chunks = []
+                    chunk_size = 32768 # 32KB
+                    
+                    while True:
+                        chunk = response.read(chunk_size)
+                        if not chunk:
+                            break
+                        chunks.append(chunk)
+                        downloaded += len(chunk)
+                        
+                        if total_size:
+                            percent = downloaded / total_size
+                            # Mapeia o progresso do download para o intervalo de 0.05 a 0.70
+                            prog_val = 0.05 + percent * 0.65
+                            progress_callback(
+                                prog_val, 
+                                f"Baixando: {downloaded / 1024 / 1024:.2f} MB / {total_size / 1024 / 1024:.2f} MB ({int(percent * 100)}%)"
+                            )
+                        else:
+                            # Progresso indeterminado mas crescente
+                            mb_downloaded = downloaded / 1024 / 1024
+                            progress_callback(
+                                0.4, 
+                                f"Baixando: {mb_downloaded:.2f} MB (Tamanho total desconhecido)..."
+                            )
+                            
+                    zip_data = b"".join(chunks)
                 
-                progress_callback(0.4, "Download concluído. Extraindo arquivos...")
+                progress_callback(0.75, "Download concluído. Extraindo arquivos...")
                 
                 # Pasta temporária para descompactação
                 temp_dir = tempfile.mkdtemp()
                 with zipfile.ZipFile(io.BytesIO(zip_data)) as z:
                     z.extractall(temp_dir)
                 
-                progress_callback(0.7, "Instalando arquivos novos...")
+                progress_callback(0.80, "Instalando arquivos novos...")
                 
                 # Identifica a pasta raiz dentro do zipball (geralmente nomeada como usuario-repo-sha/)
                 extracted_root = None
@@ -114,26 +144,37 @@ class UpdateManager:
 
                 # Copia os arquivos sobrescrevendo o diretório atual do app, exceto bancos de dados e backups
                 current_dir = os.path.dirname(os.path.abspath(__file__))
+                
+                # Contabilizar arquivos a copiar para cálculo do progresso
+                files_to_copy = []
                 for root, dirs, files in os.walk(extracted_root):
-                    # Calcula o caminho relativo correspondente no app
                     rel_path = os.path.relpath(root, extracted_root)
-                    dest_dir = current_dir if rel_path == "." else os.path.join(current_dir, rel_path)
-                    
-                    if not os.path.exists(dest_dir):
-                        os.makedirs(dest_dir, exist_ok=True)
-                        
+                    if "backups" in rel_path or "logs" in rel_path or ".git" in rel_path:
+                        continue
                     for file in files:
-                        # Ignora estritamente bancos de dados sqlite e a pasta de backups
-                        if file.endswith(".db") or "backups" in rel_path or "logs" in rel_path:
-                            continue
+                        if not file.endswith(".db"):
+                            files_to_copy.append((root, rel_path, file))
+                            
+                total_files = len(files_to_copy)
+                for i, (root, rel_path, file) in enumerate(files_to_copy):
+                    dest_dir = current_dir if rel_path == "." else os.path.join(current_dir, rel_path)
+                    os.makedirs(dest_dir, exist_ok=True)
+                    
+                    src_file = os.path.join(root, file)
+                    dest_file = os.path.join(dest_dir, file)
+                    
+                    try:
+                        shutil.copy2(src_file, dest_file)
+                    except Exception as copy_err:
+                        logger.error(f"Erro ao copiar arquivo {file}: {copy_err}")
                         
-                        src_file = os.path.join(root, file)
-                        dest_file = os.path.join(dest_dir, file)
-                        
-                        try:
-                            shutil.copy2(src_file, dest_file)
-                        except Exception as copy_err:
-                            logger.error(f"Erro ao copiar arquivo {file}: {copy_err}")
+                    # Mapeia progresso de instalação entre 0.80 e 0.98
+                    if total_files > 0:
+                        prog_val = 0.80 + ((i + 1) / total_files) * 0.18
+                        progress_callback(
+                            prog_val, 
+                            f"Instalando: {i + 1}/{total_files} ({file})"
+                        )
                 
                 # Limpa a pasta temporária
                 shutil.rmtree(temp_dir, ignore_errors=True)
