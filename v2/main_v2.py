@@ -161,7 +161,12 @@ def main(page: ft.Page):
     
     TRANSLATIONS = {
         "en": {
+            "Recorrências": "Recurring Operations",
+            "Gerenciamento de Recorrências": "Recurrence Management",
+            "NOVA RECORRÊNCIA": "NEW RECURRING OPERATION",
+            "Lançamento em Lote": "Batch Launch",
             "Dashboard": "Dashboard",
+            "Resumo Anual": "Annual Summary",
             "Investimentos": "Investments",
             "Gráficos": "Charts",
             "Transações": "Transactions",
@@ -496,6 +501,7 @@ def main(page: ft.Page):
             "Mês": "Month",
             "Usado": "Used",
             "Resumo Anual": "Annual Summary",
+            "Total Selecionado": "Total Selected",
             "Soma dos Selecionados (Absoluto):": "Sum of Selected (Absolute):",
             "Selecione os cards para consolidar e somar seus totais anuais:": "Select the cards to consolidate and sum their annual totals:",
             "Saldo Inicial": "Initial Balance",
@@ -503,7 +509,12 @@ def main(page: ft.Page):
             "Por favor, digite um valor numérico válido!": "Please enter a valid numeric value!"
         },
         "de": {
+            "Recorrências": "Wiederkehrende Vorgänge",
+            "Gerenciamento de Recorrências": "Wiederkehrende Verwaltung",
+            "NOVA RECORRÊNCIA": "NEUER WIEDERKEHRENDER VORGANG",
+            "Lançamento em Lote": "Stapelbuchung",
             "Dashboard": "Dashboard",
+            "Resumo Anual": "Jahresübersicht",
             "Investimentos": "Investitionen",
             "Gráficos": "Diagramme",
             "Transações": "Transaktionen",
@@ -839,6 +850,7 @@ def main(page: ft.Page):
             "Mês": "Monat",
             "Usado": "Gesamt",
             "Resumo Anual": "Jahresübersicht",
+            "Total Selecionado": "Total Ausgewählt",
             "Soma dos Selecionados (Absoluto):": "Summe der Ausgewählten (Absolut):",
             "Selecione os cards para consolidar e somar seus totais anuais:": "Wählen Sie die Karten aus, um ihre Jahressummen zu konsolidieren und zu addieren:",
             "Saldo Inicial": "Anfangsbestand",
@@ -846,7 +858,12 @@ def main(page: ft.Page):
             "Por favor, digite um valor numérico válido!": "Bitte geben Sie einen gültigen numerischen Wert ein!"
         },
         "es": {
+            "Recorrências": "Operaciones Recurrentes",
+            "Gerenciamento de Recorrências": "Gestión de Recurrencias",
+            "NOVA RECORRÊNCIA": "NUEVA OPERACIÓN RECURRENTE",
+            "Lançamento em Lote": "Lanzamiento por Lote",
             "Dashboard": "Tablero",
+            "Resumo Anual": "Resumen Anual",
             "Investimentos": "Inversiones",
             "Gráficos": "Gráficos",
             "Transações": "Transacciones",
@@ -1182,11 +1199,43 @@ def main(page: ft.Page):
             "Mês": "Mes",
             "Usado": "Usado",
             "Resumo Anual": "Resumen Anual",
+            "Total Selecionado": "Total Seleccionado",
             "Soma dos Selecionados (Absoluto):": "Suma de Seleccionados (Absoluto):",
             "Selecione os cards para consolidar e somar seus totais anuais:": "Seleccione las tarjetas para consolidar y sumar sus totales anuales:",
             "Saldo Inicial": "Saldo Inicial",
             "Saldo inicial atualizado com sucesso!": "¡Saldo inicial actualizado con éxito!",
-            "Por favor, digite um valor numérico válido!": "¡Por favor, introduzca un valor numérico válido!"
+            "Por favor, digite um valor numérico válido!": "¡Por favor, introduzca un valor numérico válido!",
+            "Parcelamentos": "Cuotas",
+            "Formas de Pagamento": "Formas de Pago",
+            "Sem dados": "Sin datos",
+            "Compras Parceladas em": "Compras en Cuotas en",
+            "compras": "compras",
+            "Nenhuma compra parcelada cadastrada para esta forma.": "Ninguna compra en cuotas registrada para esta forma.",
+            "Nº": "Nº",
+            "Vencimento": "Vencimiento",
+            "Valor": "Valor",
+            "Ações": "Acciones",
+            "Início em": "Inicio en",
+            "Editar esta parcela": "Editar esta cuota",
+            "Empurrar para o próximo mês": "Empujar al mes siguiente",
+            "Trazer para o mês anterior": "Traer al mes anterior",
+            "Confirmar Ação": "Confirmar Acción",
+            "Tem certeza que deseja": "¿Está seguro de que desea",
+            "empurrar para o próximo mês": "empujar al mes siguiente",
+            "trazer para o mês anterior": "traer al mes anterior",
+            "esta parcela de": "esta cuota de",
+            "Parcela empurrada para": "Cuota empujada al",
+            "Parcela puxada para": "Cuota traída al",
+            "Erro ao empurrar:": "Error al empujar:",
+            "Erro ao puxar:": "Error al traer:",
+            "Editar Parcela Individual": "Editar Cuota Individual",
+            "Novo Valor (R$)": "Nuevo Valor (R$)",
+            "Nova Data (DD/MM/AAAA)": "Nueva Fecha (DD/MM/AAAA)",
+            "Data inválida! Use DD/MM/AAAA": "¡Fecha inválida! Use DD/MM/AAAA",
+            "Erro ao buscar transação!": "¡Error al buscar transacción!",
+            "Parcela atualizada com sucesso!": "¡Cuota actualizada con éxito!",
+            "Erro ao atualizar:": "Error al actualizar:",
+            "Mover Parcela": "Mover Cuota"
         }
     }
     def _t(text):
@@ -1292,6 +1341,12 @@ def main(page: ft.Page):
         elif e.control.icon == ft.icons.Icons.ACCOUNT_BALANCE_ROUNDED:
             state["active_tab"] = "financiamentos"
             render_financiamentos()
+        elif e.control.icon == ft.icons.Icons.AUTORENEW_ROUNDED:
+            state["active_tab"] = "recorrencias"
+            render_recorrencias()
+        elif e.control.icon == ft.icons.Icons.ANALYTICS_ROUNDED:
+            state["active_tab"] = "resumo_anual"
+            render_resumo_anual()
         else:
             titulo = e.control.tooltip
             body.content = ft.Column(
@@ -1320,12 +1375,17 @@ def main(page: ft.Page):
             render_financiamentos()
         elif active == "configuracoes":
             render_configuracoes()
+        elif active == "recorrencias":
+            render_recorrencias()
+        elif active == "resumo_anual":
+            render_resumo_anual()
         else:
             render_dashboard()
 
     def build_sidebar_controls():
-        order_str = db.get_preferencia("sidebar_order", "dashboard,investimentos,charts,transacoes,cartoes,financiamentos,ia")
+        order_str = db.get_preferencia("sidebar_order", "dashboard,investimentos,charts,cartoes,financiamentos,recorrencias,ia")
         order = order_str.split(",")
+        order = [item for item in order if item not in ("resumo_anual", "transacoes", "recorrencias")]
         
         items_map = {
             "dashboard": ft.IconButton(
@@ -1367,6 +1427,20 @@ def main(page: ft.Page):
                 icon=ft.icons.Icons.ACCOUNT_BALANCE_ROUNDED,
                 tooltip=_t("Financiamentos"),
                 icon_color="white" if state["active_tab"] == "financiamentos" else "#64748b",
+                icon_size=24,
+                on_click=on_nav_click
+            ),
+            "recorrencias": ft.IconButton(
+                icon=ft.icons.Icons.AUTORENEW_ROUNDED,
+                tooltip=_t("Recorrências"),
+                icon_color="white" if state["active_tab"] == "recorrencias" else "#64748b",
+                icon_size=24,
+                on_click=on_nav_click
+            ),
+            "resumo_anual": ft.IconButton(
+                icon=ft.icons.Icons.ANALYTICS_ROUNDED,
+                tooltip=_t("Resumo Anual"),
+                icon_color="white" if state["active_tab"] == "resumo_anual" else "#64748b",
                 icon_size=24,
                 on_click=on_nav_click
             ),
@@ -1422,14 +1496,14 @@ def main(page: ft.Page):
         return controls
 
     def abrir_reordenar_menu(e):
-        order_str = db.get_preferencia("sidebar_order", "dashboard,investimentos,charts,transacoes,cartoes,financiamentos,ia")
+        order_str = db.get_preferencia("sidebar_order", "dashboard,investimentos,charts,cartoes,financiamentos,recorrencias,ia")
         current_order = order_str.split(",")
+        current_order = [x for x in current_order if x not in ("resumo_anual", "transacoes", "recorrencias")]
         
         items_info = {
             "dashboard": {"label": "Dashboard", "icon": ft.icons.Icons.DASHBOARD_ROUNDED},
             "investimentos": {"label": "Investimentos", "icon": ft.icons.Icons.SAVINGS_ROUNDED},
             "charts": {"label": "Gráficos", "icon": ft.icons.Icons.PIE_CHART_ROUNDED},
-            "transacoes": {"label": "Transações", "icon": ft.icons.Icons.LIST_ALT_ROUNDED},
             "cartoes": {"label": "Cartões", "icon": ft.icons.Icons.CREDIT_CARD_ROUNDED},
             "financiamentos": {"label": "Financiamentos", "icon": ft.icons.Icons.ACCOUNT_BALANCE_ROUNDED},
             "ia": {"label": "Assistente IA", "icon": ft.icons.Icons.AUTO_AWESOME_ROUNDED},
@@ -1690,6 +1764,72 @@ def main(page: ft.Page):
             )
         )
 
+    def criar_tab_header(aba_ativa, seletor_perfil_widget, subcontroles=None):
+        """
+        Constrói o header persistente de 2 linhas para as telas principais:
+          Linha 1: Logo | Abas (Dashboard/Histórico/Resumo Anual/Recorrências) | Seletor de perfil
+          Linha 2: Controles contextuais específicos da aba ativa
+        """
+        abas = [
+            ("dashboard",    ft.icons.Icons.DASHBOARD_ROUNDED,  _t("Dashboard")),
+            ("transacoes",   ft.icons.Icons.LIST_ALT_ROUNDED,    _t("Histórico")),
+            ("resumo_anual", ft.icons.Icons.ANALYTICS_ROUNDED,   _t("Resumo Anual")),
+            ("recorrencias", ft.icons.Icons.AUTORENEW_ROUNDED,   _t("Recorrências")),
+            ("parcelamentos", ft.icons.Icons.CREDIT_CARD_ROUNDED, _t("Parcelamentos")),
+        ]
+
+        tab_widgets = []
+        for tab_id, tab_icon, tab_label in abas:
+            is_active = (aba_ativa == tab_id)
+            tab_widgets.append(
+                ft.Container(
+                    content=ft.Row(
+                        spacing=6,
+                        controls=[
+                            ft.Icon(tab_icon, size=15,
+                                    color="white" if is_active else "#64748b"),
+                            ft.Text(tab_label, size=13, weight=ft.FontWeight.BOLD,
+                                    color="white" if is_active else "#64748b"),
+                        ]
+                    ),
+                    padding=ft.Padding(14, 8, 14, 8),
+                    border_radius=8,
+                    bgcolor="#2563eb" if is_active else "transparent",
+                    ink=True,
+                    on_click=(lambda e, t=tab_id: navegar_para_aba(t)) if not is_active else None,
+                    tooltip=None if is_active else tab_label,
+                )
+            )
+
+        linha1 = ft.Row(
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            controls=[
+                ft.Text(_t("Sentinel Finance"), size=22, weight=ft.FontWeight.BOLD,
+                        color=get_colors()["text"]),
+                ft.Row(spacing=4, controls=tab_widgets),
+                seletor_perfil_widget,
+            ]
+        )
+
+        linha2_controls = subcontroles or []
+        linha2 = ft.Row(
+            alignment=ft.MainAxisAlignment.END,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=10,
+            controls=linha2_controls,
+        )
+
+        return ft.Column(
+            spacing=6,
+            controls=[
+                linha1,
+                ft.Divider(color=get_colors()["border"], height=1),
+                linha2,
+            ]
+        )
+
+
     def criar_card_resumo(titulo, valor, cor_valor=None, cor_fundo=None, small=False, subtexto=None):
         colors = get_colors()
         if cor_fundo is None:
@@ -1733,36 +1873,163 @@ def main(page: ft.Page):
         if "CONSUMO" in nome or "ROUPA" in nome: return ft.icons.Icons.SHOPPING_BAG_ROUNDED
         return ft.icons.Icons.RECEIPT_ROUNDED
 
-    def criar_lista_transacoes(titulo, transacoes, eh_despesa=True):
-        itens = []
-        for t in transacoes: # Exibe todos os lançamentos
-            data_str = t[1][:5] # Apenas dd/mm
+    def abrir_detalhes_categoria_dialog(cat_nome, trans_list, eh_despesa):
+        def fechar_dialog(e):
+            page.pop_dialog()
+
+        detalhes_controls = []
+        for t in trans_list:
+            data_str = t[1][:5] if t[1] else "" # Apenas dd/mm
             desc = t[2]
             valor = t[3]
-            cat = t[4]
             tipo_t = t[5]
-            parc_atual = t[6]   # parcela_atual
-            parc_total = t[7]   # total_parcelas
-            
-            if tipo_t == "Investimento":
-                icone_cor = "#3b82f6"
-            else:
-                icone_cor = "#ef4444" if eh_despesa else "#10b981"
-            icone_tipo = get_icone_categoria(cat)
+            parc_atual = t[6]
+            parc_total = t[7]
+            metodo_pagto = t[8]
+            dono_cartao = t[9]
+            bandeira_cartao = t[10]
 
-            # Monta subtítulo com parcela se aplicável
-            subtitle = f"{data_str} • {cat.strip().title()}"
+            if tipo_t == "Investimento":
+                item_cor = "#3b82f6"
+            else:
+                item_cor = "#ef4444" if eh_despesa else "#10b981"
+
+            meta_parts = [data_str]
+            if metodo_pagto:
+                pagto_str = metodo_pagto
+                if "cartão" in metodo_pagto.lower() or "cartao" in metodo_pagto.lower():
+                    cartao_parts = []
+                    if bandeira_cartao:
+                        cartao_parts.append(bandeira_cartao)
+                    if dono_cartao:
+                        cartao_parts.append(dono_cartao)
+                    if cartao_parts:
+                        pagto_str += f" ({' - '.join(cartao_parts)})"
+                meta_parts.append(pagto_str)
+
             if parc_total and parc_total > 1:
-                subtitle += f" • Parcela {parc_atual} de {parc_total}"
-            
+                meta_parts.append(f"Parcela {parc_atual} de {parc_total}")
+
             try:
                 t_divisoes = t[11]
             except IndexError:
                 t_divisoes = 0
 
             if t_divisoes and t_divisoes > 1:
-                subtitle += " • Dividido 👥"
-            
+                meta_parts.append("Dividido 👥")
+
+            sub_text = " • ".join(meta_parts)
+            valor_formatado = f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+            detalhes_controls.append(
+                ft.Container(
+                    padding=10,
+                    border_radius=8,
+                    bgcolor=get_colors()["bg"],
+                    border=ft.border.all(1, get_colors()["border"]),
+                    content=ft.Row(
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                        controls=[
+                            ft.Column(
+                                expand=True,
+                                spacing=2,
+                                controls=[
+                                    ft.Text(desc, size=14, weight=ft.FontWeight.BOLD, color=get_colors()["text"], max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
+                                    ft.Text(sub_text, size=12, color="#64748b", max_lines=1, overflow=ft.TextOverflow.ELLIPSIS)
+                                ]
+                            ),
+                            ft.Text(valor_formatado, size=14, weight=ft.FontWeight.BOLD, color=item_cor)
+                        ]
+                    )
+                )
+            )
+
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text(f"{_t('Detalhes')} - {cat_nome}", size=16, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+            content=ft.Container(
+                width=450,
+                height=300,
+                content=ft.ListView(
+                    spacing=10,
+                    controls=detalhes_controls,
+                    expand=True
+                )
+            ),
+            bgcolor=get_colors()["surface"],
+            actions=[
+                ft.TextButton(_t("FECHAR"), on_click=fechar_dialog, style=ft.ButtonStyle(color="white"))
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+
+        page.show_dialog(dialog)
+
+    def criar_lista_transacoes(titulo, transacoes, eh_despesa=True):
+        # Chaves de estado específicas por painel
+        sort_state_key = "sort_despesas" if eh_despesa else "sort_receitas"
+        sort_key = state.get(sort_state_key, "valor")  # "valor" ou "alfa"
+        group_state_key = "group_despesas" if eh_despesa else "group_receitas"
+        group_mode = state.get(group_state_key, "categoria")  # "categoria" ou "subcategoria"
+
+        # 1. Agrupar lançamentos por categoria ou subcategoria
+        categorias = db.get_categorias()
+        cat_id_to_name = {c[0]: c[1].strip().title() for c in categorias}
+        sub_to_parent = {}
+        for c in categorias:
+            c_id, c_name, _, parent_id, _ = c
+            c_name_title = c_name.strip().title()
+            if parent_id and parent_id in cat_id_to_name:
+                sub_to_parent[c_name_title] = cat_id_to_name[parent_id]
+            else:
+                sub_to_parent[c_name_title] = c_name_title
+
+        groups = {}
+        for t in transacoes:
+            subcat = t[4].strip().title() if t[4] else "Sem Categoria"
+            if group_mode == "categoria":
+                group_key = sub_to_parent.get(subcat, subcat)
+            else:
+                group_key = subcat
+                
+            if group_key not in groups:
+                groups[group_key] = []
+            groups[group_key].append(t)
+
+        # 2. Calcular totais por grupo
+        grouped_data = []
+        for cat, trans_list in groups.items():
+            total_val = sum(t[3] for t in trans_list)
+            grouped_data.append((cat, total_val, trans_list))
+
+        # 3. Ordenar conforme o modo escolhido pelo usuário
+        if sort_key == "alfa":
+            grouped_data.sort(key=lambda x: x[0].lower())
+        else:  # "valor" — maior primeiro
+            grouped_data.sort(key=lambda x: x[1], reverse=True)
+
+        itens = []
+        for cat, total_val, trans_list in grouped_data:
+            parent_cat = sub_to_parent.get(cat, cat)
+            icone_tipo = get_icone_categoria(parent_cat)
+
+            # Se alguma transação no grupo for Investimento, usa cor de investimento
+            tem_investimento = any(t[5] == "Investimento" for t in trans_list)
+            if tem_investimento:
+                icone_cor = "#3b82f6"
+            else:
+                icone_cor = "#ef4444" if eh_despesa else "#10b981"
+
+            num_lancamentos = len(trans_list)
+            txt_lancamentos = f"{num_lancamentos} lançamento" if num_lancamentos == 1 else f"{num_lancamentos} lançamentos"
+
+            # Formata o valor total somado
+            valor_formatado = f"R$ {total_val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+            def make_on_click(cat_name, transactions):
+                return lambda e: abrir_detalhes_categoria_dialog(cat_name, transactions, eh_despesa)
+            on_click_handler = make_on_click(cat, trans_list)
+
             itens.append(
                 ft.Container(
                     padding=10,
@@ -1770,10 +2037,7 @@ def main(page: ft.Page):
                     bgcolor=get_colors()["bg"],
                     border=ft.border.all(1, get_colors()["border"]),
                     ink=True,
-                    on_click=lambda e, tid=t[0], tipo_t=t[5]: abrir_overlay(
-                        "despesa" if "despesa" in tipo_t.lower() else ("investimento" if tipo_t.lower() == "investimento" else "receita"),
-                        editing_trans_id=tid
-                    ),
+                    on_click=on_click_handler,
                     content=ft.Row(
                         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                         controls=[
@@ -1791,21 +2055,68 @@ def main(page: ft.Page):
                                         expand=True,
                                         spacing=2,
                                         controls=[
-                                            ft.Text(desc, size=14, weight=ft.FontWeight.BOLD, color=get_colors()["text"], max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
-                                            ft.Text(subtitle, size=12, color="#64748b", max_lines=1, overflow=ft.TextOverflow.ELLIPSIS)
+                                            ft.Text(cat, size=14, weight=ft.FontWeight.BOLD, color=get_colors()["text"], max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
+                                            ft.Text(txt_lancamentos, size=12, color="#64748b", max_lines=1, overflow=ft.TextOverflow.ELLIPSIS)
                                         ]
                                     )
                                 ]
                             ),
-                            ft.Text(f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), size=14, weight=ft.FontWeight.BOLD, color=icone_cor)
+                            ft.Text(valor_formatado, size=14, weight=ft.FontWeight.BOLD, color=icone_cor)
                         ]
                     )
                 )
             )
-            
+
         if not itens:
             itens.append(ft.Text("Nenhum lançamento recente.", color="#64748b"))
-            
+
+        # --- Botões de controle do painel ---
+        def make_sort_toggle(sk):
+            def _on_click(e):
+                state[sort_state_key] = sk
+                render_dashboard()
+            return _on_click
+
+        def make_group_toggle(gk):
+            def _on_click(e):
+                state[group_state_key] = gk
+                render_dashboard()
+            return _on_click
+
+        btn_sort_alfa = ft.IconButton(
+            icon=ft.icons.Icons.SORT_BY_ALPHA_ROUNDED,
+            icon_size=18,
+            icon_color="#3b82f6" if sort_key == "alfa" else "#64748b",
+            tooltip=_t("Ordem Alfabética"),
+            on_click=make_sort_toggle("alfa"),
+            style=ft.ButtonStyle(padding=ft.Padding(4,4,4,4))
+        )
+        btn_sort_valor = ft.IconButton(
+            icon=ft.icons.Icons.ARROW_DOWNWARD_ROUNDED,
+            icon_size=18,
+            icon_color="#3b82f6" if sort_key == "valor" else "#64748b",
+            tooltip=_t("Maior Valor"),
+            on_click=make_sort_toggle("valor"),
+            style=ft.ButtonStyle(padding=ft.Padding(4,4,4,4))
+        )
+        btn_group = ft.IconButton(
+            icon=ft.icons.Icons.LAYERS_ROUNDED if group_mode == "categoria" else ft.icons.Icons.LAYERS_CLEAR_ROUNDED,
+            icon_size=18,
+            icon_color="#3b82f6" if group_mode == "subcategoria" else "#64748b",
+            tooltip=_t("Ver Subcategorias") if group_mode == "categoria" else _t("Ver Categorias"),
+            on_click=make_group_toggle("subcategoria" if group_mode == "categoria" else "categoria"),
+            style=ft.ButtonStyle(padding=ft.Padding(4,4,4,4))
+        )
+
+        header_row_panel = ft.Row(
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            controls=[
+                ft.Text(titulo, size=18, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+                ft.Row(spacing=0, controls=[btn_group, btn_sort_alfa, btn_sort_valor])
+            ]
+        )
+
         return ft.Container(
             expand=True,
             bgcolor=get_colors()["surface"],
@@ -1813,8 +2124,9 @@ def main(page: ft.Page):
             border_radius=12,
             padding=20,
             content=ft.Column(
+                expand=True,
                 controls=[
-                    ft.Text(titulo, size=18, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+                    header_row_panel,
                     ft.Divider(color="#334155"),
                     ft.ListView(
                         expand=True,
@@ -2391,51 +2703,29 @@ def main(page: ft.Page):
             bgcolor=get_colors()["bg"]
         )
 
-        months_short = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
-        chks_lote = []
-        for i, m_name in enumerate(months_short, start=1):
-            chk = ft.Checkbox(
-                label=m_name,
-                value=False,
-                label_style=ft.TextStyle(size=12, font_family="Segoe UI", color=get_colors()["text"]),
+        # Banner informativo sobre recorrências (substitui o lote)
+        banner_recorrencia = ft.Container(
+            margin=ft.Margin(0, 0, 15, 0),
+            padding=ft.Padding(12, 8, 12, 8),
+            border_radius=8,
+            bgcolor=get_colors()["bg"],
+            border=ft.border.all(1, get_colors()["border"]),
+            content=ft.Row(
+                spacing=8,
+                controls=[
+                    ft.Icon(ft.icons.Icons.AUTORENEW_ROUNDED, color="#64748b", size=14),
+                    ft.Text(
+                        _t("Lançamentos recorrentes em vários meses podem ser configurados no menu de Recorrências."),
+                        size=11,
+                        color="#64748b",
+                        expand=True
+                    )
+                ]
             )
-            chk.data = i
-            chks_lote.append(chk)
-
-        lote_container = ft.Column(
-            visible=False,
-            spacing=5,
-            controls=[
-                ft.Text(_t("Lançar em Lote (Selecione os meses)"), size=12, weight=ft.FontWeight.BOLD, color=theme_color),
-                ft.Row(
-                    wrap=True,
-                    spacing=5,
-                    run_spacing=5,
-                    controls=chks_lote
-                ),
-                ft.Container(height=5)
-            ]
         )
 
-        def sync_date_with_lote(e=None):
-            val = txt_data.value
-            try:
-                day_str, month_str, year_str = val.split("/")
-                m = int(month_str)
-                if 1 <= m <= 12:
-                    for chk in chks_lote:
-                        chk.value = (chk.data == m)
-                    page.update()
-            except Exception:
-                pass
-
-        txt_data.on_change = sync_date_with_lote
-
         def toggle_lote_visibility():
-            if details:
-                lote_container.visible = False
-            else:
-                lote_container.visible = (drop_pilar.value == "Receita Fixa")
+            pass  # Removido — função mantida para não quebrar chamadas existentes
 
         def update_cats_receita(set_initial=None):
             pilar = drop_pilar.value
@@ -2531,61 +2821,21 @@ def main(page: ft.Page):
                     divisoes={"Eu": valor}
                 )
             else:
-                selected_months = [chk.data for chk in chks_lote if chk.value] if (pilar == "Receita Fixa") else []
-                if selected_months:
-                    try:
-                        day_str, month_str, year_str = data_str.split("/")
-                        dia = int(day_str)
-                        ano = int(year_str)
-                    except Exception:
-                        page.snack_bar = ft.SnackBar(
-                            content=ft.Text(_t("Data inválida! Use o formato DD/MM/AAAA"), color=get_colors()["text"]),
-                            bgcolor="#ef4444"
-                        )
-                        page.snack_bar.open = True
-                        page.update()
-                        return
-
-                    success = True
-                    errors = []
-                    for m in selected_months:
-                        data_lote = build_safe_date(dia, m, ano)
-                        ok, msg = db.inserir_transacao(
-                            conta_id=None,
-                            categoria_id=final_cat_id,
-                            descricao=desc,
-                            data_ini=data_lote,
-                            valor_total=valor,
-                            tipo_transacao=pilar,
-                            metodo="Dinheiro",
-                            parcelas=1,
-                            bandeira="",
-                            dono="",
-                            recorrencia=None,
-                            divisoes={"Eu": valor},
-                            observacao=obs
-                        )
-                        if not ok:
-                            success = False
-                            errors.append(f"{months_short[m-1]}: {msg}")
-                    if not success:
-                        msg = ", ".join(errors)
-                else:
-                    success, msg = db.inserir_transacao(
-                        conta_id=None,
-                        categoria_id=final_cat_id,
-                        descricao=desc,
-                        data_ini=data_str,
-                        valor_total=valor,
-                        tipo_transacao=pilar,
-                        metodo="Dinheiro",
-                        parcelas=1,
-                        bandeira="",
-                        dono="",
-                        recorrencia=None,
-                        divisoes={"Eu": valor},
-                        observacao=obs
-                    )
+                success, msg = db.inserir_transacao(
+                    conta_id=None,
+                    categoria_id=final_cat_id,
+                    descricao=desc,
+                    data_ini=data_str,
+                    valor_total=valor,
+                    tipo_transacao=pilar,
+                    metodo="Dinheiro",
+                    parcelas=1,
+                    bandeira="",
+                    dono="",
+                    recorrencia=None,
+                    divisoes={"Eu": valor},
+                    observacao=obs
+                )
 
             if success:
                 page.snack_bar = ft.SnackBar(
@@ -2721,8 +2971,8 @@ def main(page: ft.Page):
                     ft.Container(width=15)
                 ]
             ),
-            lote_container,
             ft.Row([ft.Container(expand=True, content=txt_obs), ft.Container(width=15)]),
+            banner_recorrencia,
             ft.Container(height=10),
             ft.Row(
                 controls=[
@@ -2731,8 +2981,6 @@ def main(page: ft.Page):
                 ]
             )
         ]
-
-        sync_date_with_lote()
 
         if details:
             initial_parent = details["parent_id"] if details["parent_id"] is not None else details["categoria_id"]
@@ -3232,51 +3480,34 @@ def main(page: ft.Page):
 
         inputs_individuais = {}
 
-        months_short = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
-        chks_lote = []
-        for i, m_name in enumerate(months_short, start=1):
-            chk = ft.Checkbox(
-                label=m_name,
-                value=False,
-                label_style=ft.TextStyle(size=12, font_family="Segoe UI", color=get_colors()["text"]),
+        # Banner informativo sobre recorrências (substitui o lote)
+        banner_recorrencia_desp = ft.Container(
+            margin=ft.Margin(0, 0, 15, 0),
+            padding=ft.Padding(12, 8, 12, 8),
+            border_radius=8,
+            bgcolor=get_colors()["bg"],
+            border=ft.border.all(1, get_colors()["border"]),
+            content=ft.Row(
+                spacing=8,
+                controls=[
+                    ft.Icon(ft.icons.Icons.AUTORENEW_ROUNDED, color="#64748b", size=14),
+                    ft.Text(
+                        _t("Para despesas recorrentes (não parceladas no cartão), configure pelo menu de Recorrências."),
+                        size=11,
+                        color="#64748b",
+                        expand=True
+                    )
+                ]
             )
-            chk.data = i
-            chks_lote.append(chk)
-
-        lote_container = ft.Column(
-            visible=False,
-            spacing=5,
-            controls=[
-                ft.Text(_t("Lançar em Lote (Selecione os meses)"), size=12, weight=ft.FontWeight.BOLD, color="#ef4444"),
-                ft.Row(
-                    wrap=True,
-                    spacing=5,
-                    run_spacing=5,
-                    controls=chks_lote
-                ),
-                ft.Container(height=5)
-            ]
         )
 
         def sync_date_with_lote(e=None):
-            val = txt_data.value
-            try:
-                day_str, month_str, year_str = val.split("/")
-                m = int(month_str)
-                if 1 <= m <= 12:
-                    for chk in chks_lote:
-                        chk.value = (chk.data == m)
-                    page.update()
-            except Exception:
-                pass
+            pass  # Removido — mantido para não quebrar chamadas existentes
 
         txt_data.on_change = sync_date_with_lote
 
         def toggle_lote_visibility():
-            if details:
-                lote_container.visible = False
-            else:
-                lote_container.visible = (drop_pilar.value == "Despesa Fixa")
+            pass  # Removido — função mantida para não quebrar chamadas existentes
 
         def update_cats_despesa(set_initial=None):
             pilar = drop_pilar.value
@@ -3556,61 +3787,21 @@ def main(page: ft.Page):
                     divisoes=divisoes
                 )
             else:
-                selected_months = [chk.data for chk in chks_lote if chk.value] if (pilar == "Despesa Fixa") else []
-                if selected_months:
-                    try:
-                        day_str, month_str, year_str = data_str.split("/")
-                        dia = int(day_str)
-                        ano = int(year_str)
-                    except Exception:
-                        page.snack_bar = ft.SnackBar(
-                            content=ft.Text(_t("Data inválida! Use o formato DD/MM/AAAA"), color=get_colors()["text"]),
-                            bgcolor="#ef4444"
-                        )
-                        page.snack_bar.open = True
-                        page.update()
-                        return
-
-                    success = True
-                    errors = []
-                    for m in selected_months:
-                        data_lote = build_safe_date(dia, m, ano)
-                        ok, msg = db.inserir_transacao(
-                            conta_id=None,
-                            categoria_id=final_cat_id,
-                            descricao=desc,
-                            data_ini=data_lote,
-                            valor_total=valor,
-                            tipo_transacao=pilar,
-                            metodo=metodo,
-                            parcelas=parcelas,
-                            bandeira=bandeira,
-                            dono=dono,
-                            recorrencia=None,
-                            divisoes=divisoes,
-                            observacao=obs
-                        )
-                        if not ok:
-                            success = False
-                            errors.append(f"{months_short[m-1]}: {msg}")
-                    if not success:
-                        msg = ", ".join(errors)
-                else:
-                    success, msg = db.inserir_transacao(
-                        conta_id=None,
-                        categoria_id=final_cat_id,
-                        descricao=desc,
-                        data_ini=data_str,
-                        valor_total=valor,
-                        tipo_transacao=pilar,
-                        metodo=metodo,
-                        parcelas=parcelas,
-                        bandeira=bandeira,
-                        dono=dono,
-                        recorrencia=None,
-                        divisoes=divisoes,
-                        observacao=obs
-                    )
+                success, msg = db.inserir_transacao(
+                    conta_id=None,
+                    categoria_id=final_cat_id,
+                    descricao=desc,
+                    data_ini=data_str,
+                    valor_total=valor,
+                    tipo_transacao=pilar,
+                    metodo=metodo,
+                    parcelas=parcelas,
+                    bandeira=bandeira,
+                    dono=dono,
+                    recorrencia=None,
+                    divisoes=divisoes,
+                    observacao=obs
+                )
 
             if success:
                 page.snack_bar = ft.SnackBar(
@@ -3760,7 +3951,7 @@ def main(page: ft.Page):
             cartao_container,
             ft.Row([chk_compartilhar, ft.Container(width=15)]),
             sharing_container,
-            lote_container,
+            banner_recorrencia_desp,
             ft.Row([ft.Container(expand=True, content=txt_obs), ft.Container(width=15)]),
             ft.Container(height=10),
             ft.Row(
@@ -3770,8 +3961,6 @@ def main(page: ft.Page):
                 ]
             )
         ]
-
-        sync_date_with_lote()
 
         if details:
             initial_parent = details["parent_id"] if details["parent_id"] is not None else details["categoria_id"]
@@ -3954,182 +4143,6 @@ def main(page: ft.Page):
                 spacing=20,
                 controls=[left_panel, right_panel]
             )
-        
-        def abrir_resumo_anual_modal(e):
-            months_data = []
-            
-            # Fetch all 12 months' data
-            for mes_nome in meses_pt:
-                resumo = db.get_resumo_financeiro(mes_nome, str(state["ano"]), state["perfil"])
-                receitas = resumo.get("Receita Fixa", 0) + resumo.get("Receita Variável", 0)
-                despesas = resumo.get("Despesa Fixa", 0) + resumo.get("Despesa Variável", 0)
-                investido = resumo.get("Investimento", 0)
-                saldo_mes = receitas - despesas - investido
-                saldo_anterior = db.get_saldo_acumulado_anterior(mes_nome, str(state["ano"]), state["perfil"])
-                saldo_total = saldo_anterior + saldo_mes
-                
-                months_data.append({
-                    "name": mes_nome,
-                    "receitas": receitas,
-                    "despesas": despesas,
-                    "investido": investido,
-                    "saldo_total": saldo_total
-                })
-            
-            # Local state for selection
-            selection = {m: True for m in meses_pt}
-            
-            lbl_total_receitas = ft.Text("", size=12, weight=ft.FontWeight.BOLD, color="#10b981")
-            lbl_total_despesas = ft.Text("", size=12, weight=ft.FontWeight.BOLD, color="#ef4444")
-            lbl_total_investido = ft.Text("", size=12, weight=ft.FontWeight.BOLD, color="#3b82f6")
-            lbl_total_fluxo = ft.Text("", size=12, weight=ft.FontWeight.BOLD, color=get_colors()["text"])
-            
-            def atualizar_totais():
-                sum_rec = 0.0
-                sum_desp = 0.0
-                sum_inv = 0.0
-                
-                for m_data in months_data:
-                    if selection[m_data["name"]]:
-                        sum_rec += m_data["receitas"]
-                        sum_desp += m_data["despesas"]
-                        sum_inv += m_data["investido"]
-                        
-                sum_fluxo = sum_rec - sum_desp - sum_inv
-                
-                lbl_total_receitas.value = f"R$ {sum_rec:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                lbl_total_despesas.value = f"R$ {sum_desp:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                lbl_total_investido.value = f"R$ {sum_inv:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                lbl_total_fluxo.value = f"R$ {sum_fluxo:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                lbl_total_fluxo.color = "#10b981" if sum_fluxo >= 0 else "#ef4444"
-                
-                lbl_total_receitas.update()
-                lbl_total_despesas.update()
-                lbl_total_investido.update()
-                lbl_total_fluxo.update()
-                
-            def on_toggle_month(mes_nome, e):
-                selection[mes_nome] = e.control.value
-                atualizar_totais()
-                
-            # Create header
-            colors = get_colors()
-            header_tabela = ft.Container(
-                bgcolor=colors["bg"],
-                padding=ft.Padding(left=15, top=10, right=15, bottom=10),
-                border_radius=8,
-                content=ft.Row(
-                    controls=[
-                        ft.Container(content=ft.Text(_t("Mês"), size=11, weight=ft.FontWeight.BOLD, color=colors["text"]), width=120),
-                        ft.Container(content=ft.Text(_t("Receitas"), size=11, weight=ft.FontWeight.BOLD, color="#10b981"), width=120),
-                        ft.Container(content=ft.Text(_t("Despesas"), size=11, weight=ft.FontWeight.BOLD, color="#ef4444"), width=120),
-                        ft.Container(content=ft.Text(_t("Investido"), size=11, weight=ft.FontWeight.BOLD, color="#3b82f6"), width=120),
-                        ft.Container(content=ft.Text(_t("Saldo Total"), size=11, weight=ft.FontWeight.BOLD, color=colors["text"]), width=140),
-                    ]
-                )
-            )
-            
-            rows_controls = []
-            for m_data in months_data:
-                colors = get_colors()
-                val_rec = m_data["receitas"]
-                val_desp = m_data["despesas"]
-                val_inv = m_data["investido"]
-                val_saldo = m_data["saldo_total"]
-                
-                chk = ft.Checkbox(
-                    value=selection[m_data["name"]],
-                    on_change=lambda e, mn=m_data["name"]: on_toggle_month(mn, e),
-                    fill_color={"": "#3b82f6"},
-                    scale=0.8
-                )
-                
-                row_cont = ft.Container(
-                    padding=ft.Padding(left=10, top=4, right=10, bottom=4),
-                    border=ft.border.Border(bottom=ft.border.BorderSide(1, colors["border"])),
-                    content=ft.Row(
-                        controls=[
-                            ft.Container(
-                                content=ft.Row([
-                                    chk,
-                                    ft.Text(_t(m_data["name"]), size=12, color=colors["text"], weight=ft.FontWeight.W_500)
-                                ], spacing=2),
-                                width=120
-                            ),
-                            ft.Container(content=ft.Text(f"R$ {val_rec:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), size=12, color="#10b981"), width=120),
-                            ft.Container(content=ft.Text(f"R$ {val_desp:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), size=12, color="#ef4444"), width=120),
-                            ft.Container(content=ft.Text(f"R$ {val_inv:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), size=12, color="#3b82f6"), width=120),
-                            ft.Container(content=ft.Text(f"R$ {val_saldo:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), size=12, color="#10b981" if val_saldo >= 0 else "#ef4444", weight=ft.FontWeight.BOLD), width=140),
-                        ]
-                    )
-                )
-                rows_controls.append(row_cont)
-                
-            list_container = ft.Container(
-                height=260,
-                content=ft.Column(
-                    scroll=ft.ScrollMode.ADAPTIVE,
-                    controls=rows_controls,
-                    spacing=0
-                )
-            )
-            
-            totals_row = ft.Container(
-                bgcolor=get_colors()["bg"],
-                padding=ft.Padding(left=15, top=10, right=15, bottom=10),
-                border_radius=8,
-                content=ft.Row(
-                    controls=[
-                        ft.Container(content=ft.Text(_t("Total Selecionado"), size=11, weight=ft.FontWeight.BOLD, color=get_colors()["text"]), width=120),
-                        ft.Container(content=lbl_total_receitas, width=120),
-                        ft.Container(content=lbl_total_despesas, width=120),
-                        ft.Container(content=lbl_total_investido, width=120),
-                        ft.Container(content=lbl_total_fluxo, width=140),
-                    ]
-                )
-            )
-            
-            # Set initial values
-            sum_rec_ini = sum(m["receitas"] for m in months_data)
-            sum_desp_ini = sum(m["despesas"] for m in months_data)
-            sum_inv_ini = sum(m["investido"] for m in months_data)
-            sum_fluxo_ini = sum_rec_ini - sum_desp_ini - sum_inv_ini
-            
-            lbl_total_receitas.value = f"R$ {sum_rec_ini:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-            lbl_total_despesas.value = f"R$ {sum_desp_ini:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-            lbl_total_investido.value = f"R$ {sum_inv_ini:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-            lbl_total_fluxo.value = f"R$ {sum_fluxo_ini:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-            lbl_total_fluxo.color = "#10b981" if sum_fluxo_ini >= 0 else "#ef4444"
-            
-            dialog = ft.AlertDialog(
-                modal=True,
-                title=ft.Row(
-                    spacing=8,
-                    controls=[
-                        ft.Icon(ft.icons.Icons.ANALYTICS_ROUNDED, color="#3b82f6", size=22),
-                        ft.Text(f"{_t('Resumo Anual')} - {state['ano']}", size=18, weight=ft.FontWeight.BOLD, color=get_colors()["text"])
-                    ]
-                ),
-                content=ft.Container(
-                    width=680,
-                    height=380,
-                    content=ft.Column(
-                        spacing=12,
-                        controls=[
-                            ft.Text(_t("Selecione os meses para consolidar os totais anuais:"), size=11, color=get_colors()["subtext"]),
-                            header_tabela,
-                            list_container,
-                            totals_row
-                        ]
-                    )
-                ),
-                bgcolor=get_colors()["surface"],
-                actions=[
-                    ft.TextButton(_t("Fechar"), on_click=lambda e: page.pop_dialog(), style=ft.ButtonStyle(color="white"))
-                ],
-                actions_alignment=ft.MainAxisAlignment.END
-            )
-            page.show_dialog(dialog)
 
         def on_change_perfil_dash(e):
             state["perfil"] = e.control.value
@@ -4137,67 +4150,255 @@ def main(page: ft.Page):
 
         seletor_perfil = criar_seletor_perfil(on_change_perfil_dash)
 
-        header_row = ft.Row(
-            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+        def toggle_dashboard_grouping(e):
+            pass  # Agrupamento migrado para dentro de cada painel (group_despesas / group_receitas)
+
+        # Sub-controles da aba Dashboard: botão categoria + navegador de mês
+        btn_criar_cat = ft.IconButton(
+            icon=ft.icons.Icons.CATEGORY_ROUNDED,
+            tooltip=_t("Criar Categoria"),
+            icon_color="#64748b",
+            icon_size=20,
+            on_click=abrir_criar_categoria_modal
+        )
+        nav_mes = ft.Row(
+            spacing=4,
             controls=[
-                ft.Text(_t("Sentinel Finance"), size=24, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
-                ft.Row(
-                    spacing=15,
-                    controls=[
-                        ft.TextButton(
-                            content=ft.Row([
-                                ft.Icon(ft.icons.Icons.ANALYTICS_ROUNDED, color="#3b82f6", size=18),
-                                ft.Text(_t("Resumo Anual"), size=13, weight=ft.FontWeight.BOLD, color=get_colors()["text"])
-                            ], spacing=5),
-                            on_click=abrir_resumo_anual_modal
-                        ),
-                        seletor_perfil,
-                        ft.IconButton(
-                            icon=ft.icons.Icons.CATEGORY_ROUNDED, 
-                            tooltip=_t("Criar Categoria"), 
-                            icon_color="#3b82f6", 
-                            icon_size=22,
-                            on_click=abrir_criar_categoria_modal
-                        ),
-                        ft.Row(
-                            spacing=5,
-                            controls=[
-                                ft.IconButton(ft.icons.Icons.CHEVRON_LEFT_ROUNDED, icon_color="#94a3b8", on_click=prev_month),
-                                ft.Container(
-                                    bgcolor=get_colors()["surface"],
-                                    border=ft.border.all(1, get_colors()["border"]),
-                                    padding=ft.Padding(left=15, top=8, right=15, bottom=8),
-                                    border_radius=20,
-                                    content=ft.Row(
-                                        spacing=10,
-                                        controls=[
-                                            ft.Icon(ft.icons.Icons.CALENDAR_MONTH_ROUNDED, color="#94a3b8", size=18),
-                                            ft.Text(f"{_t(mes_atual)} {ano_atual}", size=16, weight=ft.FontWeight.W_500, color=get_colors()["subtext"])
-                                        ]
-                                    )
-                                ),
-                                ft.IconButton(ft.icons.Icons.CHEVRON_RIGHT_ROUNDED, icon_color="#94a3b8", on_click=next_month),
-                            ]
-                        )
-                    ]
-                )
+                ft.IconButton(ft.icons.Icons.CHEVRON_LEFT_ROUNDED, icon_color="#94a3b8", icon_size=18, on_click=prev_month),
+                ft.Container(
+                    bgcolor=get_colors()["surface"],
+                    border=ft.border.all(1, get_colors()["border"]),
+                    padding=ft.Padding(left=12, top=6, right=12, bottom=6),
+                    border_radius=20,
+                    content=ft.Row(
+                        spacing=8,
+                        controls=[
+                            ft.Icon(ft.icons.Icons.CALENDAR_MONTH_ROUNDED, color="#94a3b8", size=16),
+                            ft.Text(f"{_t(mes_atual)} {ano_atual}", size=14, weight=ft.FontWeight.W_500, color=get_colors()["subtext"])
+                        ]
+                    )
+                ),
+                ft.IconButton(ft.icons.Icons.CHEVRON_RIGHT_ROUNDED, icon_color="#94a3b8", icon_size=18, on_click=next_month),
             ]
         )
-        
+
+        tab_header = criar_tab_header(
+            "dashboard",
+            seletor_perfil,
+            subcontroles=[btn_criar_cat, nav_mes]
+        )
+
         dashboard_view.controls = [
-            header_row,
-            ft.Container(height=10),
+            tab_header,
+            ft.Container(height=8),
             top_cards,
-            ft.Container(height=20),
+            ft.Container(height=16),
             main_panels
         ]
         
         # Garante que o FAB aparece apenas na Dashboard
         contrair_fab()
 
-        
         body.content = dashboard_view
         page.update()
+
+    def render_resumo_anual():
+        months_data = []
+        for mes_nome in meses_pt:
+            resumo = db.get_resumo_financeiro(mes_nome, str(state["ano"]), state["perfil"])
+            receitas = resumo.get("Receita Fixa", 0) + resumo.get("Receita Variável", 0)
+            despesas = resumo.get("Despesa Fixa", 0) + resumo.get("Despesa Variável", 0)
+            investido = resumo.get("Investimento", 0)
+            saldo_mes = receitas - despesas - investido
+            
+            months_data.append({
+                "name": mes_nome,
+                "receitas": receitas,
+                "despesas": despesas,
+                "investido": investido,
+                "saldo_mes": saldo_mes
+            })
+
+        if "resumo_anual_selection" not in state or len(state["resumo_anual_selection"]) != 12:
+            state["resumo_anual_selection"] = {m: True for m in meses_pt}
+            
+        lbl_total_receitas = ft.Text("", size=28, weight=ft.FontWeight.BOLD, color="#10b981")
+        lbl_total_despesas = ft.Text("", size=28, weight=ft.FontWeight.BOLD, color="#ef4444")
+        lbl_total_investido = ft.Text("", size=28, weight=ft.FontWeight.BOLD, color="#3b82f6")
+        lbl_total_fluxo = ft.Text("", size=28, weight=ft.FontWeight.BOLD, color=get_colors()["text"])
+
+        def atualizar_totais_page():
+            sum_rec = 0.0
+            sum_desp = 0.0
+            sum_inv = 0.0
+            
+            for m_data in months_data:
+                if state["resumo_anual_selection"][m_data["name"]]:
+                    sum_rec += m_data["receitas"]
+                    sum_desp += m_data["despesas"]
+                    sum_inv += m_data["investido"]
+                    
+            sum_fluxo = sum_rec - sum_desp - sum_inv
+            
+            lbl_total_receitas.value = f"R$ {sum_rec:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            lbl_total_despesas.value = f"R$ {sum_desp:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            lbl_total_investido.value = f"R$ {sum_inv:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            lbl_total_fluxo.value = f"R$ {sum_fluxo:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            lbl_total_fluxo.color = "#10b981" if sum_fluxo >= 0 else "#ef4444"
+            try:
+                page.update()
+            except:
+                pass
+
+        def on_toggle_month_page(mes_nome, e):
+            state["resumo_anual_selection"][mes_nome] = e.control.value
+            atualizar_totais_page()
+
+        def prev_year_anual(e):
+            state["ano"] -= 1
+            render_resumo_anual()
+            
+        def next_year_anual(e):
+            state["ano"] += 1
+            render_resumo_anual()
+            
+        def on_change_perfil_anual(e):
+            state["perfil"] = e.control.value
+            render_resumo_anual()
+
+        seletor_perfil = criar_seletor_perfil(on_change_perfil_anual)
+
+        # Sub-controles da aba Resumo Anual: navegador de ano
+        nav_ano = ft.Row(
+            spacing=4,
+            controls=[
+                ft.IconButton(ft.icons.Icons.CHEVRON_LEFT_ROUNDED, icon_color="#94a3b8", icon_size=18, on_click=prev_year_anual),
+                ft.Container(
+                    bgcolor=get_colors()["surface"],
+                    border=ft.border.all(1, get_colors()["border"]),
+                    padding=ft.Padding(12, 6, 12, 6),
+                    border_radius=20,
+                    content=ft.Row(
+                        spacing=8,
+                        controls=[
+                            ft.Icon(ft.icons.Icons.CALENDAR_TODAY_ROUNDED, color="#94a3b8", size=16),
+                            ft.Text(str(state["ano"]), size=14, weight=ft.FontWeight.BOLD, color=get_colors()["text"])
+                        ]
+                    )
+                ),
+                ft.IconButton(ft.icons.Icons.CHEVRON_RIGHT_ROUNDED, icon_color="#94a3b8", icon_size=18, on_click=next_year_anual),
+            ]
+        )
+
+        tab_header = criar_tab_header(
+            "resumo_anual",
+            seletor_perfil,
+            subcontroles=[nav_ano]
+        )
+
+        card_receitas = criar_card_resumo(_t("Receitas"), 0.0, "#10b981", get_colors()["surface"])
+        card_despesas = criar_card_resumo(_t("Despesas"), 0.0, "#ef4444", get_colors()["surface"])
+        card_investido = criar_card_resumo(_t("Investido"), 0.0, "#3b82f6", get_colors()["surface"])
+        card_fluxo = criar_card_resumo(_t("Saldo Líquido"), 0.0, "#10b981", get_colors()["surface"])
+
+        card_receitas.content.controls[1] = lbl_total_receitas
+        card_despesas.content.controls[1] = lbl_total_despesas
+        card_investido.content.controls[1] = lbl_total_investido
+        card_fluxo.content.controls[1] = lbl_total_fluxo
+
+        totals_cards_row = ft.Row(
+            controls=[card_receitas, card_despesas, card_investido, card_fluxo],
+            spacing=15
+        )
+
+        colors = get_colors()
+        header_table = ft.Container(
+            bgcolor=colors["bg"],
+            padding=ft.Padding(left=15, top=10, right=15, bottom=10),
+            border_radius=8,
+            content=ft.Row(
+                controls=[
+                    ft.Container(content=ft.Text(_t("Mês"), size=11, weight=ft.FontWeight.BOLD, color=colors["text"]), expand=1),
+                    ft.Container(content=ft.Text(_t("Receitas"), size=11, weight=ft.FontWeight.BOLD, color="#10b981"), expand=1),
+                    ft.Container(content=ft.Text(_t("Despesas"), size=11, weight=ft.FontWeight.BOLD, color="#ef4444"), expand=1),
+                    ft.Container(content=ft.Text(_t("Investido"), size=11, weight=ft.FontWeight.BOLD, color="#3b82f6"), expand=1),
+                    ft.Container(content=ft.Text(_t("Saldo"), size=11, weight=ft.FontWeight.BOLD, color=colors["text"]), expand=1),
+                ]
+            )
+        )
+
+        rows_controls = []
+        for m_data in months_data:
+            val_rec = m_data["receitas"]
+            val_desp = m_data["despesas"]
+            val_inv = m_data["investido"]
+            val_saldo = m_data["saldo_mes"]
+            
+            chk = ft.Checkbox(
+                value=state["resumo_anual_selection"][m_data["name"]],
+                on_change=lambda e, mn=m_data["name"]: on_toggle_month_page(mn, e),
+                fill_color={"": "#3b82f6"},
+                scale=0.8
+            )
+            
+            row_cont = ft.Container(
+                padding=ft.Padding(left=10, top=4, right=10, bottom=4),
+                border=ft.border.Border(bottom=ft.border.BorderSide(1, colors["border"])),
+                content=ft.Row(
+                    controls=[
+                        ft.Container(
+                            content=ft.Row([
+                                chk,
+                                ft.Text(_t(m_data["name"]), size=12, color=colors["text"], weight=ft.FontWeight.W_500)
+                            ], spacing=2),
+                            expand=1
+                        ),
+                        ft.Container(content=ft.Text(f"R$ {val_rec:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), size=12, color="#10b981"), expand=1),
+                        ft.Container(content=ft.Text(f"R$ {val_desp:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), size=12, color="#ef4444"), expand=1),
+                        ft.Container(content=ft.Text(f"R$ {val_inv:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), size=12, color="#3b82f6"), expand=1),
+                        ft.Container(content=ft.Text(f"R$ {val_saldo:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), size=12, color="#10b981" if val_saldo >= 0 else "#ef4444", weight=ft.FontWeight.BOLD), expand=1),
+                    ]
+                )
+            )
+            rows_controls.append(row_cont)
+
+        table_panel = ft.Container(
+            bgcolor=colors["surface"],
+            border=ft.border.all(1, colors["border"]),
+            border_radius=12,
+            padding=20,
+            expand=True,
+            content=ft.Column([
+                header_table,
+                ft.Container(
+                    expand=True,
+                    content=ft.Column(
+                        scroll=ft.ScrollMode.ADAPTIVE,
+                        controls=rows_controls,
+                        spacing=0
+                    )
+                )
+            ], spacing=10)
+        )
+
+        layout = ft.Column(
+            expand=True,
+            controls=[
+                tab_header,
+                ft.Container(height=5),
+                totals_cards_row,
+                ft.Container(height=10),
+                table_panel
+            ],
+            spacing=10,
+            scroll=ft.ScrollMode.ADAPTIVE
+        )
+
+        page.floating_action_button = None
+        body.content = layout
+        atualizar_totais_page()
+
+
         
     def render_cartoes():
         mes_atual_pt = meses_pt[state["mes_idx"]]
@@ -6940,26 +7141,22 @@ def main(page: ft.Page):
 
         seletor_perfil = criar_seletor_perfil(on_change_perfil_trans)
 
-        header_row = ft.Row(
-            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-            controls=[
-                ft.Text(_t("Transações"), size=24, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
-                ft.Row(
-                    spacing=15,
-                    controls=[
-                        seletor_perfil,
-                        btn_lock,
-                        segmented_control,
-                        date_navigator
-                    ]
-                )
-            ]
+        # Sub-controles da aba Histórico
+        tab_header = criar_tab_header(
+            "transacoes",
+            seletor_perfil,
+            subcontroles=[btn_lock, segmented_control, date_navigator]
         )
 
-        tab_pilar = ft.Container(
+        # Garantir que a aba ativa está sincronizada se vier do estado antigo
+        if tab_active not in ("pilar_categoria", "receitas_aportes"):
+            tab_active = "pilar_categoria"
+            state["transacoes_tab_active"] = "pilar_categoria"
+
+        tab_despesas = ft.Container(
             content=ft.Row([
-                ft.Icon(ft.icons.Icons.LIST_ROUNDED, color="white" if tab_active == "pilar_categoria" else "#64748b", size=18),
-                ft.Text(_t("POR PILAR & CATEGORIA"), size=12, color=get_colors()["text"] if tab_active == "pilar_categoria" else "#64748b", weight=ft.FontWeight.BOLD),
+                ft.Icon(ft.icons.Icons.MONEY_OFF_ROUNDED, color="white" if tab_active == "pilar_categoria" else "#64748b", size=18),
+                ft.Text(_t("DESPESAS (FIXAS E VARIÁVEIS)"), size=12, color=get_colors()["text"] if tab_active == "pilar_categoria" else "#64748b", weight=ft.FontWeight.BOLD),
             ], alignment=ft.MainAxisAlignment.CENTER, spacing=8),
             padding=ft.Padding(20, 12, 20, 12),
             bgcolor=get_colors()["surface"] if tab_active == "pilar_categoria" else "transparent",
@@ -6970,18 +7167,18 @@ def main(page: ft.Page):
             on_click=lambda e: set_transacoes_tab("pilar_categoria")
         )
 
-        tab_pagamento = ft.Container(
+        tab_receitas = ft.Container(
             content=ft.Row([
-                ft.Icon(ft.icons.Icons.CREDIT_CARD_ROUNDED, color="white" if tab_active == "forma_pagamento" else "#64748b", size=18),
-                ft.Text(_t("POR FORMA DE PAGAMENTO"), size=12, color=get_colors()["text"] if tab_active == "forma_pagamento" else "#64748b", weight=ft.FontWeight.BOLD),
+                ft.Icon(ft.icons.Icons.TRENDING_UP_ROUNDED, color="white" if tab_active == "receitas_aportes" else "#64748b", size=18),
+                ft.Text(_t("RECEITAS & APORTES"), size=12, color=get_colors()["text"] if tab_active == "receitas_aportes" else "#64748b", weight=ft.FontWeight.BOLD),
             ], alignment=ft.MainAxisAlignment.CENTER, spacing=8),
             padding=ft.Padding(20, 12, 20, 12),
-            bgcolor=get_colors()["surface"] if tab_active == "forma_pagamento" else "transparent",
+            bgcolor=get_colors()["surface"] if tab_active == "receitas_aportes" else "transparent",
             border=ft.border.all(1, get_colors()["border"]),
             border_radius=10,
             expand=True,
             ink=True,
-            on_click=lambda e: set_transacoes_tab("forma_pagamento")
+            on_click=lambda e: set_transacoes_tab("receitas_aportes")
         )
 
         tab_switcher = ft.Container(
@@ -6990,7 +7187,7 @@ def main(page: ft.Page):
             padding=5,
             content=ft.Row(
                 spacing=5,
-                controls=[tab_pilar, tab_pagamento]
+                controls=[tab_despesas, tab_receitas]
             )
         )
 
@@ -7015,11 +7212,14 @@ def main(page: ft.Page):
             )
         else:
             if tab_active == "pilar_categoria":
-                left_column_items = []
-                right_column_items = []
+                despesas_variaveis_items = []
+                despesas_fixas_items = []
+                
+                # Filtrar apenas despesas
+                despesas_only = [t for t in transacoes if "Despesa" in t[5]]
                 
                 pilar_groups = {}
-                for t in transacoes:
+                for t in despesas_only:
                     pilar = t[5].strip()
                     cat = t[4].strip().title()
                     
@@ -7032,18 +7232,222 @@ def main(page: ft.Page):
                 for pilar_nome, categories_dict in pilar_groups.items():
                     pilar_total = sum(t[3] for cats in categories_dict.values() for t in cats)
                     
-                    is_revenue_investment = ("Receita" in pilar_nome) or ("Investimento" in pilar_nome)
-                    target_list = left_column_items if is_revenue_investment else right_column_items
-
-                    if "Receita" in pilar_nome:
-                        pilar_color = "#10b981"
-                        indicator_color = "#10b981"
-                    elif "Investimento" in pilar_nome:
-                        pilar_color = "#3b82f6"
-                        indicator_color = "#3b82f6"
+                    if "Despesa Fixa" in pilar_nome:
+                        pilar_color = "#f43f5e" # rose-500
+                        indicator_color = "#f43f5e"
+                        target_list = despesas_fixas_items
                     else:
                         pilar_color = "#ef4444"
                         indicator_color = "#ef4444"
+                        target_list = despesas_variaveis_items
+
+                    target_list.append(
+                        ft.Container(
+                            margin=ft.Margin(0, 10, 0, 5),
+                            padding=ft.Padding(12, 8, 12, 8),
+                            bgcolor=get_colors()["bg"],
+                            border_radius=8,
+                            border=ft.Border(left=ft.BorderSide(3, indicator_color)),
+                            content=ft.Row(
+                                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                                controls=[
+                                    ft.Text(pilar_nome.upper(), size=12, weight=ft.FontWeight.BOLD, color="white"),
+                                    ft.Text(f"Total: R$ {pilar_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), size=12, weight=ft.FontWeight.BOLD, color=pilar_color)
+                                ]
+                            )
+                        )
+                    )
+
+                    for cat_nome, t_list in categories_dict.items():
+                        cat_total = sum(t[3] for t in t_list)
+                        target_list.append(
+                            ft.Container(
+                                padding=ft.Padding(15, 6, 15, 2),
+                                content=ft.Row(
+                                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                                    controls=[
+                                        ft.Text(cat_nome, size=11, weight=ft.FontWeight.W_600, color=get_colors()["subtext"]),
+                                        ft.Text(f"R$ {cat_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), size=11, color="#64748b")
+                                    ]
+                                )
+                            )
+                        )
+
+                        for t in t_list:
+                            t_id = t[0]
+                            t_data = t[1]
+                            t_desc = t[2]
+                            t_valor = t[3]
+                            t_tipo = t[5]
+                            t_metodo = t[8]
+                            t_dono = t[9]
+                            t_band = t[10]
+                            t_divisoes = t[11]
+
+                            subtitle_parts = [t_data]
+                            if t_metodo == "Cartão":
+                                card_display_name = "Cartão"
+                                if t_band and t_dono:
+                                    card_display_name = card_map.get(f"{t_band}|{t_dono}", f"Cartão {t_dono} ({t_band})")
+                                subtitle_parts.append(card_display_name)
+                                if t[6] and t[7] and t[7] > 1:
+                                    subtitle_parts.append(f"Parc. {t[6]}/{t[7]}")
+                            else:
+                                if t_metodo:
+                                    subtitle_parts.append(t_metodo)
+
+                            if t_divisoes and t_divisoes > 1:
+                                subtitle_parts.append("Dividido 👥")
+
+                            subtitle_text = " • ".join(subtitle_parts)
+
+                            if locked:
+                                def get_show_locked_msg(tid=t_id):
+                                    return lambda e: show_locked_notification()
+                                click_handler = get_show_locked_msg()
+                                row_bg = "transparent"
+                                row_border = ft.Border(bottom=ft.BorderSide(1, "#334155"))
+                                row_padding = ft.Padding(5, 8, 5, 8)
+                                row_radius = 0
+                                value_controls = [
+                                    ft.Text(f"R$ {t_valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), size=13, weight=ft.FontWeight.BOLD, color=pilar_color)
+                                ]
+                            else:
+                                def get_open_overlay(tid=t_id, tipo_t=t_tipo):
+                                    return lambda e: abrir_overlay(
+                                        "despesa" if "despesa" in tipo_t.lower() else ("investimento" if tipo_t.lower() == "investimento" else "receita"),
+                                        editing_trans_id=tid
+                                    )
+                                click_handler = get_open_overlay()
+                                row_bg = get_colors()["card_bg"]
+                                row_border = None
+                                row_padding = ft.Padding(15, 8, 15, 8)
+                                row_radius = 8
+                                value_controls = [
+                                    ft.Text(f"R$ {t_valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), size=13, weight=ft.FontWeight.BOLD, color=pilar_color),
+                                    ft.Icon(ft.icons.Icons.EDIT_ROUNDED, color="#64748b", size=13)
+                                ]
+
+                            despesas_variaveis_items.append(
+                                ft.Container(
+                                    padding=row_padding,
+                                    border_radius=row_radius,
+                                    bgcolor=row_bg,
+                                    border=row_border,
+                                    ink=True,
+                                    on_click=click_handler,
+                                    content=ft.Row(
+                                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                                        controls=[
+                                            ft.Row(
+                                                expand=True,
+                                                controls=[
+                                                    ft.Container(
+                                                        padding=6,
+                                                        bgcolor=get_colors()["surface"],
+                                                        border_radius=6,
+                                                        content=ft.Icon(get_icone_categoria(t[4]), color=indicator_color, size=16)
+                                                    ),
+                                                    ft.Container(width=5),
+                                                    ft.Column(
+                                                        expand=True,
+                                                        spacing=1,
+                                                        controls=[
+                                                            ft.Text(t_desc, size=13, weight=ft.FontWeight.W_500, color=get_colors()["text"], max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
+                                                            ft.Text(subtitle_text, size=11, color="#64748b", max_lines=1, overflow=ft.TextOverflow.ELLIPSIS)
+                                                        ]
+                                                    )
+                                                ]
+                                            ),
+                                            ft.Row(controls=value_controls, spacing=5, alignment=ft.MainAxisAlignment.END)
+                                        ]
+                                    )
+                                )
+                            )
+
+                content_view.content = ft.Row(
+                    expand=True,
+                    spacing=20,
+                    controls=[
+                        # Coluna Esquerda: Despesas Variáveis
+                        ft.Container(
+                            expand=True,
+                            bgcolor=get_colors()["surface"],
+                            border=ft.border.all(1, get_colors()["border"]),
+                            border_radius=12,
+                            padding=ft.Padding(left=15, right=15, top=10, bottom=12),
+                            content=ft.Column(
+                                expand=True,
+                                controls=[
+                                    ft.Row([
+                                        ft.Icon(ft.icons.Icons.ARROW_DOWNWARD_ROUNDED, color="#ef4444", size=16),
+                                        ft.Text(_t("DESPESAS VARIÁVEIS"), size=12, weight=ft.FontWeight.BOLD, color=get_colors()["text"])
+                                    ], spacing=6),
+                                    ft.Divider(color="#334155", height=1),
+                                    ft.ListView(
+                                        expand=True,
+                                        spacing=6,
+                                        padding=ft.Padding(right=15, left=0, top=0, bottom=0),
+                                        controls=despesas_variaveis_items if despesas_variaveis_items else [ft.Text(_t("Nenhuma despesa variável neste período."), color="#64748b", size=12)]
+                                    )
+                                ]
+                            )
+                        ),
+                        # Coluna Direita: Despesas Fixas
+                        ft.Container(
+                            expand=True,
+                            bgcolor=get_colors()["surface"],
+                            border=ft.border.all(1, get_colors()["border"]),
+                            border_radius=12,
+                            padding=ft.Padding(left=15, right=15, top=10, bottom=12),
+                            content=ft.Column(
+                                expand=True,
+                                controls=[
+                                    ft.Row([
+                                        ft.Icon(ft.icons.Icons.PUSH_PIN_ROUNDED, color="#f43f5e", size=16),
+                                        ft.Text(_t("DESPESAS FIXAS"), size=12, weight=ft.FontWeight.BOLD, color=get_colors()["text"])
+                                    ], spacing=6),
+                                    ft.Divider(color="#334155", height=1),
+                                    ft.ListView(
+                                        expand=True,
+                                        spacing=6,
+                                        padding=ft.Padding(right=15, left=0, top=0, bottom=0),
+                                        controls=despesas_fixas_items if despesas_fixas_items else [ft.Text(_t("Nenhuma despesa fixa neste período."), color="#64748b", size=12)]
+                                    )
+                                ]
+                            )
+                        )
+                    ]
+                )
+            else:
+                receitas_items = []
+                investimentos_items = []
+                
+                # Filtrar apenas receitas e investimentos
+                entradas_only = [t for t in transacoes if "Receita" in t[5] or "Investimento" in t[5]]
+                
+                pilar_groups = {}
+                for t in entradas_only:
+                    pilar = t[5].strip()
+                    cat = t[4].strip().title()
+                    
+                    if pilar not in pilar_groups:
+                        pilar_groups[pilar] = {}
+                    if cat not in pilar_groups[pilar]:
+                        pilar_groups[pilar][cat] = []
+                    pilar_groups[pilar][cat].append(t)
+
+                for pilar_nome, categories_dict in pilar_groups.items():
+                    pilar_total = sum(t[3] for cats in categories_dict.values() for t in cats)
+                    
+                    if "Investimento" in pilar_nome:
+                        pilar_color = "#3b82f6"
+                        indicator_color = "#3b82f6"
+                        target_list = investimentos_items
+                    else:
+                        pilar_color = "#10b981"
+                        indicator_color = "#10b981"
+                        target_list = receitas_items
 
                     target_list.append(
                         ft.Container(
@@ -7173,31 +7577,7 @@ def main(page: ft.Page):
                     expand=True,
                     spacing=20,
                     controls=[
-                        # Coluna Esquerda: Despesas Gerais
-                        ft.Container(
-                            expand=True,
-                            bgcolor=get_colors()["surface"],
-                            border=ft.border.all(1, get_colors()["border"]),
-                            border_radius=12,
-                            padding=ft.Padding(left=15, right=15, top=10, bottom=12),
-                            content=ft.Column(
-                                expand=True,
-                                controls=[
-                                    ft.Row([
-                                        ft.Icon(ft.icons.Icons.ARROW_DOWNWARD_ROUNDED, color="#ef4444", size=16),
-                                        ft.Text(_t("DESPESAS GERAIS"), size=12, weight=ft.FontWeight.BOLD, color=get_colors()["text"])
-                                    ], spacing=6),
-                                    ft.Divider(color="#334155", height=1),
-                                    ft.ListView(
-                                        expand=True,
-                                        spacing=6,
-                                        padding=ft.Padding(right=15, left=0, top=0, bottom=0),
-                                        controls=right_column_items if right_column_items else [ft.Text(_t("Nenhuma despesa neste período."), color="#64748b", size=12)]
-                                    )
-                                ]
-                            )
-                        ),
-                        # Coluna Direita: Receitas & Investimentos
+                        # Coluna Esquerda: Receitas (Fixas e Variáveis)
                         ft.Container(
                             expand=True,
                             bgcolor=get_colors()["surface"],
@@ -7209,201 +7589,19 @@ def main(page: ft.Page):
                                 controls=[
                                     ft.Row([
                                         ft.Icon(ft.icons.Icons.ARROW_UPWARD_ROUNDED, color="#10b981", size=16),
-                                        ft.Text(_t("RECEITAS & APORTES"), size=12, weight=ft.FontWeight.BOLD, color=get_colors()["text"])
+                                        ft.Text(_t("RECEITAS (FIXAS E VARIÁVEIS)"), size=12, weight=ft.FontWeight.BOLD, color=get_colors()["text"])
                                     ], spacing=6),
                                     ft.Divider(color="#334155", height=1),
                                     ft.ListView(
                                         expand=True,
                                         spacing=6,
                                         padding=ft.Padding(right=15, left=0, top=0, bottom=0),
-                                        controls=left_column_items if left_column_items else [ft.Text(_t("Nenhuma receita ou aporte neste período."), color="#64748b", size=12)]
-                                    )
-                                ]
-                            )
-                        )
-                    ]
-                )
-            else:
-                left_payment_items = []
-                right_payment_items = []
-                
-                despesas_list = [t for t in transacoes if "Despesa" in t[5]]
-                metodo_groups = {}
-                for t in despesas_list:
-                    metodo = t[8]
-                    if not metodo:
-                        metodo = _t("Não especificado")
-                        
-                    if metodo == "Cartão":
-                        t_band = t[10]
-                        t_dono = t[9]
-                        card_name = card_map.get(f"{t_band}|{t_dono}", f"Cartão {t_dono} ({t_band})" if (t_band and t_dono) else _t("Cartão de Crédito"))
-                        group_key = f"Cartão {card_name}"
-                    else:
-                        group_key = metodo
-                        
-                    if group_key not in metodo_groups:
-                        metodo_groups[group_key] = []
-                    metodo_groups[group_key].append(t)
-
-                sorted_keys = sorted(metodo_groups.keys())
-                for group_key in sorted_keys:
-                    t_list = metodo_groups[group_key]
-                    group_total = sum(t[3] for t in t_list)
-
-                    is_card = "Cartão" in group_key
-                    target_list = left_payment_items if is_card else right_payment_items
-
-                    if is_card:
-                        indicator_color = "#fb923c"
-                        for key, name in card_map.items():
-                            if name in group_key:
-                                indicator_color = card_colors.get(key, "#fb923c")
-                                break
-                    elif "Pix" in group_key:
-                        indicator_color = "#a78bfa"
-                    elif "Dinheiro" in group_key:
-                        indicator_color = "#10b981"
-                    else:
-                        indicator_color = "#64748b"
-
-                    target_list.append(
-                        ft.Container(
-                            margin=ft.Margin(0, 10, 0, 5),
-                            padding=ft.Padding(12, 8, 12, 8),
-                            bgcolor=get_colors()["bg"],
-                            border_radius=8,
-                            border=ft.Border(left=ft.BorderSide(3, indicator_color)),
-                            content=ft.Row(
-                                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                                controls=[
-                                    ft.Row([
-                                        ft.Icon(
-                                            ft.icons.Icons.CREDIT_CARD_ROUNDED if is_card 
-                                            else (ft.icons.Icons.QR_CODE_2_ROUNDED if "Pix" in group_key 
-                                                  else (ft.icons.Icons.ATTACH_MONEY_ROUNDED if "Dinheiro" in group_key 
-                                                        else ft.icons.Icons.PAYMENT_ROUNDED)), 
-                                            color="white", size=16
-                                        ),
-                                        ft.Text(group_key.upper(), size=12, weight=ft.FontWeight.BOLD, color="white")
-                                    ], spacing=8),
-                                    ft.Text(f"Total: R$ {group_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), size=12, weight=ft.FontWeight.BOLD, color=indicator_color)
-                                ]
-                            )
-                        )
-                    )
-
-                    for t in t_list:
-                        t_id = t[0]
-                        t_data = t[1]
-                        t_desc = t[2]
-                        t_valor = t[3]
-                        t_cat = t[4].strip().title()
-                        t_tipo = t[5]
-                        t_divisoes = t[11]
-
-                        subtitle_parts = [t_data, t_cat]
-                        if t[6] and t[7] and t[7] > 1:
-                            subtitle_parts.append(f"Parc. {t[6]}/{t[7]}")
-                        if t_divisoes and t_divisoes > 1:
-                            subtitle_parts.append("Dividido 👥")
-
-                        subtitle_text = " • ".join(subtitle_parts)
-
-                        if locked:
-                            def get_show_locked_msg(tid=t_id):
-                                return lambda e: show_locked_notification()
-                            click_handler = get_show_locked_msg()
-                            row_bg = "transparent"
-                            row_border = ft.Border(bottom=ft.BorderSide(1, "#334155"))
-                            row_padding = ft.Padding(5, 8, 5, 8)
-                            row_radius = 0
-                            value_controls = [
-                                ft.Text(f"R$ {t_valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), size=13, weight=ft.FontWeight.BOLD, color="#ef4444")
-                            ]
-                        else:
-                            def get_open_overlay(tid=t_id, tipo_t=t_tipo):
-                                return lambda e: abrir_overlay(
-                                    "despesa" if "despesa" in tipo_t.lower() else ("investimento" if tipo_t.lower() == "investimento" else "receita"),
-                                    editing_trans_id=tid
-                                )
-                            click_handler = get_open_overlay()
-                            row_bg = get_colors()["card_bg"]
-                            row_border = None
-                            row_padding = ft.Padding(15, 8, 15, 8)
-                            row_radius = 8
-                            value_controls = [
-                                ft.Text(f"R$ {t_valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), size=13, weight=ft.FontWeight.BOLD, color="#ef4444"),
-                                ft.Icon(ft.icons.Icons.EDIT_ROUNDED, color="#64748b", size=13)
-                            ]
-
-                        target_list.append(
-                            ft.Container(
-                                padding=row_padding,
-                                border_radius=row_radius,
-                                bgcolor=row_bg,
-                                border=row_border,
-                                ink=True,
-                                on_click=click_handler,
-                                content=ft.Row(
-                                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                                    controls=[
-                                        ft.Row(
-                                            expand=True,
-                                            controls=[
-                                                ft.Container(
-                                                    padding=6,
-                                                    bgcolor=get_colors()["surface"],
-                                                    border_radius=6,
-                                                    content=ft.Icon(get_icone_categoria(t[4]), color="#ef4444", size=16)
-                                                ),
-                                                ft.Container(width=5),
-                                                ft.Column(
-                                                    expand=True,
-                                                    spacing=1,
-                                                    controls=[
-                                                        ft.Text(t_desc, size=13, weight=ft.FontWeight.W_500, color=get_colors()["text"], max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
-                                                        ft.Text(subtitle_text, size=11, color="#64748b", max_lines=1, overflow=ft.TextOverflow.ELLIPSIS)
-                                                    ]
-                                                )
-                                            ]
-                                        ),
-                                        ft.Row(controls=value_controls, spacing=5, alignment=ft.MainAxisAlignment.END)
-                                    ]
-                                )
-                            )
-                        )
-
-                # Layout Aba 2: Duas Colunas
-                content_view.content = ft.Row(
-                    expand=True,
-                    spacing=20,
-                    controls=[
-                        # Coluna Esquerda: Cartões de Crédito
-                        ft.Container(
-                            expand=True,
-                            bgcolor=get_colors()["surface"],
-                            border=ft.border.all(1, get_colors()["border"]),
-                            border_radius=12,
-                            padding=ft.Padding(left=15, right=15, top=10, bottom=12),
-                            content=ft.Column(
-                                expand=True,
-                                controls=[
-                                    ft.Row([
-                                        ft.Icon(ft.icons.Icons.CREDIT_CARD_ROUNDED, color="#fb923c", size=16),
-                                        ft.Text(_t("CARTÕES DE CRÉDITO"), size=12, weight=ft.FontWeight.BOLD, color=get_colors()["text"])
-                                    ], spacing=6),
-                                    ft.Divider(color="#334155", height=1),
-                                    ft.ListView(
-                                        expand=True,
-                                        spacing=6,
-                                        padding=ft.Padding(right=15, left=0, top=0, bottom=0),
-                                        controls=left_payment_items if left_payment_items else [ft.Text(_t("Sem gastos no cartão neste período."), color="#64748b", size=12)]
+                                        controls=receitas_items if receitas_items else [ft.Text(_t("Nenhuma receita ou aporte neste período."), color="#64748b", size=12)]
                                     )
                                 ]
                             )
                         ),
-                        # Coluna Direita: Outras Formas
+                        # Coluna Direita: Investimentos (Aportes)
                         ft.Container(
                             expand=True,
                             bgcolor=get_colors()["surface"],
@@ -7414,15 +7612,15 @@ def main(page: ft.Page):
                                 expand=True,
                                 controls=[
                                     ft.Row([
-                                        ft.Icon(ft.icons.Icons.PAYMENT_ROUNDED, color="#a78bfa", size=16),
-                                        ft.Text(_t("OUTRAS FORMAS DE PAGAMENTO"), size=12, weight=ft.FontWeight.BOLD, color=get_colors()["text"])
+                                        ft.Icon(ft.icons.Icons.SAVINGS_ROUNDED, color="#3b82f6", size=16),
+                                        ft.Text(_t("INVESTIMENTOS & APORTES"), size=12, weight=ft.FontWeight.BOLD, color=get_colors()["text"])
                                     ], spacing=6),
                                     ft.Divider(color="#334155", height=1),
                                     ft.ListView(
                                         expand=True,
                                         spacing=6,
                                         padding=ft.Padding(right=15, left=0, top=0, bottom=0),
-                                        controls=right_payment_items if right_payment_items else [ft.Text(_t("Sem outros gastos neste período."), color="#64748b", size=12)]
+                                        controls=investimentos_items if investimentos_items else [ft.Text(_t("Nenhum investimento neste período."), color="#64748b", size=12)]
                                     )
                                 ]
                             )
@@ -7433,10 +7631,10 @@ def main(page: ft.Page):
         trans_layout = ft.Column(
             expand=True,
             controls=[
-                header_row,
-                ft.Container(height=15),
+                tab_header,
+                ft.Container(height=10),
                 tab_switcher,
-                ft.Container(height=15),
+                ft.Container(height=10),
                 content_view
             ]
         )
@@ -7444,7 +7642,6 @@ def main(page: ft.Page):
         page.floating_action_button = None
         body.content = trans_layout
         page.update()
-
     def set_transacoes_view_mode(mode):
         state["transacoes_view_mode"] = mode
         render_transacoes()
@@ -8797,7 +8994,7 @@ def main(page: ft.Page):
             ],
             rows=row_abatimentos
         )
-        
+
         col_abatimentos = ft.Column(
             expand=True,
             controls=[
@@ -8822,7 +9019,7 @@ def main(page: ft.Page):
                 )
             ]
         )
-        # Grid Principal de 2 Colunas (direct children, no wrapping containers to allow height expansion propagation)
+        # Grid Principal de 2 Colunas
         grid_financiamentos = ft.Row(
             expand=True,
             spacing=25,
@@ -8845,6 +9042,1150 @@ def main(page: ft.Page):
         
         body.content = layout
         page.update()
+
+    def render_recorrencias():
+        configs = db.get_configs_recorrencia(state["perfil"])
+        
+        # Filtrar as recorrências que já foram totalmente realizadas (última parcela anterior ao mês atual)
+        import datetime
+        now = datetime.datetime.now()
+        current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        
+        active_configs = []
+        for c in configs:
+            occurrences_for_c = db.get_transacoes_recorrencia(c[0], state["perfil"])
+            if not occurrences_for_c:
+                active_configs.append(c)
+            else:
+                latest_dt = None
+                for occ in occurrences_for_c:
+                    try:
+                        occ_dt = datetime.datetime.strptime(occ[1], "%d/%m/%Y")
+                    except:
+                        occ_dt = now
+                    if latest_dt is None or occ_dt > latest_dt:
+                        latest_dt = occ_dt
+                if latest_dt and latest_dt >= current_month_start:
+                    active_configs.append(c)
+        configs = active_configs
+        
+        def on_change_perfil_rec(e):
+            state["perfil"] = e.control.value
+            render_recorrencias()
+
+        seletor_perfil_rec = criar_seletor_perfil(on_change_perfil_rec)
+
+        btn_nova_rec = ft.ElevatedButton(
+            content=ft.Row([
+                ft.Icon(ft.icons.Icons.ADD_ROUNDED, size=16, color="white"),
+                ft.Text(_t("NOVA RECORRÊNCIA"), size=11, color="white", weight=ft.FontWeight.BOLD)
+            ], spacing=5),
+            bgcolor="#3b82f6",
+            style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=6)),
+            on_click=abrir_form_config_recorrencia
+        )
+        tab_header = criar_tab_header(
+            "recorrencias",
+            seletor_perfil_rec,
+            subcontroles=[btn_nova_rec]
+        )
+        
+        if not configs:
+            empty_state = ft.Container(
+                alignment=ft.Alignment(0, 0),
+                expand=True,
+                padding=40,
+                content=ft.Column(
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    controls=[
+                        ft.Icon(ft.icons.Icons.AUTORENEW_ROUNDED, size=80, color="#64748b"),
+                        ft.Text(_t("Nenhuma recorrência cadastrada"), size=18, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+                        ft.Text(_t("Cadastre despesas como plano de saúde, mensalidades ou receitas recorrentes para começar."), size=14, color="#64748b", text_align=ft.TextAlign.CENTER),
+                        ft.Container(height=10),
+                        ft.ElevatedButton(
+                            _t("CADASTRAR PRIMEIRA RECORRÊNCIA"),
+                            on_click=abrir_form_config_recorrencia,
+                            bgcolor="#3b82f6",
+                            color="white"
+                        )
+                    ]
+                )
+            )
+            body.content = ft.Column(expand=True, controls=[tab_header, ft.Divider(color="#1f2937", height=20), empty_state])
+            page.update()
+            return
+
+        # Resolve all categories for display names
+        categorias = db.get_categorias()
+        cat_id_to_name = {c[0]: c[1].strip() for c in categorias}
+        cat_id_to_parent_id = {c[0]: c[3] for c in categorias}
+        
+        def get_cat_display(cat_id):
+            name = cat_id_to_name.get(cat_id, "Sem Categoria")
+            parent_id = cat_id_to_parent_id.get(cat_id)
+            if parent_id and parent_id in cat_id_to_name:
+                parent_name = cat_id_to_name[parent_id]
+                return f"{parent_name} - {name}"
+            return name
+
+        # Group configs by category display name
+        categorias_dict = {}
+        for c in configs:
+            cat_display = get_cat_display(c[3])
+            if cat_display not in categorias_dict:
+                categorias_dict[cat_display] = []
+            categorias_dict[cat_display].append(c)
+            
+        unique_cat_groups = list(categorias_dict.keys())
+        
+        active_group = state.get("active_recurrence_group")
+        if active_group not in unique_cat_groups:
+            active_group = unique_cat_groups[0] if unique_cat_groups else None
+            state["active_recurrence_group"] = active_group
+            
+        configs_in_group = categorias_dict.get(active_group, []) if active_group else []
+        
+        active_id = state.get("active_recurrence_id")
+        config_ids_in_group = [c[0] for c in configs_in_group]
+        if active_id not in config_ids_in_group:
+            active_id = config_ids_in_group[0] if config_ids_in_group else None
+            state["active_recurrence_id"] = active_id
+            
+        active_config = next((c for c in configs if c[0] == active_id), None)
+        if not active_config and configs_in_group:
+            active_config = configs_in_group[0]
+            active_id = active_config[0]
+            state["active_recurrence_id"] = active_id
+            
+        tabs_controls = []
+        for cat_group in unique_cat_groups:
+            is_active_group = (cat_group == active_group)
+            
+            def make_on_click_group(target_group):
+                def click_handler(e):
+                    state["active_recurrence_group"] = target_group
+                    group_configs = categorias_dict[target_group]
+                    state["active_recurrence_id"] = group_configs[0][0]
+                    render_recorrencias()
+                return click_handler
+                
+            tabs_controls.append(
+                ft.Container(
+                    content=ft.Text(cat_group, size=12, color="white" if is_active_group else get_colors()["text"], weight=ft.FontWeight.BOLD),
+                    bgcolor="#3b82f6" if is_active_group else get_colors()["surface"],
+                    border=ft.border.all(1, "#3b82f6" if is_active_group else get_colors()["border"]),
+                    border_radius=20,
+                    padding=ft.Padding(15, 8, 15, 8),
+                    on_click=make_on_click_group(cat_group)
+                )
+            )
+        
+        def select_recurrence(target_id):
+            state["active_recurrence_id"] = target_id
+            # Sync active group when selecting a specific recurrence
+            for grp, grp_configs in categorias_dict.items():
+                if any(gc[0] == target_id for gc in grp_configs):
+                    state["active_recurrence_group"] = grp
+                    break
+            render_recorrencias()
+            
+        tabs_row = ft.Row(
+            controls=tabs_controls,
+            scroll=ft.ScrollMode.ADAPTIVE,
+            spacing=10
+        )
+        
+        cid, nome, tipo_transacao, categoria_id, valor_padrao, conta_id, metodo, obs, perf, cat_nome, band_cartao, dono_cartao = active_config
+        
+        occurrences = db.get_transacoes_recorrencia(cid, state["perfil"])
+        
+        import datetime
+        now = datetime.datetime.now()
+        total_gasto = 0.0
+        compromisso_futuro = 0.0
+        
+        for occ in occurrences:
+            try:
+                occ_dt = datetime.datetime.strptime(occ[1], "%d/%m/%Y")
+            except:
+                occ_dt = now
+            if occ_dt < now.replace(day=1, hour=0, minute=0, second=0, microsecond=0):
+                total_gasto += occ[3]
+            else:
+                compromisso_futuro += occ[3]
+                
+        card_valor_mensal = criar_card_resumo(_t("Valor Padrão"), valor_padrao, "#38bdf8", get_colors()["surface"], small=True)
+        card_total_gasto = criar_card_resumo(_t("Histórico Pago/Recebido"), total_gasto, "#10b981", get_colors()["surface"], small=True)
+        card_compromisso = criar_card_resumo(_t("Planejado/Futuro"), compromisso_futuro, "#fb923c", get_colors()["surface"], small=True)
+        
+        cards_row = ft.Row(
+            controls=[card_valor_mensal, card_total_gasto, card_compromisso],
+            spacing=15
+        )
+        
+        months_dropdown = ft.Dropdown(
+            label=_t("Quantidade de Meses"),
+            options=[
+                ft.dropdown.Option("3", "3 meses"),
+                ft.dropdown.Option("6", "6 meses"),
+                ft.dropdown.Option("12", "12 meses"),
+                ft.dropdown.Option("24", "24 meses"),
+            ],
+            value="12",
+            width=180,
+            bgcolor=get_colors()["bg"],
+            border_color=get_colors()["border"],
+            color=get_colors()["text"]
+        )
+        
+        start_date_input = ft.TextField(
+            label=_t("A partir de (DD/MM/AAAA)"),
+            value=now.strftime("01/%m/%Y"),
+            width=200,
+            bgcolor=get_colors()["bg"],
+            border_color=get_colors()["border"],
+            color=get_colors()["text"]
+        )
+        
+        def do_batch_generation(e):
+            n_months = int(months_dropdown.value)
+            start_date = start_date_input.value.strip()
+            try:
+                datetime.datetime.strptime(start_date, "%d/%m/%Y")
+            except:
+                page.snack_bar = ft.SnackBar(ft.Text(_t("Data inicial inválida! Use DD/MM/AAAA"), color="white"), bgcolor="#ef4444")
+                page.snack_bar.open = True
+                page.update()
+                return
+                
+            success = db.gerar_transacoes_recorrentes(cid, n_months, start_date, state["perfil"])
+            if success:
+                page.snack_bar = ft.SnackBar(ft.Text(_t("Lançamentos em lote programados com sucesso!"), color="white"), bgcolor="#10b981")
+                page.snack_bar.open = True
+                render_recorrencias()
+            else:
+                page.snack_bar = ft.SnackBar(ft.Text(_t("Erro ao gerar lançamentos!"), color="white"), bgcolor="#ef4444")
+                page.snack_bar.open = True
+                page.update()
+
+        btn_gerar = ft.ElevatedButton(
+            _t("PROGRAMAR LANÇAMENTOS"),
+            on_click=do_batch_generation,
+            bgcolor="#3b82f6",
+            color="white",
+            height=45
+        )
+        
+        batch_container = ft.Container(
+            padding=20,
+            bgcolor=get_colors()["surface"],
+            border_radius=12,
+            border=ft.border.all(1, get_colors()["border"]),
+            content=ft.Column([
+                ft.Text(_t("Lançamento em Lote 🚀"), size=15, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+                ft.Text(_t("Gere lançamentos automáticos para os próximos meses de forma simples."), size=12, color="#64748b"),
+                ft.Container(height=10),
+                ft.Row([months_dropdown, start_date_input], spacing=10),
+                ft.Container(height=10),
+                btn_gerar
+            ], spacing=10)
+        )
+        
+        def fmt(val):
+            if val is None:
+                return "R$ 0,00"
+            return f"R$ {val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            
+        rows = []
+        for occ in occurrences:
+            occ_id, occ_data, occ_desc, occ_valor, occ_tipo, occ_metodo, occ_obs = occ
+            
+            try:
+                occ_dt = datetime.datetime.strptime(occ_data, "%d/%m/%Y")
+            except:
+                occ_dt = now
+                
+            status_text = _t("Realizado") if occ_dt < now.replace(day=1, hour=0, minute=0, second=0, microsecond=0) else _t("Agendado")
+            status_color = "#10b981" if status_text == _t("Realizado") else "#fb923c"
+            
+            def make_edit_click(o_id, o_val, o_data):
+                return lambda e: abrir_edit_ocorrencia(o_id, o_val, o_data)
+                
+            def make_delete_click(o_id, o_data):
+                return lambda e: abrir_delete_ocorrencia(o_id, o_data)
+                
+            rows.append(
+                ft.DataRow(
+                    cells=[
+                        ft.DataCell(ft.Text(occ_data, color=get_colors()["text"])),
+                        ft.DataCell(ft.Text(occ_desc, color=get_colors()["text"])),
+                        ft.DataCell(ft.Text(fmt(occ_valor), color=get_colors()["text"], weight=ft.FontWeight.BOLD)),
+                        ft.DataCell(
+                            ft.Container(
+                                content=ft.Text(status_text, size=10, color="white", weight=ft.FontWeight.BOLD),
+                                bgcolor=status_color,
+                                border_radius=4,
+                                padding=ft.Padding(8, 4, 8, 4)
+                            )
+                        ),
+                        ft.DataCell(
+                            ft.Row([
+                                ft.IconButton(ft.icons.Icons.EDIT_ROUNDED, icon_color="#3b82f6", icon_size=18, tooltip=_t("Editar Valor"), on_click=make_edit_click(occ_id, occ_valor, occ_data)),
+                                ft.IconButton(ft.icons.Icons.DELETE_ROUNDED, icon_color="#ef4444", icon_size=18, tooltip=_t("Excluir Ocorrência"), on_click=make_delete_click(occ_id, occ_data)),
+                            ], spacing=5)
+                        )
+                    ]
+                )
+            )
+            
+        tabela = ft.DataTable(
+            columns=[
+                ft.DataColumn(ft.Text(_t("Mês/Data"))),
+                ft.DataColumn(ft.Text(_t("Descrição"))),
+                ft.DataColumn(ft.Text(_t("Valor"))),
+                ft.DataColumn(ft.Text(_t("Status"))),
+                ft.DataColumn(ft.Text(_t("Ações"))),
+            ],
+            rows=rows,
+            border_radius=8,
+            border=ft.border.all(0.5, get_colors()["border"]),
+            heading_row_color=get_colors()["surface"],
+            expand=True
+        )
+        
+        tabela_container = ft.Container(
+            padding=20,
+            bgcolor=get_colors()["surface"],
+            border_radius=12,
+            border=ft.border.all(1, get_colors()["border"]),
+            expand=True,
+            content=ft.Column([
+                ft.Row([
+                    ft.Text(_t("Ocorrências Programadas"), size=15, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+                    ft.Row([
+                        ft.IconButton(ft.icons.Icons.EDIT_ROUNDED, icon_color="#3b82f6", tooltip=_t("Editar Configuração"), on_click=lambda e: abrir_form_config_recorrencia(e, active_config)),
+                        ft.IconButton(ft.icons.Icons.DELETE_FOREVER_ROUNDED, icon_color="#ef4444", tooltip=_t("Excluir Configuração Recorrência"), on_click=lambda e: abrir_delete_config(cid))
+                    ], spacing=5)
+                ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                ft.Container(height=10),
+                ft.Row([tabela], scroll=ft.ScrollMode.ADAPTIVE, expand=True)
+            ], spacing=10)
+        )
+        
+        # Build individual recurrence selection buttons inside the screen
+        config_buttons = []
+        for c in configs_in_group:
+            cid_curr = c[0]
+            c_nome_curr = c[1]
+            
+            # Check if active (has future occurrences)
+            has_future = False
+            occurrences_for_c = db.get_transacoes_recorrencia(cid_curr, state["perfil"])
+            for occ in occurrences_for_c:
+                try:
+                    occ_dt = datetime.datetime.strptime(occ[1], "%d/%m/%Y")
+                except:
+                    occ_dt = now
+                if occ_dt >= now.replace(day=1, hour=0, minute=0, second=0, microsecond=0):
+                    has_future = True
+                    break
+            
+            is_selected = (cid_curr == active_id)
+            status_icon = ft.icons.Icons.CIRCLE_ROUNDED
+            status_color = "#10b981" if has_future else "#64748b"
+            status_tooltip = _t("Ativa (com agendamentos futuros)") if has_future else _t("Inativa (sem agendamentos futuros)")
+            
+            def make_click_config(target_id):
+                return lambda e: select_recurrence(target_id)
+                
+            config_buttons.append(
+                ft.Container(
+                    content=ft.Row([
+                        ft.Icon(status_icon, color=status_color, size=10, tooltip=status_tooltip),
+                        ft.Text(c_nome_curr, size=12, color="white" if is_selected else get_colors()["text"], weight=ft.FontWeight.BOLD)
+                    ], spacing=8, alignment=ft.MainAxisAlignment.CENTER),
+                    bgcolor="#3b82f6" if is_selected else get_colors()["surface"],
+                    border=ft.border.all(1, "#3b82f6" if is_selected else get_colors()["border"]),
+                    border_radius=8,
+                    padding=ft.Padding(12, 10, 12, 10),
+                    on_click=make_click_config(cid_curr),
+                    width=190
+                )
+            )
+            
+        config_selector_panel = ft.Container(
+            padding=20,
+            bgcolor=get_colors()["surface"],
+            border_radius=12,
+            border=ft.border.all(1, get_colors()["border"]),
+            content=ft.Column([
+                ft.Text(_t("Recorrências Cadastradas"), size=15, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+                ft.Text(_t("Selecione a recorrência nesta categoria/subcategoria:"), size=12, color="#64748b"),
+                ft.Container(height=5),
+                ft.Row(controls=config_buttons, wrap=True, spacing=10)
+            ], spacing=10)
+        )
+
+        dashboard_layout = ft.Column(
+            expand=True,
+            controls=[
+                tab_header,
+                ft.Container(height=5),
+                tabs_row,
+                ft.Container(height=10),
+                cards_row,
+                ft.Container(height=15),
+                ft.Row([
+                    ft.Column([
+                        batch_container,
+                        ft.Container(height=15),
+                        config_selector_panel
+                    ], width=420),
+                    tabela_container
+                ], alignment=ft.MainAxisAlignment.START, vertical_alignment=ft.CrossAxisAlignment.START, expand=True)
+            ],
+            spacing=10,
+            scroll=ft.ScrollMode.ADAPTIVE
+        )
+        
+        page.floating_action_button = None
+        body.content = dashboard_layout
+        page.update()
+
+    def abrir_form_config_recorrencia(e, config_to_edit=None):
+        txt_nome = ft.TextField(
+            label=_t("Nome da Recorrência"),
+            value=config_to_edit[1] if config_to_edit else "",
+            border_color="#475569", focused_border_color="#3b82f6",
+            label_style=ft.TextStyle(color="#94a3b8"), text_style=ft.TextStyle(color=get_colors()["text"]),
+            bgcolor=get_colors()["bg"], height=48, text_size=12
+        )
+        
+        txt_valor = ft.TextField(
+            label=_t("Valor Padrão (R$)"),
+            value=f"{config_to_edit[4]:.2f}".replace(".", ",") if config_to_edit else "",
+            border_color="#475569", focused_border_color="#3b82f6",
+            label_style=ft.TextStyle(color="#94a3b8"), text_style=ft.TextStyle(color=get_colors()["text"]),
+            bgcolor=get_colors()["bg"], height=48, text_size=12,
+            on_change=lambda e: update_sharing_labels()
+        )
+        
+        txt_obs = ft.TextField(
+            label=_t("Observação"),
+            value=config_to_edit[7] if config_to_edit else "",
+            border_color="#475569", focused_border_color="#3b82f6",
+            label_style=ft.TextStyle(color="#94a3b8"), text_style=ft.TextStyle(color=get_colors()["text"]),
+            bgcolor=get_colors()["bg"], height=48, text_size=12
+        )
+        
+        drop_tipo = ft.Dropdown(
+            label=_t("Tipo"),
+            options=[
+                ft.dropdown.Option("Despesa Fixa", _t("Despesa Fixa")),
+                ft.dropdown.Option("Despesa Variável", _t("Despesa Variável")),
+                ft.dropdown.Option("Receita Fixa", _t("Receita Fixa")),
+                ft.dropdown.Option("Receita Variável", _t("Receita Variável")),
+            ],
+            value=config_to_edit[2] if config_to_edit else "Despesa Fixa",
+            border_color="#475569", focused_border_color="#3b82f6",
+            label_style=ft.TextStyle(color="#94a3b8"), text_style=ft.TextStyle(color=get_colors()["text"]),
+            bgcolor=get_colors()["bg"], height=48, text_size=12
+        )
+        
+        drop_cat = ft.Dropdown(
+            label=_t("Categoria"),
+            border_color="#475569", focused_border_color="#3b82f6",
+            label_style=ft.TextStyle(color="#94a3b8"), text_style=ft.TextStyle(color=get_colors()["text"]),
+            bgcolor=get_colors()["bg"], height=48, text_size=12
+        )
+        
+        drop_sub = ft.Dropdown(
+            label=_t("Subcategoria"),
+            border_color="#475569", focused_border_color="#3b82f6",
+            label_style=ft.TextStyle(color="#94a3b8"), text_style=ft.TextStyle(color=get_colors()["text"]),
+            bgcolor=get_colors()["bg"], height=48, text_size=12
+        )
+        
+        drop_metodo = ft.Dropdown(
+            label=_t("Método de Pagamento"),
+            options=[
+                ft.dropdown.Option("Boleto", _t("Boleto")),
+                ft.dropdown.Option("Pix", _t("Pix")),
+                ft.dropdown.Option("Dinheiro", _t("Dinheiro")),
+                ft.dropdown.Option("Cartão", _t("Cartão de Crédito")),
+                ft.dropdown.Option("Outros", _t("Outros")),
+            ],
+            value=config_to_edit[6] if config_to_edit else "Boleto",
+            border_color="#475569", focused_border_color="#3b82f6",
+            label_style=ft.TextStyle(color="#94a3b8"), text_style=ft.TextStyle(color=get_colors()["text"]),
+            bgcolor=get_colors()["bg"], height=48, text_size=12
+        )
+
+        cartoes = db.get_cartoes()
+        card_options = []
+        for c in cartoes:
+            card_id, c_nome, c_lim, c_fech, c_venc, c_cor, c_band, c_dono, c_dig = c
+            card_options.append(ft.dropdown.Option(
+                key=f"{c_band}|{c_dono}", 
+                text=f"{c_nome} ({c_band} - {c_dono} •••• {c_dig})"
+            ))
+
+        drop_cartao = ft.Dropdown(
+            label=_t("Selecione o Cartão"),
+            border_color="#475569",
+            focused_border_color="#2563eb",
+            text_style=ft.TextStyle(color=get_colors()["text"], size=12),
+            label_style=ft.TextStyle(size=11),
+            height=48,
+            expand=True,
+            bgcolor=get_colors()["bg"],
+            options=card_options
+        )
+        
+        if config_to_edit and config_to_edit[6] == "Cartão":
+            band = config_to_edit[10] or ""
+            dono = config_to_edit[11] or ""
+            key_val = f"{band}|{dono}"
+            if any(opt.key == key_val for opt in card_options):
+                drop_cartao.value = key_val
+            elif card_options:
+                drop_cartao.value = card_options[0].key
+        elif card_options:
+            drop_cartao.value = card_options[0].key
+
+        cartao_container = ft.Container(
+            visible=(config_to_edit[6] == "Cartão") if config_to_edit else False,
+            content=ft.Column(
+                controls=[
+                    ft.Text(_t("💳 Detalhes do Cartão"), size=12, weight=ft.FontWeight.BOLD, color="#3b82f6"),
+                    ft.Row(
+                        controls=[
+                            ft.Container(expand=True, content=drop_cartao),
+                            ft.Container(width=15)
+                        ]
+                    )
+                ],
+                spacing=5
+            )
+        )
+
+        chk_compartilhar = ft.Checkbox(
+            label=_t("Dividir despesa com a família"), 
+            value=False, 
+            label_style=ft.TextStyle(size=12, color=get_colors()["text"]),
+        )
+        
+        existing_divs = db.get_divisions_recorrencia(config_to_edit[0]) if config_to_edit else {}
+        if existing_divs:
+            chk_compartilhar.value = True
+
+        perfis = db.get_perfis() if hasattr(db, 'get_perfis') else ["Eu"]
+        if "Outro..." not in perfis: perfis.append("Outro...")
+
+        custom_name = ""
+        if existing_divs:
+            for name in existing_divs.keys():
+                if name not in perfis and name != "Eu":
+                    custom_name = name
+                    break
+
+        member_checks = []
+        member_widgets = []
+        for p in perfis:
+            is_checked = False
+            if existing_divs:
+                if p == "Outro..." and custom_name:
+                    is_checked = True
+                else:
+                    is_checked = (p in existing_divs)
+            else:
+                is_checked = (p == "Eu")
+            
+            cb = ft.Checkbox(
+                value=is_checked,
+            )
+            cb.data = p
+            member_checks.append(cb)
+            
+            widget = ft.Container(
+                width=95,
+                content=ft.Row(
+                    spacing=2,
+                    controls=[
+                        cb,
+                        ft.Text(p, size=12, color=get_colors()["text"], weight=ft.FontWeight.W_500)
+                    ]
+                )
+            )
+            member_widgets.append(widget)
+
+        drop_div_tipo = ft.Dropdown(
+            label=_t("Tipo de Divisão"),
+            border_color="#475569",
+            focused_border_color="#10b981",
+            text_style=ft.TextStyle(color=get_colors()["text"], size=12),
+            label_style=ft.TextStyle(size=11),
+            height=48,
+            expand=True,
+            bgcolor=get_colors()["bg"],
+            options=[
+                ft.dropdown.Option(key="Igualitária", text=_t("Igualitária")),
+                ft.dropdown.Option(key="Individual", text=_t("Individual"))
+            ],
+            value="Igualitária"
+        )
+        
+        if existing_divs:
+            vals = list(existing_divs.values())
+            if len(set(vals)) > 1:
+                drop_div_tipo.value = "Individual"
+
+        col_inputs = ft.Column(spacing=8)
+        inputs_individuais = {}
+        lbl_val_status = ft.Text(size=11, weight=ft.FontWeight.BOLD)
+        
+        txt_novo_perfil = ft.TextField(
+            label=_t("Nome do novo membro"), 
+            border_color="#475569", 
+            focused_border_color="#10b981", 
+            text_style=ft.TextStyle(color=get_colors()["text"], size=12), 
+            label_style=ft.TextStyle(size=11),
+            height=44,
+            expand=True,
+            content_padding=ft.Padding(10, 5, 10, 5),
+            bgcolor=get_colors()["bg"], 
+            visible=False,
+        )
+        txt_novo_perfil_row = ft.Row([ft.Container(expand=True, content=txt_novo_perfil), ft.Container(width=15)], visible=False)
+
+        if custom_name:
+            txt_novo_perfil.value = custom_name
+            txt_novo_perfil.visible = True
+            txt_novo_perfil_row.visible = True
+
+        def rebuild_sharing_inputs():
+            col_inputs.controls.clear()
+            inputs_individuais.clear()
+
+            outro_check = next((chk for chk in member_checks if chk.data == "Outro..."), None)
+            is_visible = outro_check is not None and outro_check.value == True
+            txt_novo_perfil.visible = is_visible
+            txt_novo_perfil_row.visible = is_visible
+
+            selected = [chk.data for chk in member_checks if chk.value == True]
+            
+            if drop_div_tipo.value == "Individual":
+                temp_row_controls = []
+                for p in selected:
+                    nome_final = p if p != "Outro..." else "Novo Membro"
+                    cota_valor = "0,00"
+                    if existing_divs:
+                        key_p = custom_name if p == "Outro..." else p
+                        if key_p in existing_divs:
+                            cota_valor = f"{existing_divs[key_p]:.2f}".replace(".", ",")
+
+                    tf = ft.TextField(
+                        label=f"Valor para {nome_final}", 
+                        value=cota_valor, 
+                        border_color="#475569", focused_border_color="#10b981", 
+                        text_style=ft.TextStyle(color=get_colors()["text"], size=12), 
+                        label_style=ft.TextStyle(size=11),
+                        height=44,
+                        expand=True,
+                        content_padding=ft.Padding(10, 5, 10, 5),
+                        bgcolor=get_colors()["bg"], 
+                        on_change=lambda e: update_sharing_labels()
+                    )
+                    inputs_individuais[p] = tf
+                    temp_row_controls.append(ft.Container(expand=True, content=tf))
+
+                for i in range(0, len(temp_row_controls), 2):
+                    row_slice = temp_row_controls[i:i+2]
+                    if len(row_slice) == 1:
+                        row_slice.append(ft.Container(expand=True))
+                    col_inputs.controls.append(ft.Row(controls=row_slice + [ft.Container(width=15)]))
+            
+            update_sharing_labels()
+            page.update()
+
+        def update_sharing_labels():
+            try:
+                val_total = float(txt_valor.value.strip().replace(".", "").replace(",", "."))
+            except:
+                val_total = 0.0
+
+            selected = [chk.data for chk in member_checks if chk.value == True]
+            if not selected:
+                lbl_val_status.value = "⚠️ Selecione pelo menos uma pessoa!"
+                lbl_val_status.color = "#f59e0b"
+                page.update()
+                return
+
+            if drop_div_tipo.value == "Igualitária":
+                val_share = val_total / len(selected)
+                lbl_val_status.value = f"Divisão: R$ {val_share:,.2f} para cada um ({len(selected)} pessoas)".replace(",", ".")
+                lbl_val_status.color = "#10b981"
+            else:
+                soma = 0.0
+                for p, tf in inputs_individuais.items():
+                    try:
+                        soma += float(tf.value.replace(",", "."))
+                    except:
+                        pass
+                
+                diff = val_total - soma
+                if abs(diff) < 0.01:
+                    lbl_val_status.value = "✓ Divisão completa e batida!"
+                    lbl_val_status.color = "#10b981"
+                elif diff > 0:
+                    lbl_val_status.value = f"Restam R$ {diff:,.2f} para alocar".replace(",", ".")
+                    lbl_val_status.color = "#f59e0b"
+                else:
+                    lbl_val_status.value = f"Excedeu em R$ {abs(diff):,.2f}".replace(",", ".")
+                    lbl_val_status.color = "#ef4444"
+            page.update()
+            
+        for cb in member_checks:
+            cb.on_change = lambda e: rebuild_sharing_inputs()
+        txt_novo_perfil.on_change = lambda e: update_sharing_labels()
+        drop_div_tipo.on_select = lambda e: rebuild_sharing_inputs()
+        
+        def toggle_sharing_fields():
+            sharing_container.visible = chk_compartilhar.value
+            rebuild_sharing_inputs()
+            
+        chk_compartilhar.on_change = lambda e: toggle_sharing_fields()
+
+        sharing_container = ft.Container(
+            visible=chk_compartilhar.value,
+            content=ft.Column(
+                controls=[
+                    ft.Text(_t("👥 Divisão de Valores (Rateio)"), size=12, weight=ft.FontWeight.BOLD, color="#10b981"),
+                    ft.Row(
+                        controls=member_widgets,
+                        wrap=True,
+                        spacing=10
+                    ),
+                    txt_novo_perfil_row,
+                    ft.Row(
+                        controls=[
+                            ft.Container(expand=True, content=drop_div_tipo),
+                            ft.Container(width=15)
+                        ]
+                    ),
+                    col_inputs,
+                    lbl_val_status
+                ],
+                spacing=8
+            )
+        )
+
+        txt_meses_inicial = ft.TextField(
+            label=_t("Programar quantos meses?"),
+            value="12",
+            border_color="#475569", focused_border_color="#3b82f6",
+            label_style=ft.TextStyle(color="#94a3b8"), text_style=ft.TextStyle(color=get_colors()["text"]),
+            bgcolor=get_colors()["bg"], height=48, text_size=12
+        )
+        
+        import datetime
+        now = datetime.datetime.now()
+        txt_data_inicial = ft.TextField(
+            label=_t("A partir de (DD/MM/AAAA)"),
+            value=now.strftime("01/%m/%Y"),
+            border_color="#475569", focused_border_color="#3b82f6",
+            label_style=ft.TextStyle(color="#94a3b8"), text_style=ft.TextStyle(color=get_colors()["text"]),
+            bgcolor=get_colors()["bg"], height=48, text_size=12
+        )
+        
+        lote_container = ft.Container(
+            visible=(config_to_edit is None),
+            content=ft.Column(
+                controls=[
+                    ft.Text(_t("📅 Programação Inicial"), size=12, weight=ft.FontWeight.BOLD, color="#fb923c"),
+                    ft.Row(
+                        controls=[
+                            ft.Container(expand=1, content=txt_meses_inicial),
+                            ft.Container(expand=1, content=txt_data_inicial),
+                            ft.Container(width=15)
+                        ],
+                        spacing=10
+                    )
+                ],
+                spacing=5
+            )
+        )
+
+        def on_tipo_change(e):
+            tipo = drop_tipo.value
+            cats = categorias_por_pilar.get(tipo, {})
+            drop_cat.options = [ft.dropdown.Option(key=str(cid), text=info["nome"]) for cid, info in cats.items()]
+            if cats:
+                first_cid = list(cats.keys())[0]
+                drop_cat.value = str(first_cid)
+                update_subcategories(first_cid)
+            else:
+                drop_cat.value = None
+                drop_sub.options = [ft.dropdown.Option(key="Geral", text="Geral")]
+                drop_sub.value = "Geral"
+            page.update()
+
+        def on_cat_change(e):
+            if drop_cat.value:
+                update_subcategories(int(drop_cat.value))
+            else:
+                drop_sub.options = [ft.dropdown.Option(key="Geral", text="Geral")]
+                drop_sub.value = "Geral"
+            page.update()
+
+        def update_subcategories(parent_cid):
+            tipo = drop_tipo.value
+            cats = categorias_por_pilar.get(tipo, {})
+            cat_info = cats.get(parent_cid, {})
+            subs = cat_info.get("subs", [])
+            if subs:
+                drop_sub.options = [ft.dropdown.Option(key=str(sid), text=snome) for sid, snome in subs]
+                drop_sub.value = str(subs[0][0])
+            else:
+                drop_sub.options = [ft.dropdown.Option(key="Geral", text="Geral")]
+                drop_sub.value = "Geral"
+
+        drop_tipo.on_select = on_tipo_change
+        drop_cat.on_select = on_cat_change
+        drop_metodo.on_select = lambda e: toggle_metodo_fields()
+        
+        def toggle_metodo_fields():
+            cartao_container.visible = (drop_metodo.value == "Cartão")
+            page.update()
+
+        tipo_inicial = drop_tipo.value
+        cats_iniciais = categorias_por_pilar.get(tipo_inicial, {})
+        drop_cat.options = [ft.dropdown.Option(key=str(cid), text=info["nome"]) for cid, info in cats_iniciais.items()]
+        
+        if config_to_edit:
+            categoria_ativa = config_to_edit[3]
+            parent_id = None
+            for cid, info in cats_iniciais.items():
+                if cid == categoria_ativa:
+                    parent_id = cid
+                    break
+                if categoria_ativa in [s[0] for s in info["subs"]]:
+                    parent_id = cid
+                    break
+            
+            if parent_id:
+                drop_cat.value = str(parent_id)
+                update_subcategories(parent_id)
+                if parent_id != categoria_ativa:
+                    drop_sub.value = str(categoria_ativa)
+            elif cats_iniciais:
+                first_cid = list(cats_iniciais.keys())[0]
+                drop_cat.value = str(first_cid)
+                update_subcategories(first_cid)
+        else:
+            if cats_iniciais:
+                first_cid = list(cats_iniciais.keys())[0]
+                drop_cat.value = str(first_cid)
+                update_subcategories(first_cid)
+
+        def salvar_config(e):
+            nome = txt_nome.value.strip()
+            tipo = drop_tipo.value
+            cat_val = drop_cat.value
+            sub_val = drop_sub.value
+            valor_str = txt_valor.value.strip().replace(".", "").replace(",", ".")
+            metodo = drop_metodo.value
+            obs = txt_obs.value.strip()
+            
+            if not nome:
+                page.snack_bar = ft.SnackBar(ft.Text(_t("O nome da recorrência é obrigatório!"), color="white"), bgcolor="#ef4444")
+                page.snack_bar.open = True
+                page.update()
+                return
+                
+            try:
+                valor = float(valor_str)
+                if valor <= 0:
+                    raise ValueError()
+            except:
+                page.snack_bar = ft.SnackBar(ft.Text(_t("Digite um valor numérico válido maior que zero!"), color="white"), bgcolor="#ef4444")
+                page.snack_bar.open = True
+                page.update()
+                return
+                
+            categoria_final_id = int(sub_val) if (sub_val and sub_val != "Geral") else int(cat_val)
+            
+            bandeira = ""
+            dono = ""
+            if metodo == "Cartão":
+                if drop_cartao.value:
+                    parts = drop_cartao.value.split("|")
+                    if len(parts) == 2:
+                        bandeira, dono = parts[0], parts[1]
+                else:
+                    page.snack_bar = ft.SnackBar(ft.Text(_t("Selecione o cartão de crédito!"), color="white"), bgcolor="#ef4444")
+                    page.snack_bar.open = True
+                    page.update()
+                    return
+
+            divisoes = {}
+            if chk_compartilhar.value:
+                selected = [chk.data for chk in member_checks if chk.value]
+                if not selected:
+                    page.snack_bar = ft.SnackBar(ft.Text(_t("Selecione pelo menos uma pessoa para a divisão!"), color="white"), bgcolor="#ef4444")
+                    page.snack_bar.open = True
+                    page.update()
+                    return
+                
+                has_outro = "Outro..." in selected
+                nome_outro = txt_novo_perfil.value.strip()
+                if has_outro and not nome_outro:
+                    page.snack_bar = ft.SnackBar(ft.Text(_t("Digite o nome do novo membro!"), color="white"), bgcolor="#ef4444")
+                    page.snack_bar.open = True
+                    page.update()
+                    return
+                
+                if drop_div_tipo.value == "Igualitária":
+                    share_val = valor / len(selected)
+                    for p in selected:
+                        p_name = nome_outro if p == "Outro..." else p
+                        divisoes[p_name] = share_val
+                else:
+                    soma = 0.0
+                    for p in selected:
+                        tf = inputs_individuais.get(p)
+                        if not tf:
+                            continue
+                        try:
+                            val_p = float(tf.value.replace(",", "."))
+                        except:
+                            val_p = 0.0
+                        p_name = nome_outro if p == "Outro..." else p
+                        divisoes[p_name] = val_p
+                        soma += val_p
+                    
+                    if abs(soma - valor) > 0.02:
+                        page.snack_bar = ft.SnackBar(ft.Text(_t("A soma das partes deve ser igual ao valor total!"), color="white"), bgcolor="#ef4444")
+                        page.snack_bar.open = True
+                        page.update()
+                        return
+            else:
+                divisoes = None
+
+            n_meses = 0
+            start_date = ""
+            if not config_to_edit:
+                try:
+                    n_meses_str = txt_meses_inicial.value.strip()
+                    n_meses = int(n_meses_str) if n_meses_str else 0
+                    if n_meses < 0:
+                        raise ValueError()
+                except:
+                    page.snack_bar = ft.SnackBar(ft.Text(_t("Digite uma quantidade de meses válida!"), color="white"), bgcolor="#ef4444")
+                    page.snack_bar.open = True
+                    page.update()
+                    return
+                
+                if n_meses > 0:
+                    start_date = txt_data_inicial.value.strip()
+                    try:
+                        datetime.datetime.strptime(start_date, "%d/%m/%Y")
+                    except:
+                        page.snack_bar = ft.SnackBar(ft.Text(_t("Data inicial inválida! Use DD/MM/AAAA"), color="white"), bgcolor="#ef4444")
+                        page.snack_bar.open = True
+                        page.update()
+                        return
+
+            if config_to_edit:
+                success, msg = db.update_config_recorrencia(
+                    config_to_edit[0], nome, tipo, categoria_final_id, valor, metodo, obs, bandeira, dono, divisoes
+                )
+            else:
+                success, msg = db.add_config_recorrencia(
+                    nome, tipo, categoria_final_id, valor, metodo, obs, state["perfil"], bandeira, dono, divisoes
+                )
+                if success:
+                    state["active_recurrence_id"] = msg
+                    if n_meses > 0:
+                        db.gerar_transacoes_recorrentes(msg, n_meses, start_date, state["perfil"])
+
+            if success:
+                page.snack_bar = ft.SnackBar(ft.Text(_t("Configuração salva com sucesso!"), color="white"), bgcolor="#10b981")
+                page.pop_dialog()
+                render_recorrencias()
+            else:
+                page.snack_bar = ft.SnackBar(ft.Text(f"{_t('Erro ao salvar:')} {msg}", color="white"), bgcolor="#ef4444")
+                page.snack_bar.open = True
+                page.update()
+
+        form_content = ft.Container(
+            content=ft.Column(
+                controls=[
+                    ft.Text(_t("📝 Informações Básicas"), size=12, weight=ft.FontWeight.BOLD, color="#3b82f6"),
+                    txt_nome,
+                    txt_valor,
+                    drop_tipo,
+                    drop_cat,
+                    drop_sub,
+                    drop_metodo,
+                    cartao_container,
+                    chk_compartilhar,
+                    sharing_container,
+                    lote_container,
+                    txt_obs
+                ],
+                spacing=10,
+                scroll=ft.ScrollMode.ADAPTIVE
+            ),
+            width=460,
+            height=480
+        )
+        
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text(_t("Editar Recorrência") if config_to_edit else _t("Adicionar Lançamento Recorrente"), size=16, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+            content=form_content,
+            bgcolor=get_colors()["surface"],
+            actions=[
+                ft.TextButton(_t("CANCELAR"), on_click=lambda e: page.pop_dialog(), style=ft.ButtonStyle(color="white")),
+                ft.ElevatedButton(_t("SALVAR"), on_click=salvar_config, bgcolor="#3b82f6", color="white", style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)))
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        page.show_dialog(dialog)
+        
+        if existing_divs:
+            rebuild_sharing_inputs()
+
+    def abrir_edit_ocorrencia(occ_id, val, date):
+        txt_new_val = ft.TextField(
+            label=_t("Novo Valor (R$)"),
+            value=str(val),
+            border_color="#475569", focused_border_color="#3b82f6",
+            label_style=ft.TextStyle(color="#94a3b8"), text_style=ft.TextStyle(color=get_colors()["text"]),
+            bgcolor=get_colors()["bg"], height=48, text_size=12
+        )
+        
+        choice_group = ft.RadioGroup(
+            content=ft.Column([
+                ft.Radio(value="single", label=_t("Alterar apenas este mês")),
+                ft.Radio(value="future", label=_t("Alterar deste mês em diante (Alterar padrão)")),
+            ]),
+            value="single"
+        )
+        
+        def salvar_edicao(e):
+            val_str = txt_new_val.value.strip().replace(",", ".")
+            try:
+                new_val = float(val_str)
+                if new_val <= 0:
+                    raise ValueError()
+            except:
+                page.snack_bar = ft.SnackBar(ft.Text(_t("Digite um valor numérico válido!"), color="white"), bgcolor="#ef4444")
+                page.snack_bar.open = True
+                page.update()
+                return
+                
+            alterar_futuros = (choice_group.value == "future")
+            success = db.atualizar_transacao_recorrente(occ_id, state["active_recurrence_id"], new_val, alterar_futuros)
+            if success:
+                page.snack_bar = ft.SnackBar(ft.Text(_t("Operação atualizada com sucesso!"), color="white"), bgcolor="#10b981")
+                page.pop_dialog()
+                render_recorrencias()
+            else:
+                page.snack_bar = ft.SnackBar(ft.Text(_t("Erro ao atualizar!"), color="white"), bgcolor="#ef4444")
+                page.snack_bar.open = True
+                page.update()
+
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text(f"{_t('Editar Ocorrência')} ({date})", size=16, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+            content=ft.Column(
+                controls=[
+                    txt_new_val,
+                    ft.Container(height=10),
+                    choice_group
+                ],
+                tight=True,
+                spacing=10
+            ),
+            bgcolor=get_colors()["surface"],
+            actions=[
+                ft.TextButton(_t("CANCELAR"), on_click=lambda e: page.pop_dialog(), style=ft.ButtonStyle(color="white")),
+                ft.ElevatedButton(_t("SALVAR"), on_click=salvar_edicao, bgcolor="#3b82f6", color="white", style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)))
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        page.show_dialog(dialog)
+
+    def abrir_delete_ocorrencia(occ_id, date):
+        choice_group = ft.RadioGroup(
+            content=ft.Column([
+                ft.Radio(value="single", label=_t("Excluir apenas este mês")),
+                ft.Radio(value="future", label=_t("Excluir deste mês em diante")),
+            ]),
+            value="single"
+        )
+        
+        def confirmar_exclusao(e):
+            excluir_futuros = (choice_group.value == "future")
+            success = db.excluir_transacao_recorrente(occ_id, state["active_recurrence_id"], excluir_futuros)
+            if success:
+                page.snack_bar = ft.SnackBar(ft.Text(_t("Ocorrência excluída com sucesso!"), color="white"), bgcolor="#10b981")
+                page.pop_dialog()
+                render_recorrencias()
+            else:
+                page.snack_bar = ft.SnackBar(ft.Text(_t("Erro ao excluir!"), color="white"), bgcolor="#ef4444")
+                page.snack_bar.open = True
+                page.update()
+
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text(_t("Confirmar Exclusão"), size=16, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+            content=ft.Column(
+                controls=[
+                    ft.Text(f"{_t('Tem certeza que deseja excluir a ocorrência de')} {date}?", color=get_colors()["text"]),
+                    ft.Container(height=10),
+                    choice_group
+                ],
+                tight=True,
+                spacing=10
+            ),
+            bgcolor=get_colors()["surface"],
+            actions=[
+                ft.TextButton(_t("CANCELAR"), on_click=lambda e: page.pop_dialog(), style=ft.ButtonStyle(color="white")),
+                ft.ElevatedButton(_t("EXCLUIR"), on_click=confirmar_exclusao, bgcolor="#ef4444", color="white", style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)))
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        page.show_dialog(dialog)
+
+    def abrir_delete_config(config_id):
+        def confirmar_exclusao_config(e):
+            success, msg = db.delete_config_recorrencia(config_id)
+            if success:
+                page.snack_bar = ft.SnackBar(ft.Text(_t("Configuração excluída com sucesso!"), color="white"), bgcolor="#10b981")
+                page.pop_dialog()
+                state["active_recurrence_id"] = None
+                render_recorrencias()
+            else:
+                page.snack_bar = ft.SnackBar(ft.Text(f"{_t('Erro ao excluir:')} {msg}", color="white"), bgcolor="#ef4444")
+                page.snack_bar.open = True
+                page.update()
+
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text(_t("Confirmar Exclusão de Configuração"), size=16, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+            content=ft.Text(_t("Deseja excluir esta configuração de recorrência? As transações existentes não serão excluídas."), color=get_colors()["text"]),
+            bgcolor=get_colors()["surface"],
+            actions=[
+                ft.TextButton(_t("CANCELAR"), on_click=lambda e: page.pop_dialog(), style=ft.ButtonStyle(color="white")),
+                ft.ElevatedButton(_t("EXCLUIR CONFIGURAÇÃO"), on_click=confirmar_exclusao_config, bgcolor="#ef4444", color="white", style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)))
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        page.show_dialog(dialog)
 
     def render_configuracoes():
         # Desativa o floating action button se houver
@@ -9521,7 +10862,7 @@ def main(page: ft.Page):
                 page.update()
                 
                 from update_manager import UpdateManager
-                updater = UpdateManager(current_version="1.1.0")
+                updater = UpdateManager(current_version="1.2.0")
                 tem_update, info = updater.check_for_updates()
                 
                 if tem_update and info:
@@ -9559,7 +10900,7 @@ def main(page: ft.Page):
                         
                     btn_apply_update.on_click = on_apply_click
                 else:
-                    lbl_status_update.value = "Seu aplicativo já está na versão mais recente (v1.1.0)."
+                    lbl_status_update.value = "Seu aplicativo já está na versão mais recente (v1.2.0)."
                     lbl_status_update.color = "#10b981"
                     
                 btn_check.disabled = False
@@ -9586,7 +10927,7 @@ def main(page: ft.Page):
                         ft.Divider(color="#334155"),
                         ft.Row([
                             ft.Text("Versão Atual:", size=12, color=get_colors()["subtext"]),
-                            ft.Text("v1.1.0 (Beta)", size=12, color="white", weight=ft.FontWeight.BOLD)
+                            ft.Text("v1.2.0 (Beta)", size=12, color="white", weight=ft.FontWeight.BOLD)
                         ]),
                         ft.Divider(color="#334155"),
                         lbl_status_update,
@@ -9910,6 +11251,585 @@ def main(page: ft.Page):
         body.content = configuracoes_layout
         page.update()
 
+    def abrir_edit_parcela_individual(trans_id, val, date):
+        txt_new_val = ft.TextField(
+            label=_t("Novo Valor (R$)"),
+            value=str(val),
+            border_color="#475569", focused_border_color="#3b82f6",
+            label_style=ft.TextStyle(color="#94a3b8"), text_style=ft.TextStyle(color=get_colors()["text"]),
+            bgcolor=get_colors()["bg"], height=48, text_size=12
+        )
+        
+        txt_new_date = ft.TextField(
+            label=_t("Nova Data (DD/MM/AAAA)"),
+            value=str(date),
+            border_color="#475569", focused_border_color="#3b82f6",
+            label_style=ft.TextStyle(color="#94a3b8"), text_style=ft.TextStyle(color=get_colors()["text"]),
+            bgcolor=get_colors()["bg"], height=48, text_size=12
+        )
+
+        def salvar_parcela(e):
+            val_str = txt_new_val.value.strip().replace(",", ".")
+            date_str = txt_new_date.value.strip()
+            
+            try:
+                new_val = float(val_str)
+                if new_val <= 0:
+                    raise ValueError()
+            except:
+                page.snack_bar = ft.SnackBar(ft.Text(_t("Digite um valor numérico válido!"), color="white"), bgcolor="#ef4444")
+                page.snack_bar.open = True
+                page.update()
+                return
+
+            try:
+                import datetime
+                datetime.datetime.strptime(date_str, "%d/%m/%Y")
+            except:
+                page.snack_bar = ft.SnackBar(ft.Text(_t("Data inválida! Use DD/MM/AAAA"), color="white"), bgcolor="#ef4444")
+                page.snack_bar.open = True
+                page.update()
+                return
+
+            details = db.get_transacao_by_id(trans_id)
+            if not details:
+                page.snack_bar = ft.SnackBar(ft.Text(_t("Erro ao buscar transação!"), color="white"), bgcolor="#ef4444")
+                page.snack_bar.open = True
+                page.update()
+                return
+
+            # Escalar proporcionalmente os valores das divisões
+            # O valor editado pelo usuário corresponde ao valor exibido para o seu perfil.
+            # Portanto, calculamos o ratio com base na cota anterior do perfil atual.
+            old_cota = details["divisoes"].get(state["perfil"]) if details["divisoes"] else details["valor_total"]
+            ratio = new_val / old_cota if old_cota > 0 else 1.0
+            new_total = details["valor_total"] * ratio
+            
+            new_divisoes = {}
+            if details["divisoes"]:
+                for user, cota in details["divisoes"].items():
+                    new_divisoes[user] = cota * ratio
+
+            success, msg = db.atualizar_transacao(
+                transacao_id=trans_id,
+                categoria_id=details["categoria_id"],
+                descricao=details["descricao"],
+                data=date_str,
+                valor_total=new_total,
+                tipo_transacao=details["tipo_transacao"],
+                metodo=details["metodo_pagamento"],
+                bandeira=details["bandeira_cartao"],
+                dono=details["dono_cartao"],
+                observacao=details["observacao"],
+                divisoes=new_divisoes,
+                data_real=date_str,  # Atualizar data_real também para mover no dashboard
+                atualizar_grupo=False
+            )
+
+            if success:
+                page.snack_bar = ft.SnackBar(ft.Text(_t("Parcela atualizada com sucesso!"), color="white"), bgcolor="#10b981")
+                page.snack_bar.open = True
+                page.pop_dialog()
+                render_parcelamentos()
+            else:
+                page.snack_bar = ft.SnackBar(ft.Text(f"{_t('Erro ao atualizar:')} {msg}", color="white"), bgcolor="#ef4444")
+                page.snack_bar.open = True
+                page.update()
+
+        def fechar_dialog(e):
+            page.pop_dialog()
+
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text(_t("Editar Parcela Individual"), size=16, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+            content=ft.Column(
+                controls=[
+                    txt_new_val,
+                    ft.Container(height=5),
+                    txt_new_date
+                ],
+                height=120,
+                tight=True
+            ),
+            actions=[
+                ft.TextButton(_t("Cancelar"), on_click=fechar_dialog),
+                ft.ElevatedButton(_t("Salvar"), on_click=salvar_parcela, bgcolor="#3b82f6", color="white")
+            ]
+        )
+        page.show_dialog(dialog)
+
+    def empurrar_parcela(trans_id):
+        details = db.get_transacao_by_id(trans_id)
+        if not details:
+            page.snack_bar = ft.SnackBar(ft.Text(_t("Erro ao buscar transação!"), color="white"), bgcolor="#ef4444")
+            page.snack_bar.open = True
+            page.update()
+            return
+            
+        data_atual = details["data"]
+        try:
+            import datetime
+            dt = datetime.datetime.strptime(data_atual, "%d/%m/%Y")
+            # Adiciona 1 mês
+            mes = dt.month + 1
+            ano = dt.year + (mes - 1) // 12
+            mes = (mes - 1) % 12 + 1
+            dia = min(dt.day, 28)
+            new_dt = datetime.datetime(ano, mes, dia)
+            new_date_str = new_dt.strftime("%d/%m/%Y")
+        except Exception as ex:
+            page.snack_bar = ft.SnackBar(ft.Text(f"{_t('Erro ao calcular nova data:')} {ex}", color="white"), bgcolor="#ef4444")
+            page.snack_bar.open = True
+            page.update()
+            return
+
+        # Escalar as divisões (invariante aqui, mas necessário para não zerar)
+        success, msg = db.atualizar_transacao(
+            transacao_id=trans_id,
+            categoria_id=details["categoria_id"],
+            descricao=details["descricao"],
+            data=new_date_str,
+            valor_total=details["valor_total"],
+            tipo_transacao=details["tipo_transacao"],
+            metodo=details["metodo_pagamento"],
+            bandeira=details["bandeira_cartao"],
+            dono=details["dono_cartao"],
+            observacao=details["observacao"],
+            divisoes=details["divisoes"],
+            data_real=new_date_str,  # Atualizar data_real também para mover no dashboard
+            atualizar_grupo=False
+        )
+
+        if success:
+            page.snack_bar = ft.SnackBar(
+                content=ft.Text(f"{_t('Parcela empurrada para')} {new_date_str}!", color="white"), 
+                bgcolor="#10b981"
+            )
+            page.snack_bar.open = True
+            render_parcelamentos()
+        else:
+            page.snack_bar = ft.SnackBar(ft.Text(f"{_t('Erro ao empurrar:')} {msg}", color="white"), bgcolor="#ef4444")
+            page.snack_bar.open = True
+            page.update()
+
+    def puxar_parcela(trans_id):
+        details = db.get_transacao_by_id(trans_id)
+        if not details:
+            page.snack_bar = ft.SnackBar(ft.Text(_t("Erro ao buscar transação!"), color="white"), bgcolor="#ef4444")
+            page.snack_bar.open = True
+            page.update()
+            return
+            
+        data_atual = details["data"]
+        try:
+            import datetime
+            dt = datetime.datetime.strptime(data_atual, "%d/%m/%Y")
+            # Subtrai 1 mês
+            mes = dt.month - 1
+            ano = dt.year + (mes - 1) // 12
+            mes = (mes - 1) % 12 + 1
+            dia = min(dt.day, 28)
+            new_dt = datetime.datetime(ano, mes, dia)
+            new_date_str = new_dt.strftime("%d/%m/%Y")
+        except Exception as ex:
+            page.snack_bar = ft.SnackBar(ft.Text(f"{_t('Erro ao calcular nova data:')} {ex}", color="white"), bgcolor="#ef4444")
+            page.snack_bar.open = True
+            page.update()
+            return
+
+        success, msg = db.atualizar_transacao(
+            transacao_id=trans_id,
+            categoria_id=details["categoria_id"],
+            descricao=details["descricao"],
+            data=new_date_str,
+            valor_total=details["valor_total"],
+            tipo_transacao=details["tipo_transacao"],
+            metodo=details["metodo_pagamento"],
+            bandeira=details["bandeira_cartao"],
+            dono=details["dono_cartao"],
+            observacao=details["observacao"],
+            divisoes=details["divisoes"],
+            data_real=new_date_str,  # Atualizar data_real também para mover no dashboard
+            atualizar_grupo=False
+        )
+
+        if success:
+            page.snack_bar = ft.SnackBar(
+                content=ft.Text(f"{_t('Parcela puxada para')} {new_date_str}!", color="white"), 
+                bgcolor="#10b981"
+            )
+            page.snack_bar.open = True
+            render_parcelamentos()
+        else:
+            page.snack_bar = ft.SnackBar(ft.Text(f"{_t('Erro ao puxar:')} {msg}", color="white"), bgcolor="#ef4444")
+            page.snack_bar.open = True
+            page.update()
+
+    def confirmar_mover_parcela(trans_id, direcao):
+        details = db.get_transacao_by_id(trans_id)
+        if not details:
+            page.snack_bar = ft.SnackBar(ft.Text(_t("Erro ao buscar transação!"), color="white"), bgcolor="#ef4444")
+            page.snack_bar.open = True
+            page.update()
+            return
+
+        label_action = _t("empurrar para o próximo mês") if direcao == "empurrar" else _t("trazer para o mês anterior")
+        
+        def on_confirm(e):
+            page.pop_dialog()
+            if direcao == "empurrar":
+                empurrar_parcela(trans_id)
+            else:
+                puxar_parcela(trans_id)
+
+        def on_cancel(e):
+            page.pop_dialog()
+
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text(_t("Confirmar Ação"), size=16, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+            content=ft.Text(f"{_t('Tem certeza que deseja')} {label_action} {_t('esta parcela de')} {details['descricao']}?", color=get_colors()["text"]),
+            actions=[
+                ft.TextButton(_t("Cancelar"), on_click=on_cancel),
+                ft.ElevatedButton(_t("Confirmar"), on_click=on_confirm, bgcolor="#3b82f6", color="white")
+            ]
+        )
+        page.show_dialog(dialog)
+
+    def render_parcelamentos():
+        compras = db.get_compras_parceladas(state["perfil"])
+        
+        # Filtrar apenas parcelamentos ativos (mês atual e parcelas futuras)
+        import datetime
+        now = datetime.datetime.now()
+        current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        
+        active_compras = []
+        for c in compras:
+            g_id = c[0]
+            parcelas = db.get_parcelas_compra(g_id, state["perfil"])
+            latest_dt = None
+            for p in parcelas:
+                try:
+                    p_dt = datetime.datetime.strptime(p[1], "%d/%m/%Y")
+                except:
+                    p_dt = now
+                if latest_dt is None or p_dt > latest_dt:
+                    latest_dt = p_dt
+            
+            if latest_dt and latest_dt >= current_month_start:
+                active_compras.append(c)
+        compras = active_compras
+        
+        # Build card map dynamically
+        cartoes = db.get_cartoes()
+        card_map = {}
+        for c in cartoes:
+            key = f"{c[6]}|{c[7]}"
+            card_map[key] = c[1]
+
+        pagamentos = {}
+        for c in compras:
+            metodo = c[5]
+            band = c[6]
+            dono = c[7]
+            if metodo == "Cartão":
+                card_name = card_map.get(f"{band}|{dono}", f"Cartão {dono} ({band})" if (band and dono) else _t("Cartão de Crédito"))
+                key = f"Cartão {card_name}"
+            else:
+                key = metodo
+                
+            if key not in pagamentos:
+                pagamentos[key] = []
+            pagamentos[key].append(c)
+
+        sorted_keys = sorted(pagamentos.keys())
+        
+        active_pay_method = state.get("active_payment_method_installments")
+        if active_pay_method not in sorted_keys:
+            active_pay_method = sorted_keys[0] if sorted_keys else None
+            state["active_payment_method_installments"] = active_pay_method
+
+        left_buttons = []
+        for key in sorted_keys:
+            is_active = (key == active_pay_method)
+            is_card = "Cartão" in key
+            icon = ft.icons.Icons.CREDIT_CARD_ROUNDED if is_card else (ft.icons.Icons.QR_CODE_2_ROUNDED if "Pix" in key else (ft.icons.Icons.ATTACH_MONEY_ROUNDED if "Dinheiro" in key else ft.icons.Icons.PAYMENT_ROUNDED))
+            
+            def make_on_click_pay(target_key):
+                def click_handler(e):
+                    state["active_payment_method_installments"] = target_key
+                    render_parcelamentos()
+                return click_handler
+
+            left_buttons.append(
+                ft.Container(
+                    content=ft.Row([
+                        ft.Icon(icon, color="white" if is_active else "#64748b", size=18),
+                        ft.Text(key.upper(), size=12, color=get_colors()["text"] if is_active else "#64748b", weight=ft.FontWeight.BOLD),
+                    ], spacing=8),
+                    padding=ft.Padding(15, 12, 15, 12),
+                    bgcolor=get_colors()["surface"] if is_active else "transparent",
+                    border=ft.border.all(1, get_colors()["border"] if is_active else "transparent"),
+                    border_radius=10,
+                    ink=True,
+                    on_click=make_on_click_pay(key)
+                )
+            )
+
+        def toggle_expand_purchase(g_id):
+            if state.get("expanded_installment_purchase_id") == g_id:
+                state["expanded_installment_purchase_id"] = None
+            else:
+                state["expanded_installment_purchase_id"] = g_id
+            render_parcelamentos()
+
+        purchase_cards = []
+        selected_key = active_pay_method
+        for c in pagamentos.get(selected_key, []) if selected_key else []:
+            g_id = c[0]
+            dt_ini = c[1]
+            desc = c[2].split(" - Parcela ")[0]
+            val_total = c[3]
+            tot_parc = c[4]
+            cat_name = c[9]
+            
+            is_expanded = (state.get("expanded_installment_purchase_id") == g_id)
+            
+            # Gerar bolinhas numeradas representando as parcelas (verde = paga, cinza = pendente)
+            bolinhas = []
+            parcelas_status = db.get_parcelas_compra(g_id, state["perfil"])
+            for p in parcelas_status:
+                p_data = p[1]
+                p_num = p[4]
+                try:
+                    p_dt = datetime.datetime.strptime(p_data, "%d/%m/%Y")
+                except:
+                    p_dt = now
+                p_paid = p_dt < current_month_start
+                
+                bolinhas.append(
+                    ft.Container(
+                        width=18,
+                        height=18,
+                        border_radius=9,
+                        bgcolor="#10b981" if p_paid else "#475569",
+                        content=ft.Text(str(p_num), size=9, color="white", weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER),
+                        alignment=ft.Alignment(0, 0)
+                    )
+                )
+            bolinhas_row = ft.Row(controls=bolinhas, spacing=3, alignment=ft.MainAxisAlignment.CENTER)
+            
+            header_content = ft.Row(
+                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                controls=[
+                    ft.Row([
+                        ft.Container(
+                            padding=6,
+                            bgcolor=get_colors()["surface"],
+                            border_radius=6,
+                            content=ft.Icon(get_icone_categoria(cat_name), color="#fb923c", size=16)
+                        ),
+                        ft.Column([
+                            ft.Text(desc, size=13, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+                            ft.Text(f"{cat_name} • {_t('Início em')} {dt_ini} • {tot_parc}x", size=11, color="#64748b")
+                        ], spacing=2)
+                    ], spacing=10),
+                    ft.Container(
+                        content=bolinhas_row,
+                        alignment=ft.Alignment(0, 0),
+                        expand=True,
+                        margin=ft.Margin(15, 0, 15, 0)
+                    ),
+                    ft.Row([
+                        ft.Text(f"R$ {val_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), size=13, weight=ft.FontWeight.BOLD, color="#fb923c"),
+                        ft.Icon(ft.icons.Icons.KEYBOARD_ARROW_DOWN_ROUNDED if not is_expanded else ft.icons.Icons.KEYBOARD_ARROW_UP_ROUNDED, color="#64748b", size=20)
+                    ], spacing=10)
+                ]
+            )
+            
+            card_content = ft.Column(spacing=10, controls=[
+                ft.Container(
+                    content=header_content,
+                    ink=True,
+                    on_click=lambda e, gid=g_id: toggle_expand_purchase(gid),
+                    padding=10
+                )
+            ])
+            
+            if is_expanded:
+                parcelas = db.get_parcelas_compra(g_id, state["perfil"])
+                rows = []
+                for p in parcelas:
+                    p_id = p[0]
+                    p_data = p[1]
+                    p_desc = p[2]
+                    p_valor = p[3]
+                    p_num = p[4]
+                    p_tot = p[5]
+                    
+                    try:
+                        p_dt = datetime.datetime.strptime(p_data, "%d/%m/%Y")
+                    except:
+                        p_dt = now
+                    p_paid = p_dt < current_month_start
+
+                    # Número da parcela com checkmark verde se já paga
+                    if p_paid:
+                        num_cell_content = ft.Row([
+                            ft.Text(f"{p_num}/{p_tot}", color=get_colors()["text"], size=12),
+                            ft.Icon(ft.icons.Icons.CHECK_CIRCLE_ROUNDED, color="#10b981", size=14)
+                        ], spacing=4)
+                    else:
+                        num_cell_content = ft.Text(f"{p_num}/{p_tot}", color=get_colors()["text"], size=12)
+
+                    def make_edit_parcela(tid, val, dt):
+                        return lambda e: abrir_edit_parcela_individual(tid, val, dt)
+                    
+                    def make_mover_parcela(tid, dir):
+                        return lambda e: confirmar_mover_parcela(tid, dir)
+
+                    rows.append(
+                        ft.DataRow(
+                            cells=[
+                                ft.DataCell(num_cell_content),
+                                ft.DataCell(ft.Text(p_data, color=get_colors()["text"], size=12)),
+                                ft.DataCell(ft.Text(f"R$ {p_valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), color=get_colors()["text"], weight=ft.FontWeight.BOLD, size=12)),
+                                ft.DataCell(
+                                    ft.Row([
+                                        ft.IconButton(
+                                            ft.icons.Icons.EDIT_ROUNDED, 
+                                            icon_color="#3b82f6", 
+                                            icon_size=16, 
+                                            tooltip=_t("Editar esta parcela"), 
+                                            on_click=make_edit_parcela(p_id, p_valor, p_data)
+                                        ),
+                                        ft.IconButton(
+                                            ft.icons.Icons.SKIP_PREVIOUS_ROUNDED, 
+                                            icon_color="#fb923c", 
+                                            icon_size=16, 
+                                            tooltip=_t("Trazer para o mês anterior"), 
+                                            on_click=make_mover_parcela(p_id, "puxar")
+                                        ),
+                                        ft.IconButton(
+                                            ft.icons.Icons.SKIP_NEXT_ROUNDED, 
+                                            icon_color="#fb923c", 
+                                            icon_size=16, 
+                                            tooltip=_t("Empurrar para o próximo mês"), 
+                                            on_click=make_mover_parcela(p_id, "empurrar")
+                                        )
+                                    ], spacing=5)
+                                )
+                            ]
+                        )
+                    )
+                
+                table = ft.DataTable(
+                    columns=[
+                        ft.DataColumn(ft.Text(_t("Nº"), size=11, weight=ft.FontWeight.BOLD)),
+                        ft.DataColumn(ft.Text(_t("Vencimento"), size=11, weight=ft.FontWeight.BOLD)),
+                        ft.DataColumn(ft.Text(_t("Valor"), size=11, weight=ft.FontWeight.BOLD)),
+                        ft.DataColumn(ft.Text(_t("Ações"), size=11, weight=ft.FontWeight.BOLD)),
+                    ],
+                    rows=rows,
+                    heading_row_height=30,
+                    data_row_min_height=30,
+                    data_row_max_height=38,
+                    border_radius=8,
+                    border=ft.border.all(0.5, get_colors()["border"]),
+                    heading_row_color=get_colors()["bg"],
+                )
+                
+                card_content.controls.append(
+                    ft.Container(
+                        padding=ft.Padding(10, 0, 10, 10),
+                        content=ft.Row([table], scroll=ft.ScrollMode.ADAPTIVE)
+                    )
+                )
+            
+            purchase_cards.append(
+                ft.Container(
+                    content=card_content,
+                    bgcolor=get_colors()["surface"],
+                    border=ft.border.all(1, get_colors()["border"]),
+                    border_radius=10,
+                    margin=ft.Margin(0, 0, 0, 10)
+                )
+            )
+
+        def on_change_perfil_parc(e):
+            state["perfil"] = e.control.value
+            render_parcelamentos()
+
+        seletor_perfil_parc = criar_seletor_perfil(on_change_perfil_parc)
+        tab_header = criar_tab_header("parcelamentos", seletor_perfil_parc, subcontroles=[])
+
+        # Left Panel (Payment methods list)
+        panel_left = ft.Container(
+            width=260,
+            bgcolor=get_colors()["surface"],
+            border=ft.border.all(1, get_colors()["border"]),
+            border_radius=12,
+            padding=15,
+            content=ft.Column(
+                controls=[
+                    ft.Text(_t("Formas de Pagamento"), size=14, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+                    ft.Divider(color=get_colors()["border"], height=10),
+                    ft.ListView(
+                        controls=left_buttons if left_buttons else [ft.Text(_t("Sem dados"), color="#64748b", size=12)],
+                        spacing=5,
+                        expand=True
+                    )
+                ],
+                expand=True
+            )
+        )
+        
+        # Right Panel (Purchases list)
+        panel_right = ft.Container(
+            expand=True,
+            bgcolor=get_colors()["surface"],
+            border=ft.border.all(1, get_colors()["border"]),
+            border_radius=12,
+            padding=20,
+            content=ft.Column(
+                controls=[
+                    ft.Row([
+                        ft.Text(f"{_t('Compras Parceladas em')} {selected_key if selected_key else ''}", size=15, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+                        ft.Text(f"{len(purchase_cards)} {_t('compras')}", size=11, color="#64748b")
+                    ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                    ft.Divider(color=get_colors()["border"], height=10),
+                    ft.ListView(
+                        controls=purchase_cards if purchase_cards else [ft.Text(_t("Nenhuma compra parcelada cadastrada para esta forma."), color="#64748b", size=12)],
+                        spacing=5,
+                        expand=True
+                    )
+                ],
+                expand=True
+            )
+        )
+        
+        main_container = ft.Row(
+            controls=[panel_left, panel_right],
+            spacing=20,
+            expand=True
+        )
+        
+        layout = ft.Column(
+            expand=True,
+            controls=[
+                tab_header,
+                ft.Container(height=10),
+                main_container
+            ],
+            spacing=0
+        )
+        
+        body.content = layout
+        page.floating_action_button = None
+        page.update()
+
     def navegar_para_aba(tab_name):
         icon_mapping = {
             "dashboard": (ft.icons.Icons.DASHBOARD_ROUNDED, render_dashboard),
@@ -9919,7 +11839,10 @@ def main(page: ft.Page):
             "cartoes": (ft.icons.Icons.CREDIT_CARD_ROUNDED, render_cartoes),
             "financiamentos": (ft.icons.Icons.ACCOUNT_BALANCE_ROUNDED, render_financiamentos),
             "assistente": (ft.icons.Icons.AUTO_AWESOME_ROUNDED, None),
-            "configuracoes": (ft.icons.Icons.SETTINGS_ROUNDED, render_configuracoes)
+            "configuracoes": (ft.icons.Icons.SETTINGS_ROUNDED, render_configuracoes),
+            "resumo_anual": (ft.icons.Icons.ANALYTICS_ROUNDED, render_resumo_anual),
+            "recorrencias": (ft.icons.Icons.AUTORENEW_ROUNDED, render_recorrencias),
+            "parcelamentos": (ft.icons.Icons.CREDIT_CARD_ROUNDED, render_parcelamentos)
         }
         
         target_icon, render_func = icon_mapping.get(tab_name, (None, None))
@@ -9977,6 +11900,16 @@ def main(page: ft.Page):
                 "tab": "cartoes",
                 "title": "💳 Cartões de Crédito",
                 "content": "Controle suas faturas! Cadastre seus cartões de crédito, limites, datas de fechamento e vencimento. O sistema calcula automaticamente o comprometimento do limite e as parcelas futuras."
+            },
+            {
+                "tab": "recorrencias",
+                "title": "🔄 Recorrências (Lançamentos Automáticos)",
+                "content": "Cadastre e gerencie suas despesas e receitas fixas ou recorrentes. O sistema as projeta automaticamente nos meses futuros e permite confirmar ou editar cada ocorrência individualmente."
+            },
+            {
+                "tab": "parcelamentos",
+                "title": "💳 Parcelamentos (Visão Detalhada)",
+                "content": "Acompanhe e gerencie todas as suas compras parceladas ativas agrupadas por forma de pagamento. Você pode expandir cada compra para ver as parcelas, editar valores de parcelas individuais e empurrar ou puxar vencimentos."
             },
             {
                 "tab": "assistente",

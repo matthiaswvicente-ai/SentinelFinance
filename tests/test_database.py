@@ -332,9 +332,253 @@ class TestDatabase(unittest.TestCase):
         gasto_mes = self.db.get_gasto_cartao_mes("Visa", "Eu", "06", 2026)
         self.assertEqual(gasto_mes, 300.0)
         
-        # Calcular gasto total a partir de Junho 2026: deve ser 300.0 + 200.0 = 500.0 (exclui Maio)
         gasto_total = self.db.get_gasto_cartao_total("Visa", "Eu", "06", 2026)
         self.assertEqual(gasto_total, 500.0)
+
+    def test_data_real(self):
+        # 1. Inserir categoria de teste
+        conn = sqlite3.connect(self.test_db_name)
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO Categorias (nome, tipo) VALUES ('Alimentação', 'Despesa Variável')")
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        # 2. Inserir transação com data_real (shifted faturamento)
+        sucesso, msg = self.db.inserir_transacao(
+            conta_id=1,
+            categoria_id=2, # Segunda categoria criada nos testes
+            descricao="Supermercado shifted",
+            data_ini="20/07/2026",
+            valor_total=150.0,
+            tipo_transacao="Despesa Variável",
+            divisoes={"Eu": 150.0},
+            data_real="20/06/2026"
+        )
+        self.assertTrue(sucesso)
+
+        # 3. Verificar via get_transacao_by_id
+        # Como o banco começou limpo no setUp, o id é 1
+        trans = self.db.get_transacao_by_id(1)
+        self.assertIsNotNone(trans)
+        self.assertEqual(trans["data"], "20/07/2026")
+        self.assertEqual(trans["data_real"], "20/06/2026")
+
+        # 4. Verificar get_transacoes (deve retornar a data_real para exibição)
+        trans_list = self.db.get_transacoes(mes="Julho", ano=2026)
+        self.assertEqual(len(trans_list), 1)
+        # O segundo elemento t[1] é COALESCE(t.data_real, t.data)
+        self.assertEqual(trans_list[0][1], "20/06/2026")
+
+        # 5. Atualizar transação mudando data e data_real
+        sucesso_up, msg_up = self.db.atualizar_transacao(
+            transacao_id=1,
+            categoria_id=2,
+            descricao="Supermercado shifted editado",
+            data="21/07/2026",
+            valor_total=180.0,
+            tipo_transacao="Despesa Variável",
+            metodo="Dinheiro",
+            bandeira="",
+            dono="",
+            observacao="edit",
+            divisoes={"Eu": 180.0},
+            data_real="21/06/2026"
+        )
+        self.assertTrue(sucesso_up)
+
+        # 6. Verificar get_transacao_by_id após update
+        trans_updated = self.db.get_transacao_by_id(1)
+        self.assertEqual(trans_updated["data"], "21/07/2026")
+        self.assertEqual(trans_updated["data_real"], "21/06/2026")
+
+        # 7. Inserir transação com data_real omitida (deve usar data_ini como padrão)
+        sucesso_def, msg_def = self.db.inserir_transacao(
+            conta_id=1,
+            categoria_id=2,
+            descricao="Almoço normal",
+            data_ini="15/06/2026",
+            valor_total=40.0,
+            tipo_transacao="Despesa Variável",
+            divisoes={"Eu": 40.0}
+        )
+        self.assertTrue(sucesso_def)
+        
+        # Como é a segunda transação, id é 2
+        trans_def = self.db.get_transacao_by_id(2)
+        self.assertEqual(trans_def["data"], "15/06/2026")
+        self.assertEqual(trans_def["data_real"], "15/06/2026")
+
+    def test_resgate_investimento(self):
+        cat_inv_id = self.db.get_categoria_id_by_nome("Investimentos")
+        cat_res_id = self.db.get_categoria_id_by_nome("Resgate de Investimento")
+        self.assertIsNotNone(cat_inv_id)
+        self.assertIsNotNone(cat_res_id)
+
+        # 1. Verificar total investido cumulativo inicial (deve ser 0.0)
+        self.assertEqual(self.db.get_total_investido_cumulativo("Eu"), 0.0)
+
+        # 2. Inserir Aporte de R$ 1000
+        sucesso_apt, res_apt = self.db.inserir_transacao(
+            conta_id=1,
+            categoria_id=cat_inv_id,
+            descricao="Aporte ações",
+            data_ini="10/06/2026",
+            valor_total=1000.0,
+            tipo_transacao="Investimento",
+            divisoes={"Eu": 1000.0}
+        )
+        self.assertTrue(sucesso_apt)
+        trans_apt_id = res_apt
+        self.assertIsInstance(trans_apt_id, int)
+
+        # Total investido deve ser 1000.0
+        self.assertEqual(self.db.get_total_investido_cumulativo("Eu"), 1000.0)
+
+        # Verificar resumo financeiro após aporte: saldo deve ser -1000
+        resumo_pos_apt = self.db.get_resumo_financeiro("Junho", 2026, "Eu")
+        self.assertEqual(resumo_pos_apt.get("Investimento", 0), 1000.0)
+        self.assertEqual(resumo_pos_apt.get("Receita Variável", 0), 0.0)
+        saldo_pos_apt = (resumo_pos_apt.get("Receita Fixa", 0) + resumo_pos_apt.get("Receita Variável", 0)
+                         - resumo_pos_apt.get("Despesa Fixa", 0) - resumo_pos_apt.get("Despesa Variável", 0)
+                         - resumo_pos_apt.get("Investimento", 0))
+        self.assertEqual(saldo_pos_apt, -1000.0)
+
+        # 3. Inserir Resgate de R$ 300
+        sucesso_res, res_res = self.db.inserir_transacao(
+            conta_id=1,
+            categoria_id=cat_res_id,
+            descricao="Resgate ações",
+            data_ini="15/06/2026",
+            valor_total=300.0,
+            tipo_transacao="Receita Variável",
+            divisoes={"Eu": 300.0}
+        )
+        self.assertTrue(sucesso_res)
+        trans_res_id = res_res
+        self.assertIsInstance(trans_res_id, int)
+
+        # Total investido líquido deve ser 1000.0 - 300.0 = 700.0
+        self.assertEqual(self.db.get_total_investido_cumulativo("Eu"), 700.0)
+
+        # Verificar resumo financeiro após resgate: saldo deve ser -700 (ou seja, 300 voltou ao saldo disponível)
+        resumo_pos_res = self.db.get_resumo_financeiro("Junho", 2026, "Eu")
+        self.assertEqual(resumo_pos_res.get("Investimento", 0), 1000.0)
+        self.assertEqual(resumo_pos_res.get("Receita Variável", 0), 300.0)
+        saldo_pos_res = (resumo_pos_res.get("Receita Fixa", 0) + resumo_pos_res.get("Receita Variável", 0)
+                         - resumo_pos_res.get("Despesa Fixa", 0) - resumo_pos_res.get("Despesa Variável", 0)
+                         - resumo_pos_res.get("Investimento", 0))
+        self.assertEqual(saldo_pos_res, -700.0)
+
+        # 4. Inserir Operação de Carteira associando à transação
+        op_id = self.db.add_operacao_carteira(
+            ticker="PETR4",
+            tipo_ativo="Ação",
+            operacao="Compra",
+            quantidade=10.0,
+            preco_unitario=30.0,
+            data="10/06/2026",
+            transacao_id=trans_apt_id
+        )
+        self.assertIsNotNone(op_id)
+
+        # Verificar se está na carteira
+        ops = self.db.get_carteira()
+        self.assertEqual(len(ops), 1)
+        self.assertEqual(ops[0][12], trans_apt_id)
+
+        # 5. Deletar a operação (deve remover a transação correspondente em cascata)
+        deleted = self.db.delete_operacao_carteira(op_id)
+        self.assertTrue(deleted)
+
+        # Verificar se a transação do Aporte foi excluída também
+        trans_apt = self.db.get_transacao_by_id(trans_apt_id)
+        self.assertIsNone(trans_apt)
+
+        # Saldo líquido investido agora deve ser 0.0
+        self.assertEqual(self.db.get_total_investido_cumulativo("Eu"), 0.0)
+
+    def test_recorrencias(self):
+        # 1. Inserir categoria de teste
+        with self.db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO Categorias (nome, tipo) VALUES ('Plano de Saúde', 'Despesa Fixa')")
+            conn.commit()
+            cursor.execute("SELECT id FROM Categorias WHERE nome = 'Plano de Saúde'")
+            cat_id = cursor.fetchone()[0]
+            cursor.close()
+            
+        # 2. Inserir configuração de recorrência
+        success, config_id = self.db.add_config_recorrencia(
+            nome="Plano Saúde",
+            tipo_transacao="Despesa Fixa",
+            categoria_id=cat_id,
+            valor_padrao=450.00,
+            metodo_pagamento="Boleto",
+            observacao="Mensalidade da Unimed",
+            perfil="Eu"
+        )
+        self.assertTrue(success)
+        self.assertIsNotNone(config_id)
+        
+        # 3. Listar e validar
+        configs = self.db.get_configs_recorrencia("Eu")
+        self.assertEqual(len(configs), 1)
+        self.assertEqual(configs[0][1], "Plano Saúde")
+        self.assertEqual(configs[0][4], 450.00)
+        
+        # 4. Gerar transações em lote para 3 meses
+        success_gen = self.db.gerar_transacoes_recorrentes(config_id, 3, "15/06/2026", "Eu")
+        self.assertTrue(success_gen)
+        
+        # 5. Buscar ocorrências programadas
+        occurrences = self.db.get_transacoes_recorrencia(config_id, "Eu")
+        self.assertEqual(len(occurrences), 3)
+        self.assertEqual(occurrences[0][1], "15/06/2026")
+        self.assertEqual(occurrences[1][1], "15/07/2026")
+        self.assertEqual(occurrences[2][1], "15/08/2026")
+        self.assertEqual(occurrences[0][3], 450.00)
+        
+        # 6. Atualizar uma ocorrência específica (apenas este mês)
+        first_occ_id = occurrences[0][0]
+        success_up1 = self.db.atualizar_transacao_recorrente(first_occ_id, config_id, 470.00, alterar_futuros=False)
+        self.assertTrue(success_up1)
+        
+        # Validar que apenas o primeiro mudou
+        occurrences = self.db.get_transacoes_recorrencia(config_id, "Eu")
+        self.assertEqual(occurrences[0][3], 470.00)
+        self.assertEqual(occurrences[1][3], 450.00)
+        self.assertEqual(occurrences[2][3], 450.00)
+        
+        # 7. Atualizar ocorrência "dali para frente" (no segundo mês)
+        second_occ_id = occurrences[1][0]
+        success_up2 = self.db.atualizar_transacao_recorrente(second_occ_id, config_id, 500.00, alterar_futuros=True)
+        self.assertTrue(success_up2)
+        
+        # Validar que segundo e terceiro mudaram, mas o primeiro manteve 470.00
+        occurrences = self.db.get_transacoes_recorrencia(config_id, "Eu")
+        self.assertEqual(occurrences[0][3], 470.00)
+        self.assertEqual(occurrences[1][3], 500.00)
+        self.assertEqual(occurrences[2][3], 500.00)
+        
+        # E a config padrão deve ter mudado para 500.00
+        configs = self.db.get_configs_recorrencia("Eu")
+        self.assertEqual(configs[0][4], 500.00)
+        
+        # 8. Excluir uma ocorrência (apenas este mês)
+        success_del1 = self.db.excluir_transacao_recorrente(first_occ_id, config_id, excluir_futuros=False)
+        self.assertTrue(success_del1)
+        
+        occurrences = self.db.get_transacoes_recorrencia(config_id, "Eu")
+        self.assertEqual(len(occurrences), 2)
+        self.assertEqual(occurrences[0][3], 500.00)
+        
+        # 9. Excluir "dali para frente"
+        success_del2 = self.db.excluir_transacao_recorrente(occurrences[0][0], config_id, excluir_futuros=True)
+        self.assertTrue(success_del2)
+        
+        occurrences = self.db.get_transacoes_recorrencia(config_id, "Eu")
+        self.assertEqual(len(occurrences), 0)
 
 if __name__ == '__main__':
     unittest.main()

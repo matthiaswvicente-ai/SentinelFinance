@@ -18,6 +18,7 @@ class Database:
         if db_name == "financas.db" and os.path.exists(db_name):
             self._auto_backup()
         self.create_tables()
+        self.migrar_receitas_fixas_para_recorrencias()
 
     def _auto_backup(self):
         try:
@@ -113,6 +114,7 @@ class Database:
                     categoria_id INTEGER,
                     descricao TEXT NOT NULL,
                     data TEXT NOT NULL,
+                    data_real TEXT,
                     valor_total REAL NOT NULL,
                     tipo_transacao TEXT NOT NULL,
                     metodo_pagamento TEXT,
@@ -127,6 +129,12 @@ class Database:
                     FOREIGN KEY (categoria_id) REFERENCES Categorias(id)
                 )
             ''')
+            
+            # Garante que a coluna 'data_real' existe se o banco já tiver sido criado
+            try:
+                cursor.execute("ALTER TABLE Transacoes ADD COLUMN data_real TEXT")
+            except sqlite3.OperationalError:
+                pass
             
             # Tabela de Divisões de Transação
             cursor.execute('''
@@ -186,9 +194,26 @@ class Database:
                     preco_unitario REAL NOT NULL,
                     data TEXT NOT NULL,
                     corretora TEXT,
-                    observacao TEXT
+                    observacao TEXT,
+                    data_vencimento TEXT,
+                    percentual_cdi REAL,
+                    subtipo_investimento TEXT,
+                    transacao_id INTEGER
                 )
             ''')
+
+            # Garante que as colunas extras de investimentos existem no banco de dados se já tiver sido criado
+            columns_to_add = [
+                ("data_vencimento", "TEXT"),
+                ("percentual_cdi", "REAL"),
+                ("subtipo_investimento", "TEXT"),
+                ("transacao_id", "INTEGER")
+            ]
+            for col_name, col_type in columns_to_add:
+                try:
+                    cursor.execute(f"ALTER TABLE Carteira_Investimentos ADD COLUMN {col_name} {col_type}")
+                except sqlite3.OperationalError:
+                    pass
 
             # Tabela de Metas de Investimentos
             cursor.execute('''
@@ -237,6 +262,56 @@ class Database:
                     FOREIGN KEY (transacao_id) REFERENCES Transacoes(id) ON DELETE CASCADE
                 )
             ''')
+
+            # Tabela de Configurações de Recorrência
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS Config_Recorrencias (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    nome TEXT NOT NULL,
+                    tipo_transacao TEXT NOT NULL,
+                    categoria_id INTEGER NOT NULL,
+                    valor_padrao REAL NOT NULL,
+                    conta_id INTEGER DEFAULT 1,
+                    metodo_pagamento TEXT,
+                    observacao TEXT,
+                    perfil TEXT DEFAULT 'Eu',
+                    bandeira_cartao TEXT,
+                    dono_cartao TEXT,
+                    FOREIGN KEY (categoria_id) REFERENCES Categorias(id),
+                    FOREIGN KEY (conta_id) REFERENCES Contas(id)
+                )
+            ''')
+
+            # Garante que as colunas 'bandeira_cartao' e 'dono_cartao' existam se o banco já tiver sido criado
+            try:
+                cursor.execute("ALTER TABLE Config_Recorrencias ADD COLUMN bandeira_cartao TEXT")
+            except sqlite3.OperationalError:
+                pass
+            try:
+                cursor.execute("ALTER TABLE Config_Recorrencias ADD COLUMN dono_cartao TEXT")
+            except sqlite3.OperationalError:
+                pass
+
+            # Tabela de Divisões de Recorrência (Rateio)
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS Divisoes_Recorrencia (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    recorrencia_id INTEGER,
+                    usuario_id INTEGER,
+                    valor_cota REAL NOT NULL,
+                    FOREIGN KEY (recorrencia_id) REFERENCES Config_Recorrencias(id) ON DELETE CASCADE,
+                    FOREIGN KEY (usuario_id) REFERENCES Usuarios_Familia(id) ON DELETE CASCADE
+                )
+            ''')
+            
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_div_reco ON Divisoes_Recorrencia(recorrencia_id)")
+
+            # Atualiza métodos de pagamento antigos para consistência com o restante do app
+            try:
+                cursor.execute("UPDATE Config_Recorrencias SET metodo_pagamento = 'Cartão' WHERE metodo_pagamento = 'Cartão de Crédito'")
+                cursor.execute("UPDATE Transacoes SET metodo_pagamento = 'Cartão' WHERE metodo_pagamento = 'Cartão de Crédito'")
+            except sqlite3.OperationalError:
+                pass
 
             conn.commit()
             
@@ -423,16 +498,54 @@ class Database:
         return cursor.lastrowid
 
     def inserir_transacao(self, conta_id, categoria_id, descricao, data_ini, valor_total, tipo_transacao, 
-                          metodo="Dinheiro", parcelas=1, bandeira="", dono="", recorrencia=None, divisoes=None, observacao=""):
+                          metodo="Dinheiro", parcelas=1, bandeira="", dono="", recorrencia=None, divisoes=None, observacao="", data_real=None):
         """
         Insere uma ou mais transações (em caso de parcelamento).
         divisoes: Lista de dicionários, um para cada parcela, contendo {nome_usuario: valor_cota}
                   Ou um único dicionário se for igual para todas as parcelas.
         """
+        if data_real is None:
+            data_real = data_ini
+
         conn = self.get_connection()
         try:
             cursor = conn.cursor()
-            grupo_id = f"GRP_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}" if parcelas > 1 else None
+            
+            # Lógica para vincular automaticamente à recorrência se for Receita Fixa
+            if tipo_transacao == "Receita Fixa":
+                perfil_nome = "Eu"
+                if divisoes:
+                    if isinstance(divisoes, list) and len(divisoes) > 0 and divisoes[0]:
+                        perfil_nome = list(divisoes[0].keys())[0]
+                    elif isinstance(divisoes, dict) and divisoes:
+                        perfil_nome = list(divisoes.keys())[0]
+                
+                cursor.execute("""
+                    SELECT id FROM Config_Recorrencias 
+                    WHERE nome = ? AND categoria_id = ? AND perfil = ? AND tipo_transacao = 'Receita Fixa'
+                """, (descricao, categoria_id, perfil_nome))
+                row_config = cursor.fetchone()
+                if row_config:
+                    config_id = row_config[0]
+                else:
+                    cursor.execute("""
+                        INSERT INTO Config_Recorrencias (nome, tipo_transacao, categoria_id, valor_padrao, conta_id, metodo_pagamento, observacao, perfil, bandeira_cartao, dono_cartao)
+                        VALUES (?, 'Receita Fixa', ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (descricao, categoria_id, valor_total, conta_id or 1, metodo, observacao, perfil_nome, bandeira, dono))
+                    config_id = cursor.lastrowid
+                    
+                    r_div = divisoes[0] if isinstance(divisoes, list) else divisoes
+                    if r_div:
+                        for u_name, cota in r_div.items():
+                            if cota > 0:
+                                u_id = self.obter_ou_criar_usuario(cursor, u_name)
+                                cursor.execute("""
+                                    INSERT INTO Divisoes_Recorrencia (recorrencia_id, usuario_id, valor_cota)
+                                    VALUES (?, ?, ?)
+                                """, (config_id, u_id, cota))
+                grupo_id = f"REC_{config_id}"
+            else:
+                grupo_id = f"GRP_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}" if parcelas > 1 else None
             
             # Converter data string para objeto date
             try:
@@ -453,11 +566,11 @@ class Database:
                 val_parcela = valor_total / parcelas
                 
                 cursor.execute('''
-                    INSERT INTO Transacoes (conta_id, categoria_id, descricao, data, valor_total, tipo_transacao, 
+                    INSERT INTO Transacoes (conta_id, categoria_id, descricao, data, data_real, valor_total, tipo_transacao, 
                                             metodo_pagamento, parcela_atual, total_parcelas, bandeira_cartao, 
                                             dono_cartao, recorrencia, grupo_id, observacao)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (conta_id, categoria_id, descricao, data_str, val_parcela, tipo_transacao, 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (conta_id, categoria_id, descricao, data_str, data_real, val_parcela, tipo_transacao, 
                       metodo, i+1, parcelas, bandeira, dono, recorrencia, grupo_id, observacao))
                 
                 transacao_id = cursor.lastrowid
@@ -476,7 +589,7 @@ class Database:
                             ''', (transacao_id, usuario_id, cota_parcelada))
 
             conn.commit()
-            return True, "Transação(ões) salva(s) com sucesso."
+            return True, transacao_id
             
         except Exception as e:
             logger.error('Erro ao inserir transação', exc_info=True)
@@ -495,7 +608,7 @@ class Database:
                 row = cursor.fetchone()
                 grupo_id = row[0] if row else None
                 
-                if grupo_id:
+                if grupo_id and grupo_id.startswith("GRP_"):
                     # Selecionar todos os IDs das transações do grupo
                     cursor.execute("SELECT id FROM Transacoes WHERE grupo_id = ?", (grupo_id,))
                     ids = [r[0] for r in cursor.fetchall()]
@@ -517,7 +630,7 @@ class Database:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT t.id, t.categoria_id, t.descricao, t.data, t.valor_total, t.tipo_transacao, 
-                       t.metodo_pagamento, t.total_parcelas, t.bandeira_cartao, t.dono_cartao, t.observacao, c.nome, c.parent_id
+                       t.metodo_pagamento, t.total_parcelas, t.bandeira_cartao, t.dono_cartao, t.observacao, c.nome, c.parent_id, t.data_real
                 FROM Transacoes t
                 LEFT JOIN Categorias c ON t.categoria_id = c.id
                 WHERE t.id = ?
@@ -538,11 +651,14 @@ class Database:
                 "id": t_row[0], "categoria_id": t_row[1], "descricao": t_row[2], "data": t_row[3],
                 "valor_total": t_row[4], "tipo_transacao": t_row[5], "metodo_pagamento": t_row[6],
                 "total_parcelas": t_row[7], "bandeira_cartao": t_row[8], "dono_cartao": t_row[9],
-                "observacao": t_row[10], "categoria_nome": t_row[11], "parent_id": t_row[12], "divisoes": divs
+                "observacao": t_row[10], "categoria_nome": t_row[11], "parent_id": t_row[12], "divisoes": divs,
+                "data_real": t_row[13]
             }
 
     def atualizar_transacao(self, transacao_id, categoria_id, descricao, data, valor_total, tipo_transacao, 
-                            metodo, bandeira, dono, observacao, divisoes):
+                            metodo, bandeira, dono, observacao, divisoes, data_real=None, atualizar_grupo=True):
+        if data_real is None:
+            data_real = data
         try:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
@@ -553,6 +669,38 @@ class Database:
                 grupo_id = row[0] if row else None
                 old_data_str = row[1] if row else None
                 
+                # Lógica para Receita Fixa
+                if tipo_transacao == "Receita Fixa":
+                    perfil_nome = "Eu"
+                    if divisoes:
+                        perfil_nome = list(divisoes.keys())[0]
+                    
+                    cursor.execute("""
+                        SELECT id FROM Config_Recorrencias 
+                        WHERE nome = ? AND categoria_id = ? AND perfil = ? AND tipo_transacao = 'Receita Fixa'
+                    """, (descricao, categoria_id, perfil_nome))
+                    row_config = cursor.fetchone()
+                    if row_config:
+                        config_id = row_config[0]
+                    else:
+                        cursor.execute("""
+                            INSERT INTO Config_Recorrencias (nome, tipo_transacao, categoria_id, valor_padrao, conta_id, metodo_pagamento, observacao, perfil, bandeira_cartao, dono_cartao)
+                            VALUES (?, 'Receita Fixa', ?, ?, 1, ?, ?, ?, ?, ?)
+                        """, (descricao, categoria_id, valor_total, metodo, observacao, perfil_nome, bandeira, dono))
+                        config_id = cursor.lastrowid
+                        
+                        if divisoes:
+                            for u_name, cota in divisoes.items():
+                                if cota > 0:
+                                    u_id = self.obter_ou_criar_usuario(cursor, u_name)
+                                    cursor.execute("""
+                                        INSERT INTO Divisoes_Recorrencia (recorrencia_id, usuario_id, valor_cota)
+                                        VALUES (?, ?, ?)
+                                    """, (config_id, u_id, cota))
+                    grupo_id = f"REC_{config_id}"
+                    # Garantir que o grupo_id da transação está atualizado no banco
+                    cursor.execute("UPDATE Transacoes SET grupo_id = ? WHERE id = ?", (grupo_id, transacao_id))
+                
                 diff_months = 0
                 if old_data_str and data:
                     try:
@@ -562,7 +710,7 @@ class Database:
                     except Exception:
                         pass
                 
-                if grupo_id:
+                if atualizar_grupo and grupo_id and grupo_id.startswith("GRP_"):
                     # Atualizar todas as parcelas do grupo
                     cursor.execute("SELECT id, data FROM Transacoes WHERE grupo_id = ?", (grupo_id,))
                     group_rows = cursor.fetchall()
@@ -582,10 +730,10 @@ class Database:
                         
                         cursor.execute('''
                             UPDATE Transacoes 
-                            SET categoria_id=?, descricao=?, data=?, valor_total=?, tipo_transacao=?, 
+                            SET categoria_id=?, descricao=?, data=?, data_real=?, valor_total=?, tipo_transacao=?, 
                                 metodo_pagamento=?, bandeira_cartao=?, dono_cartao=?, observacao=?
                             WHERE id=?
-                        ''', (categoria_id, descricao, new_g_data, valor_total, tipo_transacao, metodo, bandeira, dono, observacao, g_id))
+                        ''', (categoria_id, descricao, new_g_data, data_real, valor_total, tipo_transacao, metodo, bandeira, dono, observacao, g_id))
                         
                         cursor.execute("DELETE FROM Divisoes_Transacao WHERE transacao_id = ?", (g_id,))
                         if divisoes:
@@ -600,10 +748,10 @@ class Database:
                     # Atualizar apenas esta transação
                     cursor.execute('''
                         UPDATE Transacoes 
-                        SET categoria_id=?, descricao=?, data=?, valor_total=?, tipo_transacao=?, 
+                        SET categoria_id=?, descricao=?, data=?, data_real=?, valor_total=?, tipo_transacao=?, 
                             metodo_pagamento=?, bandeira_cartao=?, dono_cartao=?, observacao=?
                         WHERE id=?
-                    ''', (categoria_id, descricao, data, valor_total, tipo_transacao, metodo, bandeira, dono, observacao, transacao_id))
+                    ''', (categoria_id, descricao, data, data_real, valor_total, tipo_transacao, metodo, bandeira, dono, observacao, transacao_id))
                     
                     cursor.execute("DELETE FROM Divisoes_Transacao WHERE transacao_id = ?", (transacao_id,))
                     if divisoes:
@@ -613,7 +761,7 @@ class Database:
                                 cursor.execute('''
                                     INSERT INTO Divisoes_Transacao (transacao_id, usuario_id, valor_cota)
                                     VALUES (?, ?, ?)
-                                ''', (transacao_id, usuario_id, valor_cota))
+                                    ''', (transacao_id, usuario_id, valor_cota))
                                 
                 conn.commit()
                 return True, "Transação atualizada."
@@ -627,7 +775,7 @@ class Database:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             query = """
-                SELECT t.id, t.data, t.descricao, 
+                SELECT t.id, COALESCE(t.data_real, t.data) as data, t.descricao, 
                        CASE WHEN d.id IS NULL THEN t.valor_total ELSE d.valor_cota END as valor_exibido, 
                        c.nome, t.tipo_transacao, 
                        t.parcela_atual, t.total_parcelas, t.metodo_pagamento, t.dono_cartao,
@@ -1057,13 +1205,14 @@ class Database:
     # ── INVESTIMENTOS ────────────────────────────────────────────
 
     def get_total_investido_cumulativo(self, perfil_nome="Eu"):
-        """Soma acumulada de todos os lançamentos do tipo Investimento (todos os períodos)."""
+        """Soma acumulada de todos os lançamentos do tipo Investimento menos os Resgates de Investimento."""
         conn = self.get_connection()
         try:
             cursor = conn.cursor()
-            query = """
+            # 1. Obter total de aportes
+            query_aportes = """
                 SELECT SUM(
-                    CASE
+                    CASE 
                         WHEN d.id IS NULL AND ? = 'Eu' THEN t.valor_total
                         WHEN u.nome = ? THEN d.valor_cota
                         ELSE 0
@@ -1076,9 +1225,34 @@ class Database:
                 WHERE t.tipo_transacao = 'Investimento'
                 AND (u.nome = ? OR d.id IS NULL)
             """
-            cursor.execute(query, [perfil_nome, perfil_nome, perfil_nome])
-            result = cursor.fetchone()[0]
-            return result or 0.0
+            cursor.execute(query_aportes, [perfil_nome, perfil_nome, perfil_nome])
+            aportes = cursor.fetchone()[0] or 0.0
+
+            # 2. Obter total de resgates
+            query_resgates = """
+                SELECT SUM(
+                    CASE 
+                        WHEN d.id IS NULL AND ? = 'Eu' THEN t.valor_total
+                        WHEN u.nome = ? THEN d.valor_cota
+                        ELSE 0
+                    END
+                )
+                FROM Transacoes t
+                JOIN Categorias c ON t.categoria_id = c.id
+                LEFT JOIN Divisoes_Transacao d ON t.id = d.transacao_id
+                LEFT JOIN Usuarios_Familia u ON d.usuario_id = u.id
+                WHERE c.nome = 'Resgate de Investimento'
+                AND (u.nome = ? OR d.id IS NULL)
+                AND t.id >= (
+                    SELECT COALESCE(MIN(id), 999999999)
+                    FROM Transacoes
+                    WHERE tipo_transacao = 'Investimento'
+                )
+            """
+            cursor.execute(query_resgates, [perfil_nome, perfil_nome, perfil_nome])
+            resgates = cursor.fetchone()[0] or 0.0
+
+            return max(0.0, aportes - resgates)
         except Exception:
             logger.error("Erro ao obter total investido", exc_info=True)
             return 0.0
@@ -1091,7 +1265,8 @@ class Database:
         try:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT id, ticker, tipo_ativo, operacao, quantidade, preco_unitario, data, corretora, observacao
+                SELECT id, ticker, tipo_ativo, operacao, quantidade, preco_unitario, data, corretora, observacao,
+                       data_vencimento, percentual_cdi, subtipo_investimento, transacao_id
                 FROM Carteira_Investimentos
                 ORDER BY data DESC
             """)
@@ -1102,16 +1277,20 @@ class Database:
         finally:
             conn.close()
 
-    def add_operacao_carteira(self, ticker, tipo_ativo, operacao, quantidade, preco_unitario, data, corretora=None, observacao=None):
+    def add_operacao_carteira(self, ticker, tipo_ativo, operacao, quantidade, preco_unitario, data, 
+                              corretora=None, observacao=None, data_vencimento=None, percentual_cdi=None, 
+                              subtipo_investimento=None, transacao_id=None):
         """Registra uma operação de compra ou venda de ativo."""
         conn = self.get_connection()
         try:
             cursor = conn.cursor()
             cursor.execute("""
                 INSERT INTO Carteira_Investimentos
-                    (ticker, tipo_ativo, operacao, quantidade, preco_unitario, data, corretora, observacao)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, [ticker.upper(), tipo_ativo, operacao, quantidade, preco_unitario, data, corretora, observacao])
+                    (ticker, tipo_ativo, operacao, quantidade, preco_unitario, data, corretora, observacao,
+                     data_vencimento, percentual_cdi, subtipo_investimento, transacao_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, [ticker.upper(), tipo_ativo, operacao, quantidade, preco_unitario, data, corretora, observacao,
+                  data_vencimento, percentual_cdi, subtipo_investimento, transacao_id])
             conn.commit()
             return cursor.lastrowid
         except Exception as e:
@@ -1121,11 +1300,23 @@ class Database:
             conn.close()
 
     def delete_operacao_carteira(self, op_id):
-        """Remove permanentemente uma operação da carteira."""
+        """Remove permanentemente uma operação da carteira e a transação associada."""
         conn = self.get_connection()
         try:
             cursor = conn.cursor()
+            # 1. Buscar transacao_id associada
+            cursor.execute("SELECT transacao_id FROM Carteira_Investimentos WHERE id = ?", [op_id])
+            row = cursor.fetchone()
+            transacao_id = row[0] if row else None
+
+            # 2. Deletar da carteira
             cursor.execute("DELETE FROM Carteira_Investimentos WHERE id = ?", [op_id])
+
+            # 3. Deletar a transação e suas divisões associadas se houver
+            if transacao_id:
+                cursor.execute("DELETE FROM Divisoes_Transacao WHERE transacao_id = ?", [transacao_id])
+                cursor.execute("DELETE FROM Transacoes WHERE id = ?", [transacao_id])
+
             conn.commit()
             return True
         except Exception:
@@ -1268,7 +1459,7 @@ class Database:
         try:
             cursor = conn.cursor()
             query = """
-                SELECT t.id, t.data, t.descricao, 
+                SELECT t.id, COALESCE(t.data_real, t.data) as data, t.descricao, 
                        CASE WHEN d.id IS NULL THEN t.valor_total ELSE d.valor_cota END as valor,
                        c.nome, t.observacao
                 FROM Transacoes t
@@ -1942,6 +2133,360 @@ class Database:
             return False, str(e)
         finally:
             conn.close()
+
+    def add_config_recorrencia(self, nome, tipo_transacao, categoria_id, valor_padrao, metodo_pagamento, observacao, perfil="Eu", bandeira_cartao="", dono_cartao="", divisoes=None):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT INTO Config_Recorrencias (nome, tipo_transacao, categoria_id, valor_padrao, metodo_pagamento, observacao, perfil, bandeira_cartao, dono_cartao)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (nome, tipo_transacao, categoria_id, valor_padrao, metodo_pagamento, observacao, perfil, bandeira_cartao, dono_cartao))
+                new_id = cursor.lastrowid
+                
+                if divisoes:
+                    for nome_usuario, valor_cota in divisoes.items():
+                        if valor_cota > 0:
+                            usuario_id = self.obter_ou_criar_usuario(cursor, nome_usuario)
+                            cursor.execute("""
+                                INSERT INTO Divisoes_Recorrencia (recorrencia_id, usuario_id, valor_cota)
+                                VALUES (?, ?, ?)
+                            """, (new_id, usuario_id, valor_cota))
+                conn.commit()
+                return True, new_id
+        except Exception as e:
+            logger.error("Erro ao adicionar config recorrencia", exc_info=True)
+            return False, str(e)
+
+    def migrar_receitas_fixas_para_recorrencias(self):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                # Buscar todas as transações do tipo 'Receita Fixa' que não têm grupo_id iniciando com 'REC_'
+                cursor.execute("""
+                    SELECT t.id, t.descricao, t.categoria_id, t.valor_total, t.metodo_pagamento, t.observacao, t.conta_id, t.bandeira_cartao, t.dono_cartao
+                    FROM Transacoes t
+                    WHERE t.tipo_transacao = 'Receita Fixa' AND (t.grupo_id IS NULL OR t.grupo_id NOT LIKE 'REC_%')
+                """)
+                rows = cursor.fetchall()
+                if not rows:
+                    return
+                
+                for r in rows:
+                    t_id, desc, cat_id, valor, metodo, obs, conta_id, bandeira, dono = r
+                    
+                    # Buscar divisões da transação
+                    cursor.execute("""
+                        SELECT u.nome, d.valor_cota
+                        FROM Divisoes_Transacao d
+                        JOIN Usuarios_Familia u ON d.usuario_id = u.id
+                        WHERE d.transacao_id = ?
+                    """, (t_id,))
+                    divs = cursor.fetchall()
+                    perfil_nome = "Eu"
+                    if divs:
+                        perfil_nome = divs[0][0]
+                    
+                    # Verificar se já existe uma configuração correspondente
+                    cursor.execute("""
+                        SELECT id FROM Config_Recorrencias 
+                        WHERE nome = ? AND categoria_id = ? AND perfil = ? AND tipo_transacao = 'Receita Fixa'
+                    """, (desc, cat_id, perfil_nome))
+                    config_row = cursor.fetchone()
+                    if config_row:
+                        config_id = config_row[0]
+                    else:
+                        cursor.execute("""
+                            INSERT INTO Config_Recorrencias (nome, tipo_transacao, categoria_id, valor_padrao, conta_id, metodo_pagamento, observacao, perfil, bandeira_cartao, dono_cartao)
+                            VALUES (?, 'Receita Fixa', ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (desc, cat_id, valor, conta_id or 1, metodo, obs, perfil_nome, bandeira, dono))
+                        config_id = cursor.lastrowid
+                        
+                        for u_name, cota in divs:
+                            if cota > 0:
+                                u_id = self.obter_ou_criar_usuario(cursor, u_name)
+                                cursor.execute("""
+                                    INSERT INTO Divisoes_Recorrencia (recorrencia_id, usuario_id, valor_cota)
+                                    VALUES (?, ?, ?)
+                                """, (config_id, u_id, cota))
+                    
+                    # Vincular a transação antiga
+                    cursor.execute("UPDATE Transacoes SET grupo_id = ? WHERE id = ?", (f"REC_{config_id}", t_id))
+                conn.commit()
+        except Exception as e:
+            logger.error("Erro na migração de receitas fixas para recorrências", exc_info=True)
+
+    def get_configs_recorrencia(self, perfil="Eu"):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT r.id, r.nome, r.tipo_transacao, r.categoria_id, r.valor_padrao, r.conta_id, r.metodo_pagamento, r.observacao, r.perfil, c.nome, r.bandeira_cartao, r.dono_cartao
+                    FROM Config_Recorrencias r
+                    JOIN Categorias c ON r.categoria_id = c.id
+                    WHERE r.perfil = ? OR r.perfil = 'Eu'
+                    ORDER BY r.nome
+                """, (perfil,))
+                return cursor.fetchall()
+        except Exception as e:
+            logger.error("Erro ao buscar configs recorrencia", exc_info=True)
+            return []
+
+    def get_divisions_recorrencia(self, config_id):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT u.nome, d.valor_cota
+                    FROM Divisoes_Recorrencia d
+                    JOIN Usuarios_Familia u ON d.usuario_id = u.id
+                    WHERE d.recorrencia_id = ?
+                """, (config_id,))
+                return {row[0]: row[1] for row in cursor.fetchall()}
+        except Exception as e:
+            logger.error("Erro ao buscar divisões de recorrência", exc_info=True)
+            return {}
+
+    def delete_config_recorrencia(self, config_id):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM Divisoes_Recorrencia WHERE recorrencia_id = ?", (config_id,))
+                cursor.execute("DELETE FROM Config_Recorrencias WHERE id = ?", (config_id,))
+                conn.commit()
+                return True, "Configuração de recorrência excluída."
+        except Exception as e:
+            logger.error("Erro ao excluir config recorrencia", exc_info=True)
+            return False, str(e)
+
+    def update_config_recorrencia(self, config_id, nome, tipo_transacao, categoria_id, valor_padrao, metodo_pagamento, observacao, bandeira_cartao="", dono_cartao="", divisoes=None):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    UPDATE Config_Recorrencias
+                    SET nome = ?, tipo_transacao = ?, categoria_id = ?, valor_padrao = ?, metodo_pagamento = ?, observacao = ?, bandeira_cartao = ?, dono_cartao = ?
+                    WHERE id = ?
+                """, (nome, tipo_transacao, categoria_id, valor_padrao, metodo_pagamento, observacao, bandeira_cartao, dono_cartao, config_id))
+                
+                cursor.execute("DELETE FROM Divisoes_Recorrencia WHERE recorrencia_id = ?", (config_id,))
+                
+                if divisoes:
+                    for nome_usuario, valor_cota in divisoes.items():
+                        if valor_cota > 0:
+                            usuario_id = self.obter_ou_criar_usuario(cursor, nome_usuario)
+                            cursor.execute("""
+                                INSERT INTO Divisoes_Recorrencia (recorrencia_id, usuario_id, valor_cota)
+                                VALUES (?, ?, ?)
+                            """, (config_id, usuario_id, valor_cota))
+                conn.commit()
+                return True, "Configuração atualizada."
+        except Exception as e:
+            logger.error("Erro ao atualizar config recorrencia", exc_info=True)
+            return False, str(e)
+
+    def get_transacoes_recorrencia(self, config_id, perfil_nome="Eu"):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                grupo_id = f"REC_{config_id}"
+                cursor.execute("""
+                    SELECT t.id, t.data, t.descricao, 
+                           CASE WHEN d.id IS NULL THEN t.valor_total ELSE d.valor_cota END as valor_exibido, 
+                           t.tipo_transacao, t.metodo_pagamento, t.observacao
+                    FROM Transacoes t
+                    LEFT JOIN Divisoes_Transacao d ON t.id = d.transacao_id
+                    LEFT JOIN Usuarios_Familia u ON d.usuario_id = u.id
+                    WHERE t.grupo_id = ? AND (u.nome = ? OR (d.id IS NULL AND ? = 'Eu'))
+                    ORDER BY substr(t.data, 7, 4) ASC, substr(t.data, 4, 2) ASC, substr(t.data, 1, 2) ASC
+                """, (grupo_id, perfil_nome, perfil_nome))
+                return cursor.fetchall()
+        except Exception as e:
+            logger.error("Erro ao buscar transações de recorrência", exc_info=True)
+            return []
+
+    def gerar_transacoes_recorrentes(self, config_id, meses_lote, data_inicio_str, perfil="Eu"):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT nome, tipo_transacao, categoria_id, valor_padrao, conta_id, metodo_pagamento, observacao, perfil, bandeira_cartao, dono_cartao
+                    FROM Config_Recorrencias
+                    WHERE id = ?
+                """, (config_id,))
+                config = cursor.fetchone()
+                if not config:
+                    return False
+                
+                nome, tipo_transacao, categoria_id, valor_padrao, conta_id, metodo, observacao, config_perfil, bandeira_cartao, dono_cartao = config
+                
+                try:
+                    dt_base = datetime.datetime.strptime(data_inicio_str, "%d/%m/%Y")
+                except Exception:
+                    dt_base = datetime.datetime.now()
+                
+                grupo_id = f"REC_{config_id}"
+                
+                # Fetch divisions for this recurrence
+                cursor.execute("""
+                    SELECT u.nome, d.valor_cota
+                    FROM Divisoes_Recorrencia d
+                    JOIN Usuarios_Familia u ON d.usuario_id = u.id
+                    WHERE d.recorrencia_id = ?
+                """, (config_id,))
+                divs = cursor.fetchall()
+                
+                for i in range(meses_lote):
+                    mes = dt_base.month + i
+                    ano = dt_base.year + (mes - 1) // 12
+                    mes = (mes - 1) % 12 + 1
+                    dia = min(dt_base.day, 28)
+                    dt_ocorr = datetime.datetime(ano, mes, dia)
+                    data_str = dt_ocorr.strftime("%d/%m/%Y")
+                    
+                    mes_str = f"{mes:02d}"
+                    ano_str = str(ano)
+                    cursor.execute("""
+                        SELECT COUNT(*) FROM Transacoes 
+                        WHERE grupo_id = ? AND substr(data, 4, 2) = ? AND substr(data, 7, 4) = ?
+                    """, (grupo_id, mes_str, ano_str))
+                    if cursor.fetchone()[0] > 0:
+                        continue
+                    
+                    cursor.execute("""
+                        INSERT INTO Transacoes (conta_id, categoria_id, descricao, data, data_real, valor_total, tipo_transacao, 
+                                                metodo_pagamento, parcela_atual, total_parcelas, bandeira_cartao, dono_cartao, recorrencia, grupo_id, observacao)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 1, ?, ?, 'Recorrente', ?, ?)
+                    """, (conta_id, categoria_id, nome, data_str, data_str, valor_padrao, tipo_transacao, metodo, bandeira_cartao, dono_cartao, grupo_id, observacao))
+                    
+                    transacao_id = cursor.lastrowid
+                    
+                    if divs:
+                        for user_nome, val_cota in divs:
+                            u_id = self.obter_ou_criar_usuario(cursor, user_nome)
+                            cursor.execute("""
+                                INSERT INTO Divisoes_Transacao (transacao_id, usuario_id, valor_cota)
+                                VALUES (?, ?, ?)
+                            """, (transacao_id, u_id, val_cota))
+                    else:
+                        usuario_id = self.obter_ou_criar_usuario(cursor, perfil)
+                        cursor.execute("""
+                            INSERT INTO Divisoes_Transacao (transacao_id, usuario_id, valor_cota)
+                            VALUES (?, ?, ?)
+                        """, (transacao_id, usuario_id, valor_padrao))
+                    
+                conn.commit()
+                return True
+        except Exception as e:
+            logger.error("Erro ao gerar transações recorrentes", exc_info=True)
+            return False
+
+    def atualizar_transacao_recorrente(self, transacao_id, config_id, valor, alterar_futuros=False):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                if not alterar_futuros:
+                    cursor.execute("UPDATE Transacoes SET valor_total = ? WHERE id = ?", (valor, transacao_id))
+                    cursor.execute("UPDATE Divisoes_Transacao SET valor_cota = ? WHERE transacao_id = ?", (valor, transacao_id))
+                else:
+                    cursor.execute("SELECT data FROM Transacoes WHERE id = ?", (transacao_id,))
+                    row = cursor.fetchone()
+                    if not row:
+                        return False
+                    data_limite_str = row[0]
+                    dt_limite = datetime.datetime.strptime(data_limite_str, "%d/%m/%Y").date()
+                    
+                    grupo_id = f"REC_{config_id}"
+                    cursor.execute("SELECT id, data FROM Transacoes WHERE grupo_id = ?", (grupo_id,))
+                    rows = cursor.fetchall()
+                    
+                    for t_id, t_data in rows:
+                        try:
+                            t_dt = datetime.datetime.strptime(t_data, "%d/%m/%Y").date()
+                        except:
+                            continue
+                        if t_dt >= dt_limite:
+                            cursor.execute("UPDATE Transacoes SET valor_total = ? WHERE id = ?", (valor, t_id))
+                            cursor.execute("UPDATE Divisoes_Transacao SET valor_cota = ? WHERE transacao_id = ?", (valor, t_id))
+                            
+                    cursor.execute("UPDATE Config_Recorrencias SET valor_padrao = ? WHERE id = ?", (valor, config_id))
+                    
+                conn.commit()
+                return True
+        except Exception as e:
+            logger.error("Erro ao atualizar transação recorrente", exc_info=True)
+            return False
+
+    def excluir_transacao_recorrente(self, transacao_id, config_id, excluir_futuros=False):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                if not excluir_futuros:
+                    cursor.execute("DELETE FROM Divisoes_Transacao WHERE transacao_id = ?", (transacao_id,))
+                    cursor.execute("DELETE FROM Transacoes WHERE id = ?", (transacao_id,))
+                else:
+                    cursor.execute("SELECT data FROM Transacoes WHERE id = ?", (transacao_id,))
+                    row = cursor.fetchone()
+                    if not row:
+                        return False
+                    data_limite_str = row[0]
+                    dt_limite = datetime.datetime.strptime(data_limite_str, "%d/%m/%Y").date()
+                    
+                    grupo_id = f"REC_{config_id}"
+                    cursor.execute("SELECT id, data FROM Transacoes WHERE grupo_id = ?", (grupo_id,))
+                    rows = cursor.fetchall()
+                    
+                    for t_id, t_data in rows:
+                        try:
+                            t_dt = datetime.datetime.strptime(t_data, "%d/%m/%Y").date()
+                        except:
+                            continue
+                        if t_dt >= dt_limite:
+                            cursor.execute("DELETE FROM Divisoes_Transacao WHERE transacao_id = ?", (t_id,))
+                            cursor.execute("DELETE FROM Transacoes WHERE id = ?", (t_id,))
+                            
+                conn.commit()
+                return True
+        except Exception as e:
+            logger.error("Erro ao excluir transação recorrente", exc_info=True)
+            return False
+
+    def get_compras_parceladas(self, perfil_nome="Eu"):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            query = """
+                SELECT t.grupo_id, MIN(COALESCE(t.data_real, t.data)) as data_inicio, t.descricao, 
+                       SUM(CASE WHEN d.id IS NULL THEN t.valor_total ELSE d.valor_cota END) as valor_total_exibido, 
+                       t.total_parcelas, t.metodo_pagamento, t.bandeira_cartao, t.dono_cartao, t.categoria_id, c.nome,
+                       SUM(t.valor_total) as valor_total_real
+                FROM Transacoes t
+                JOIN Categorias c ON t.categoria_id = c.id
+                LEFT JOIN Divisoes_Transacao d ON t.id = d.transacao_id
+                LEFT JOIN Usuarios_Familia u ON d.usuario_id = u.id
+                WHERE t.total_parcelas > 1 AND t.grupo_id LIKE 'GRP_%' AND (u.nome = ? OR (d.id IS NULL AND ? = 'Eu'))
+                GROUP BY t.grupo_id
+                ORDER BY data_inicio DESC
+            """
+            cursor.execute(query, (perfil_nome, perfil_nome))
+            return cursor.fetchall()
+
+    def get_parcelas_compra(self, grupo_id, perfil_nome="Eu"):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            query = """
+                SELECT t.id, COALESCE(t.data_real, t.data) as data, t.descricao, 
+                       CASE WHEN d.id IS NULL THEN t.valor_total ELSE d.valor_cota END as valor_exibido,
+                       t.parcela_atual, t.total_parcelas, t.metodo_pagamento, t.dono_cartao, t.bandeira_cartao,
+                       t.valor_total, t.observacao, c.nome
+                FROM Transacoes t
+                JOIN Categorias c ON t.categoria_id = c.id
+                LEFT JOIN Divisoes_Transacao d ON t.id = d.transacao_id
+                LEFT JOIN Usuarios_Familia u ON d.usuario_id = u.id
+                WHERE t.grupo_id = ? AND (u.nome = ? OR (d.id IS NULL AND ? = 'Eu'))
+                ORDER BY t.parcela_atual ASC
+            """
+            cursor.execute(query, (grupo_id, perfil_nome, perfil_nome))
+            return cursor.fetchall()
 
 if __name__ == "__main__":
     db = Database()

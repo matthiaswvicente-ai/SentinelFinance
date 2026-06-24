@@ -2,3 +2,9 @@
 __pycache__/
 scratch/
 logs/
+build/
+dist/
+*.spec
+*.exe
+*(1).py
+*(1).md

@@ -9,7 +9,7 @@ import tempfile
 from logger import logger
 
 class UpdateManager:
-    def __init__(self, current_version="1.1.0", repo="Matthiaswvicente-ai/SentinelFinance"):
+    def __init__(self, current_version="1.2.0", repo="Matthiaswvicente-ai/SentinelFinance"):
         self.current_version = current_version
         self.repo = repo
         self.update_info = None
@@ -47,7 +47,7 @@ class UpdateManager:
         Fallback simulado para fins de demonstração (versão Beta).
         Permite testar o fluxo de atualização mesmo se o repositório no GitHub ainda não estiver público.
         """
-        mock_version = "1.1.0-beta"
+        mock_version = "1.2.0-beta"
         if self._is_newer(mock_version):
             info = {
                 "latest_version": mock_version,
