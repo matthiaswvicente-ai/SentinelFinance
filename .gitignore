@@ -8,3 +8,5 @@ dist/
 *.exe
 *(1).py
 *(1).md
+/legado/
+

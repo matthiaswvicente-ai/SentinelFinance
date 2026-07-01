@@ -41,23 +41,408 @@ from utils import shift_months
 # Referência global para o ícone de bandeja (system tray)
 tray_icon = None
 
-def main(page: ft.Page):
-    import time
+class SentinelFinanceApp:
+    def __init__(self, page: ft.Page):
+        self.page = page
+        self.all_t = None
+        self.base_dir = None
+        self.body = None
+        self.categorias_por_pilar = None
+        self.cats_data = None
+        self.colors = None
+        self.dashboard_view = None
+        self.data_str = None
+        self.db = None
+        self.db_path = None
+        self.despesas_colors = None
+        self.first_run = None
+        self.hoje = None
+        self.ico_path = None
+        self.logo_path = None
+        self.logo_widget = None
+        self.m_idx = None
+        self.main_row = None
+        self.meses_pt = None
+        self.original_prod_path = None
+        self.overlay_stack = None
+        self.pref_theme = None
+        self.receitas_colors = None
+        self.sidebar = None
+        self.state = None
+        self.trans_iniciais = None
+        
+        self.run()
+
+    def run(self):
+        page = self.page
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
+        
+        all_t = None
+        base_dir = None
+        body = None
+        categorias_por_pilar = None
+        cats_data = None
+        colors = None
+        dashboard_view = None
+        data_str = None
+        db = None
+        db_path = None
+        despesas_colors = None
+        first_run = None
+        hoje = None
+        ico_path = None
+        logo_path = None
+        logo_widget = None
+        m_idx = None
+        main_row = None
+        meses_pt = None
+        original_prod_path = None
+        overlay_stack = None
+        pref_theme = None
+        receitas_colors = None
+        sidebar = None
+        state = None
+        trans_iniciais = None
+        
+        import time
     
-    # Configurações da Janela
-    page.title = "Sentinel Finance V2"
-    page.theme = ft.Theme(font_family="Segoe UI")
-    page.padding = 0
-    page.window_width = 1200
-    page.window_height = 800
-    page.window_min_width = 900
-    page.window_min_height = 600
+        # Configurações da Janela
+        page.title = "Sentinel Finance V2"
+        page.theme = ft.Theme(font_family="Segoe UI")
+        page.padding = 0
+        page.window_width = 1200
+        page.window_height = 800
+        page.window_min_width = 900
+        page.window_min_height = 600
     
-    # Inicializa BD com caminho absoluto local à pasta v2
-    db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "financas.db")
-    db = Database(db_name=db_path)
+        # Inicializa BD com caminho absoluto local à pasta v2
+        self.db_path = db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "financas.db")
+        self.db = db = Database(db_name=db_path)
     
-    def _criar_backup_sessao():
+        _criar_backup_sessao()
+    
+        # Inicialização dinâmica de tema e cor de fundo
+        self.pref_theme = pref_theme = db.get_preferencia("theme_mode", "dark")
+        page.theme_mode = ft.ThemeMode.LIGHT if pref_theme == "light" else ft.ThemeMode.DARK
+        page.bgcolor = "#f8fafc" if pref_theme == "light" else "#0f172a"
+    
+        # Comportamento de fechar janela
+        page.on_window_event = on_window_event
+    
+        # Roteador de Sandbox baseado em preferências persistidas do banco real
+        self.original_prod_path = original_prod_path = db_path
+        if db.get_preferencia("use_sandbox", "False") == "True":
+            db.switch_to_sandbox()
+        
+        self.hoje = hoje = datetime.datetime.now()
+        self.meses_pt = meses_pt = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
+        self.state = state = {
+            "mes_idx": hoje.month - 1,
+            "ano": hoje.year,
+            "perfil": "Eu",
+            "active_tab": "dashboard",
+            "chart_left_idx": 0,
+            "chart_right_idx": 0,
+            "editing_card_id": None,
+            "selected_color": "#1e293b",
+            "form_nome": "",
+            "form_dono": "",
+            "form_bandeira": "Visa",
+            "form_limite": "",
+            "form_fechamento": "",
+            "form_vencimento": "",
+            "transacoes_view_mode": "mensal",
+            "transacoes_tab_active": "pilar_categoria",
+            "transacoes_locked": True,
+            "investimentos_tab_active": "carteira",
+            "cotacoes_cache": {},
+            "cotacoes_status": "idle",
+            "language": db.get_preferencia("language", "pt")
+        }
+    
+        from translations import TRANSLATIONS
+        self.despesas_colors = despesas_colors = ["#f87171", "#fb923c", "#fbbf24", "#f472b6", "#c084fc", "#a78bfa", "#fca5a5"]
+        self.receitas_colors = receitas_colors = ["#4ade80", "#38bdf8", "#facc15", "#c084fc", "#f472b6", "#a3e635", "#fb923c"]
+    
+        # Se não houver transações no mês atual, tenta achar o último mês com dados
+        self.trans_iniciais = trans_iniciais = db.get_transacoes(mes=meses_pt[state["mes_idx"]], ano=str(state["ano"]), perfil_nome=state["perfil"])
+        if not trans_iniciais:
+            self.all_t = all_t = db.get_transacoes(perfil_nome=state["perfil"])
+            if all_t:
+                self.data_str = data_str = all_t[0][1] # "dd/mm/yyyy"
+                if len(data_str) >= 10:
+                    self.m_idx = m_idx = int(data_str[3:5]) - 1
+                    if 0 <= m_idx < 12:
+                        state["mes_idx"] = m_idx
+                    state["ano"] = int(data_str[6:10])
+    
+        # ==========================
+        # COMPONENTES DE LAYOUT
+        # ==========================
+    
+        # Busca a Logo 1.png da raiz
+        self.base_dir = base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.logo_path = logo_path = os.path.join(base_dir, "Logo 1.png")
+        self.ico_path = ico_path = os.path.join(base_dir, "icon.ico")
+    
+        if os.path.exists(logo_path):
+            self.logo_widget = logo_widget = ft.Image(src="Logo 1.png", width=70, height=70, fit="contain")
+            try:
+                page.window.icon = ico_path if os.path.exists(ico_path) else logo_path
+            except:
+                pass
+        else:
+            self.logo_widget = logo_widget = ft.Icon(ft.icons.Icons.ACCOUNT_BALANCE_WALLET, size=40, color="#3b82f6")
+
+        self.sidebar = sidebar = ft.Container(
+            width=100,
+            bgcolor=get_colors()["surface"],
+            border=ft.border.all(1, get_colors()["border"]),
+            padding=ft.Padding(left=10, top=20, right=10, bottom=20),
+            content=ft.Column(
+                alignment=ft.MainAxisAlignment.START,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                controls=[]
+            )
+        )
+        sidebar.content.controls = build_sidebar_controls()
+
+        # Função Helper para mapear Ícones por Categoria
+        self.dashboard_view = dashboard_view = ft.Column(expand=True)
+        self.body = body = ft.Container(expand=True, padding=30, content=dashboard_view)
+
+        # ==================================================
+        # SISTEMA DE FAB EXPANSÍVEL E OVERLAY IN-APP (MODAL)
+        # ==================================================
+
+        # Categorias organizadas de forma hierárquica
+        self.cats_data = cats_data = db.get_categorias()
+        self.categorias_por_pilar = categorias_por_pilar = {}
+        for c in cats_data:
+            c_id, c_nome, c_tipo, c_pid, c_has_sub = c
+            if c_pid is None:
+                if c_tipo not in categorias_por_pilar:
+                    categorias_por_pilar[c_tipo] = {}
+                categorias_por_pilar[c_tipo][c_id] = {"nome": c_nome.strip().title(), "subs": []}
+
+        for c in cats_data:
+            c_id, c_nome, c_tipo, c_pid, c_has_sub = c
+            if c_pid is not None:
+                if c_tipo in categorias_por_pilar and c_pid in categorias_por_pilar[c_tipo]:
+                    categorias_por_pilar[c_tipo][c_pid]["subs"].append((c_id, c_nome.strip().title()))
+
+        # Estado do FAB expansível
+        state["fab_expanded"] = False
+
+        self.main_row = main_row = ft.Row(
+            expand=True,
+            spacing=0,
+            controls=[
+                sidebar,
+                body
+            ]
+        )
+        self.overlay_stack = overlay_stack = ft.Stack(
+            expand=True,
+            alignment=ft.Alignment(0, 0),
+            controls=[]
+        )
+    
+        page.add(overlay_stack)
+        render_dashboard()
+        overlay_stack.controls = [main_row]
+        # Aplica a cor do tema na barra lateral no carregamento inicial
+        self.colors = colors = get_colors()
+        sidebar.bgcolor = colors["sidebar"]
+        page.update()
+
+        # Exibe caixa de diálogo de tutorial na primeira abertura do app pós-instalação
+        try:
+            self.first_run = first_run = db.get_preferencia("tutorial_v2_shown", "False")
+            if first_run == "False":
+                iniciar_tutorial_usuario(primeira_vez=True)
+        except Exception as ex:
+            print(f"Erro ao verificar primeira execução do tutorial: {ex}")
+
+        # Save local variables back to self attributes (final sync)
+        self.all_t = all_t
+        self.base_dir = base_dir
+        self.body = body
+        self.categorias_por_pilar = categorias_por_pilar
+        self.cats_data = cats_data
+        self.colors = colors
+        self.dashboard_view = dashboard_view
+        self.data_str = data_str
+        self.db = db
+        self.db_path = db_path
+        self.despesas_colors = despesas_colors
+        self.first_run = first_run
+        self.hoje = hoje
+        self.ico_path = ico_path
+        self.logo_path = logo_path
+        self.logo_widget = logo_widget
+        self.m_idx = m_idx
+        self.main_row = main_row
+        self.meses_pt = meses_pt
+        self.original_prod_path = original_prod_path
+        self.overlay_stack = overlay_stack
+        self.pref_theme = pref_theme
+        self.receitas_colors = receitas_colors
+        self.sidebar = sidebar
+        self.state = state
+        self.trans_iniciais = trans_iniciais
+
+    def _criar_backup_sessao(self):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         try:
             import datetime
             import shutil
@@ -89,26 +474,193 @@ def main(page: ft.Page):
             from logger import logger
             logger.error(f"Erro ao criar backup de sessão: {e}", exc_info=True)
 
-    _criar_backup_sessao()
-    
-    # Inicialização dinâmica de tema e cor de fundo
-    pref_theme = db.get_preferencia("theme_mode", "dark")
-    page.theme_mode = ft.ThemeMode.LIGHT if pref_theme == "light" else ft.ThemeMode.DARK
-    page.bgcolor = "#f8fafc" if pref_theme == "light" else "#0f172a"
-    
-    # Comportamento de fechar janela
-    def on_window_event(e):
+
+    def on_window_event(self, e):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         if e.data == "close":
             os._exit(0)
                 
-    page.on_window_event = on_window_event
-    
-    # Roteador de Sandbox baseado em preferências persistidas do banco real
-    original_prod_path = db_path
-    if db.get_preferencia("use_sandbox", "False") == "True":
-        db.switch_to_sandbox()
-        
-    def update_use_sandbox_preference(is_sandbox):
+
+    def update_use_sandbox_preference(self, is_sandbox):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         try:
             import sqlite3
             conn = sqlite3.connect(original_prod_path)
@@ -121,34 +673,98 @@ def main(page: ft.Page):
             import logging
             logging.error(f"Erro ao salvar sandbox nas preferências do banco real: {err}")
     
-    hoje = datetime.datetime.now()
-    meses_pt = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
-    state = {
-        "mes_idx": hoje.month - 1,
-        "ano": hoje.year,
-        "perfil": "Eu",
-        "active_tab": "dashboard",
-        "chart_left_idx": 0,
-        "chart_right_idx": 0,
-        "editing_card_id": None,
-        "selected_color": "#1e293b",
-        "form_nome": "",
-        "form_dono": "",
-        "form_bandeira": "Visa",
-        "form_limite": "",
-        "form_fechamento": "",
-        "form_vencimento": "",
-        "transacoes_view_mode": "mensal",
-        "transacoes_tab_active": "pilar_categoria",
-        "transacoes_locked": True,
-        "investimentos_tab_active": "carteira",
-        "cotacoes_cache": {},
-        "cotacoes_status": "idle",
-        "language": db.get_preferencia("language", "pt")
-    }
-    
-    from translations import TRANSLATIONS
-    def _t(text):
+
+    def _t(self, text):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         if not text:
             return ""
         lang = state.get("language", "pt")
@@ -158,7 +774,98 @@ def main(page: ft.Page):
         return lang_dict.get(text, text)
     
 
-    def build_safe_date(d, m, y):
+
+    def build_safe_date(self, d, m, y):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         try:
             return datetime.datetime(y, m, d).strftime("%d/%m/%Y")
         except ValueError:
@@ -169,7 +876,98 @@ def main(page: ft.Page):
                     pass
             return f"28/{m:02d}/{y}"
 
-    def get_colors():
+
+    def get_colors(self):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         is_light = (page.theme_mode == ft.ThemeMode.LIGHT)
         return {
             "bg": "#f1f5f9" if is_light else "#0f172a",
@@ -181,40 +979,98 @@ def main(page: ft.Page):
             "card_bg": "#ffffff" if is_light else "#0f172a"
         }
 
-    despesas_colors = ["#f87171", "#fb923c", "#fbbf24", "#f472b6", "#c084fc", "#a78bfa", "#fca5a5"]
-    receitas_colors = ["#4ade80", "#38bdf8", "#facc15", "#c084fc", "#f472b6", "#a3e635", "#fb923c"]
-    
-    # Se não houver transações no mês atual, tenta achar o último mês com dados
-    trans_iniciais = db.get_transacoes(mes=meses_pt[state["mes_idx"]], ano=str(state["ano"]), perfil_nome=state["perfil"])
-    if not trans_iniciais:
-        all_t = db.get_transacoes(perfil_nome=state["perfil"])
-        if all_t:
-            data_str = all_t[0][1] # "dd/mm/yyyy"
-            if len(data_str) >= 10:
-                m_idx = int(data_str[3:5]) - 1
-                if 0 <= m_idx < 12:
-                    state["mes_idx"] = m_idx
-                state["ano"] = int(data_str[6:10])
-    
-    # ==========================
-    # COMPONENTES DE LAYOUT
-    # ==========================
-    
-    # Busca a Logo 1.png da raiz
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    logo_path = os.path.join(base_dir, "Logo 1.png")
-    ico_path = os.path.join(base_dir, "icon.ico")
-    
-    if os.path.exists(logo_path):
-        logo_widget = ft.Image(src="Logo 1.png", width=70, height=70, fit="contain")
-        try:
-            page.window.icon = ico_path if os.path.exists(ico_path) else logo_path
-        except:
-            pass
-    else:
-        logo_widget = ft.Icon(ft.icons.Icons.ACCOUNT_BALANCE_WALLET, size=40, color="#3b82f6")
 
-    def on_nav_click(e):
+    def on_nav_click(self, e):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         # Atualizar a cor do botão ativo e mudar a página principal
         for btn in sidebar.content.controls:
             if isinstance(btn, ft.IconButton):
@@ -271,7 +1127,98 @@ def main(page: ft.Page):
             )
             page.update()
 
-    def refresh_current_view(e=None):
+
+    def refresh_current_view(self, e=None):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         active = state.get("active_tab", "dashboard")
         if active == "dashboard" or active == "charts":
             render_dashboard()
@@ -298,7 +1245,98 @@ def main(page: ft.Page):
         else:
             render_dashboard()
 
-    def build_sidebar_controls():
+
+    def build_sidebar_controls(self):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         order_str = db.get_preferencia("sidebar_order", "dashboard,investimentos,charts,cartoes,financiamentos,recorrencias,ia")
         order = order_str.split(",")
         order = [item for item in order if item not in ("resumo_anual", "transacoes", "recorrencias")]
@@ -411,7 +1449,98 @@ def main(page: ft.Page):
         
         return controls
 
-    def abrir_reordenar_menu(e):
+
+    def abrir_reordenar_menu(self, e):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         order_str = db.get_preferencia("sidebar_order", "dashboard,investimentos,charts,cartoes,financiamentos,recorrencias,ia")
         current_order = order_str.split(",")
         current_order = [x for x in current_order if x not in ("resumo_anual", "transacoes", "recorrencias")]
@@ -521,7 +1650,98 @@ def main(page: ft.Page):
         page.show_dialog(dialog)
         rebuild_list()
 
-    def abrir_criar_categoria_modal(e=None):
+
+    def abrir_criar_categoria_modal(self, e=None):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         categorias = db.get_categorias()
         
         txt_nome = ft.TextField(
@@ -629,20 +1849,98 @@ def main(page: ft.Page):
         
         page.show_dialog(dialog)
 
-    sidebar = ft.Container(
-        width=100,
-        bgcolor=get_colors()["surface"],
-        border=ft.border.all(1, get_colors()["border"]),
-        padding=ft.Padding(left=10, top=20, right=10, bottom=20),
-        content=ft.Column(
-            alignment=ft.MainAxisAlignment.START,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            controls=[]
-        )
-    )
-    sidebar.content.controls = build_sidebar_controls()
 
-    def atualizar_textos_globais():
+    def atualizar_textos_globais(self):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         try:
             sidebar.content.controls = build_sidebar_controls()
             sidebar.update()
@@ -650,7 +1948,98 @@ def main(page: ft.Page):
             pass
 
     
-    def criar_seletor_perfil(on_change_callback):
+
+    def criar_seletor_perfil(self, on_change_callback):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         perfis = db.get_perfis()
         if "Eu" not in perfis:
             perfis = ["Eu"] + perfis
@@ -680,7 +2069,98 @@ def main(page: ft.Page):
             )
         )
 
-    def criar_tab_header(aba_ativa, seletor_perfil_widget, subcontroles=None):
+
+    def criar_tab_header(self, aba_ativa, seletor_perfil_widget, subcontroles=None):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         """
         Constrói o header persistente de 2 linhas para as telas principais:
           Linha 1: Logo | Abas (Dashboard/Histórico/Resumo Anual/Recorrências) | Seletor de perfil
@@ -749,12 +2229,193 @@ def main(page: ft.Page):
         )
 
 
-    def criar_card_resumo(titulo, valor, cor_valor=None, cor_fundo=None, small=False, subtexto=None, is_currency=True):
+
+    def criar_card_resumo(self, titulo, valor, cor_valor=None, cor_fundo=None, small=False, subtexto=None, is_currency=True):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         from ui_components.cards import criar_card_resumo as _criar_card_resumo
         return _criar_card_resumo(titulo, valor, get_colors(), cor_valor, cor_fundo, small, subtexto, is_currency)
     
-    # Função Helper para mapear Ícones por Categoria
-    def get_icone_categoria(nome_cat):
+
+    def get_icone_categoria(self, nome_cat):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         nome = nome_cat.upper()
         if "CASA" in nome or "ALUGUEL" in nome: return ft.icons.Icons.HOME_ROUNDED
         if "VEÍCULO" in nome or "CARRO" in nome or "MOTO" in nome: return ft.icons.Icons.DIRECTIONS_CAR_ROUNDED
@@ -767,7 +2428,98 @@ def main(page: ft.Page):
         if "CONSUMO" in nome or "ROUPA" in nome: return ft.icons.Icons.SHOPPING_BAG_ROUNDED
         return ft.icons.Icons.RECEIPT_ROUNDED
 
-    def abrir_detalhes_categoria_dialog(cat_nome, trans_list, eh_despesa):
+
+    def abrir_detalhes_categoria_dialog(self, cat_nome, trans_list, eh_despesa):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         def fechar_dialog(e):
             page.pop_dialog()
 
@@ -878,7 +2630,98 @@ def main(page: ft.Page):
 
         page.show_dialog(dialog)
 
-    def criar_lista_transacoes(titulo, transacoes, eh_despesa=True):
+
+    def criar_lista_transacoes(self, titulo, transacoes, eh_despesa=True):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         # Chaves de estado específicas por painel
         sort_state_key = "sort_despesas" if eh_despesa else "sort_receitas"
         sort_key = state.get(sort_state_key, "valor")  # "valor" ou "alfa"
@@ -1050,10 +2893,98 @@ def main(page: ft.Page):
             )
         )
         
-    dashboard_view = ft.Column(expand=True)
-    body = ft.Container(expand=True, padding=30, content=dashboard_view)
 
-    def prev_month(e):
+    def prev_month(self, e):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         if state["active_tab"] == "transacoes" and state["transacoes_view_mode"] == "anual":
             state["ano"] -= 1
             render_transacoes()
@@ -1079,7 +3010,98 @@ def main(page: ft.Page):
         else:
             render_dashboard()
         
-    def next_month(e):
+
+    def next_month(self, e):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         if state["active_tab"] == "transacoes" and state["transacoes_view_mode"] == "anual":
             state["ano"] += 1
             render_transacoes()
@@ -1105,15 +3127,288 @@ def main(page: ft.Page):
         else:
             render_dashboard()
 
-    def change_chart_left(e, inc):
+
+    def change_chart_left(self, e, inc):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         state["chart_left_idx"] = (state["chart_left_idx"] + inc) % 2
         render_dashboard()
         
-    def change_chart_right(e, inc):
+
+    def change_chart_right(self, e, inc):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         state["chart_right_idx"] = (state["chart_right_idx"] + inc) % 2
         render_dashboard()
 
-    def criar_painel_grafico(titulo, chart_control, on_prev, on_next):
+
+    def criar_painel_grafico(self, titulo, chart_control, on_prev, on_next):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         return ft.Container(
             expand=True,
             bgcolor=get_colors()["surface"],
@@ -1136,60 +3431,765 @@ def main(page: ft.Page):
             )
         )
 
-    def gerar_grafico_base64(tipo, dados, labels, cores):
+
+    def gerar_grafico_base64(self, tipo, dados, labels, cores):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         from ui_components.charts import gerar_grafico_base64 as _impl
         return _impl(tipo, dados, labels, cores)
 
-    def gerar_grafico_donut_base64(dados, labels, cores, is_light=False):
+
+    def gerar_grafico_donut_base64(self, dados, labels, cores, is_light=False):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         from ui_components.charts import gerar_grafico_donut_base64 as _impl
         return _impl(dados, labels, cores, is_light)
 
-    def gerar_grafico_evolucao_patrimonio_base64(meses, aplicados, mercados, is_light=False):
+
+    def gerar_grafico_evolucao_patrimonio_base64(self, meses, aplicados, mercados, is_light=False):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         from ui_components.charts import gerar_grafico_evolucao_patrimonio_base64 as _impl
         return _impl(meses, aplicados, mercados, is_light)
 
-    def gerar_grafico_linhas_rentabilidade_base64(meses, carteira, cdi, ipca, is_light=False):
+
+    def gerar_grafico_linhas_rentabilidade_base64(self, meses, carteira, cdi, ipca, is_light=False):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         from ui_components.charts import gerar_grafico_linhas_rentabilidade_base64 as _impl
         return _impl(meses, carteira, cdi, ipca, is_light)
 
-    def gerar_grafico_barras_proventos_base64(meses, recebidos, a_receber, is_light=False):
+
+    def gerar_grafico_barras_proventos_base64(self, meses, recebidos, a_receber, is_light=False):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         from ui_components.charts import gerar_grafico_barras_proventos_base64 as _impl
         return _impl(meses, recebidos, a_receber, is_light)
 
-    def gerar_grafico_aportes_base64(meses, compras, vendas, is_light=False):
+
+    def gerar_grafico_aportes_base64(self, meses, compras, vendas, is_light=False):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         from ui_components.charts import gerar_grafico_aportes_base64 as _impl
         return _impl(meses, compras, vendas, is_light)
 
-    # ==================================================
-    # SISTEMA DE FAB EXPANSÍVEL E OVERLAY IN-APP (MODAL)
-    # ==================================================
 
-    # Categorias organizadas de forma hierárquica
-    cats_data = db.get_categorias()
-    categorias_por_pilar = {}
-    for c in cats_data:
-        c_id, c_nome, c_tipo, c_pid, c_has_sub = c
-        if c_pid is None:
-            if c_tipo not in categorias_por_pilar:
-                categorias_por_pilar[c_tipo] = {}
-            categorias_por_pilar[c_tipo][c_id] = {"nome": c_nome.strip().title(), "subs": []}
-
-    for c in cats_data:
-        c_id, c_nome, c_tipo, c_pid, c_has_sub = c
-        if c_pid is not None:
-            if c_tipo in categorias_por_pilar and c_pid in categorias_por_pilar[c_tipo]:
-                categorias_por_pilar[c_tipo][c_pid]["subs"].append((c_id, c_nome.strip().title()))
-
-    # Estado do FAB expansível
-    state["fab_expanded"] = False
-
-    def toggle_fab(e=None):
+    def toggle_fab(self, e=None):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         if state["fab_expanded"]:
             contrair_fab()
         else:
             expandir_fab()
 
-    def contrair_fab():
+
+    def contrair_fab(self):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         state["fab_expanded"] = False
         page.floating_action_button = ft.FloatingActionButton(
             icon=ft.icons.Icons.ADD,
@@ -1199,7 +4199,98 @@ def main(page: ft.Page):
         )
         page.update()
 
-    def expandir_fab():
+
+    def expandir_fab(self):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         state["fab_expanded"] = True
         page.floating_action_button = ft.Container(
             width=150,
@@ -1243,13 +4334,195 @@ def main(page: ft.Page):
         )
         page.update()
 
-    def fechar_overlay(e=None):
+
+    def fechar_overlay(self, e=None):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         if len(overlay_stack.controls) > 1:
             overlay_stack.controls.pop()  # Remove o modal card
             overlay_stack.controls.pop()  # Remove o shield backdrop
             page.update()
 
-    def abrir_overlay(tipo="despesa", editing_trans_id=None):
+
+    def abrir_overlay(self, tipo="despesa", editing_trans_id=None):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         # Garante que limpa overlays anteriores antes de abrir um novo
         while len(overlay_stack.controls) > 1:
             overlay_stack.controls.pop()
@@ -1363,7 +4636,98 @@ def main(page: ft.Page):
         overlay_stack.controls.append(modal_card)
         page.update()
 
-    def populate_formulario_receita(container, details=None, locked_pilar=None):
+
+    def populate_formulario_receita(self, container, details=None, locked_pilar=None):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         is_invest = (locked_pilar == "Investimento") or (details and details["tipo_transacao"] == "Investimento")
         theme_color = "#3b82f6" if is_invest else "#10b981"
         btn_label = _t("INVESTIMENTO") if is_invest else _t("RECEITA")
@@ -1748,7 +5112,98 @@ def main(page: ft.Page):
         else:
             update_cats_receita()
 
-    def populate_formulario_despesa(container, details=None, locked_pilar=None):
+
+    def populate_formulario_despesa(self, container, details=None, locked_pilar=None):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         txt_desc = ft.TextField(
             label=_t("Descrição"), 
             hint_text="Ex: Compras Supermercado", 
@@ -2966,7 +6421,98 @@ def main(page: ft.Page):
             update_cats_despesa()
 
 
-    def render_dashboard():
+
+    def render_dashboard(self):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         mes_atual = meses_pt[state["mes_idx"]]
         ano_atual = str(state["ano"])
         
@@ -3198,7 +6744,98 @@ def main(page: ft.Page):
         body.content = dashboard_view
         page.update()
 
-    def render_resumo_anual():
+
+    def render_resumo_anual(self):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         months_data = []
         for mes_nome in meses_pt:
             resumo = db.get_resumo_financeiro(mes_nome, str(state["ano"]), state["perfil"])
@@ -3396,7 +7033,98 @@ def main(page: ft.Page):
 
 
         
-    def render_cartoes():
+
+    def render_cartoes(self):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         mes_atual_pt = meses_pt[state["mes_idx"]]
         mes_num = str(state["mes_idx"] + 1).zfill(2)
         ano_atual = str(state["ano"])
@@ -4001,7 +7729,98 @@ def main(page: ft.Page):
         body.content = cartoes_view
         page.update()
 
-    def render_investimentos():
+
+    def render_investimentos(self):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         import collections
         mes_atual = meses_pt[state["mes_idx"]]
         ano_atual = str(state["ano"])
@@ -6038,7 +9857,98 @@ def main(page: ft.Page):
         if state.get("cotacoes_status") == "idle" and posicoes_ativas:
             state["cotacoes_status"] = "fetching"
             threading.Thread(target=buscar_cotacoes, daemon=True).start()
-    def render_transacoes():
+
+    def render_transacoes(self):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         mes_atual = meses_pt[state["mes_idx"]]
         ano_atual = str(state["ano"])
         view_mode = state["transacoes_view_mode"]
@@ -6674,15 +10584,288 @@ def main(page: ft.Page):
         page.floating_action_button = None
         body.content = trans_layout
         page.update()
-    def set_transacoes_view_mode(mode):
+
+    def set_transacoes_view_mode(self, mode):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         state["transacoes_view_mode"] = mode
         render_transacoes()
 
-    def set_transacoes_tab(tab):
+
+    def set_transacoes_tab(self, tab):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         state["transacoes_tab_active"] = tab
         render_transacoes()
 
-    def render_financiamentos():
+
+    def render_financiamentos(self):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         colors = get_colors()
         page.floating_action_button = ft.FloatingActionButton(
             icon=ft.icons.Icons.ADD,
@@ -8075,7 +12258,98 @@ def main(page: ft.Page):
         body.content = layout
         page.update()
 
-    def render_recorrencias():
+
+    def render_recorrencias(self):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         configs = db.get_configs_recorrencia(state["perfil"])
         
         # Filtrar as recorrências que já foram totalmente realizadas (última parcela anterior ao mês atual)
@@ -8485,7 +12759,98 @@ def main(page: ft.Page):
         body.content = dashboard_layout
         page.update()
 
-    def render_veiculos():
+
+    def render_veiculos(self):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         veiculos = db.get_veiculos(state["perfil"])
         veiculos = [("geral", "", _t("Geral / Sem vínculo"), state["perfil"])] + veiculos
         
@@ -9066,7 +13431,98 @@ def main(page: ft.Page):
         body.content = dashboard_layout
         page.update()
 
-    def render_pets():
+
+    def render_pets(self):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         pets = db.get_pets(state["perfil"])
         pets = [("geral", _t("Geral / Sem vínculo"), "", state["perfil"])] + pets
         
@@ -9647,7 +14103,98 @@ def main(page: ft.Page):
         body.content = dashboard_layout
         page.update()
 
-    def render_saude():
+
+    def render_saude(self):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         saude_list = db.get_saude(state["perfil"])
         
         def on_change_perfil_saude(e):
@@ -10254,7 +14801,98 @@ def main(page: ft.Page):
         body.content = dashboard_layout
         page.update()
 
-    def abrir_form_transacao_entidade(tipo_entidade, entidade_id, transacao_to_edit=None):
+
+    def abrir_form_transacao_entidade(self, tipo_entidade, entidade_id, transacao_to_edit=None):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         import datetime
         now = datetime.datetime.now()
         
@@ -10483,7 +15121,98 @@ def main(page: ft.Page):
         )
         page.show_dialog(dialog)
 
-    def abrir_form_config_recorrencia(e, config_to_edit=None):
+
+    def abrir_form_config_recorrencia(self, e, config_to_edit=None):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         txt_nome = ft.TextField(
             label=_t("Nome da Recorrência"),
             value=config_to_edit[1] if config_to_edit else "",
@@ -11088,7 +15817,98 @@ def main(page: ft.Page):
         if existing_divs:
             rebuild_sharing_inputs()
 
-    def abrir_edit_ocorrencia(occ_id, val, date):
+
+    def abrir_edit_ocorrencia(self, occ_id, val, date):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         txt_new_val = ft.TextField(
             label=_t("Novo Valor (R$)"),
             value=str(val),
@@ -11149,7 +15969,98 @@ def main(page: ft.Page):
         )
         page.show_dialog(dialog)
 
-    def abrir_delete_ocorrencia(occ_id, date):
+
+    def abrir_delete_ocorrencia(self, occ_id, date):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         choice_group = ft.RadioGroup(
             content=ft.Column([
                 ft.Radio(value="single", label=_t("Excluir apenas este mês")),
@@ -11191,7 +16102,98 @@ def main(page: ft.Page):
         )
         page.show_dialog(dialog)
 
-    def abrir_delete_config(config_id):
+
+    def abrir_delete_config(self, config_id):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         def confirmar_exclusao_config(e):
             success, msg = db.delete_config_recorrencia(config_id)
             if success:
@@ -11217,7 +16219,98 @@ def main(page: ft.Page):
         )
         page.show_dialog(dialog)
 
-    def render_configuracoes():
+
+    def render_configuracoes(self):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         # Desativa o floating action button se houver
         page.floating_action_button = None
         
@@ -12430,7 +17523,98 @@ def main(page: ft.Page):
         body.content = configuracoes_layout
         page.update()
 
-    def abrir_edit_parcela_individual(trans_id, val, date):
+
+    def abrir_edit_parcela_individual(self, trans_id, val, date):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         txt_new_val = ft.TextField(
             label=_t("Novo Valor (R$)"),
             value=str(val),
@@ -12537,7 +17721,98 @@ def main(page: ft.Page):
         )
         page.show_dialog(dialog)
 
-    def empurrar_parcela(trans_id):
+
+    def empurrar_parcela(self, trans_id):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         details = db.get_transacao_by_id(trans_id)
         if not details:
             page.snack_bar = ft.SnackBar(ft.Text(_t("Erro ao buscar transação!"), color="white"), bgcolor="#ef4444")
@@ -12591,7 +17866,98 @@ def main(page: ft.Page):
             page.snack_bar.open = True
             page.update()
 
-    def puxar_parcela(trans_id):
+
+    def puxar_parcela(self, trans_id):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         details = db.get_transacao_by_id(trans_id)
         if not details:
             page.snack_bar = ft.SnackBar(ft.Text(_t("Erro ao buscar transação!"), color="white"), bgcolor="#ef4444")
@@ -12644,7 +18010,98 @@ def main(page: ft.Page):
             page.snack_bar.open = True
             page.update()
 
-    def confirmar_mover_parcela(trans_id, direcao):
+
+    def confirmar_mover_parcela(self, trans_id, direcao):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         details = db.get_transacao_by_id(trans_id)
         if not details:
             page.snack_bar = ft.SnackBar(ft.Text(_t("Erro ao buscar transação!"), color="white"), bgcolor="#ef4444")
@@ -12675,7 +18132,98 @@ def main(page: ft.Page):
         )
         page.show_dialog(dialog)
 
-    def render_parcelamentos():
+
+    def render_parcelamentos(self):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         compras = db.get_compras_parceladas(state["perfil"])
         
         # Filtrar apenas parcelamentos ativos (mês atual e parcelas futuras)
@@ -13009,7 +18557,98 @@ def main(page: ft.Page):
         page.floating_action_button = None
         page.update()
 
-    def navegar_para_aba(tab_name):
+
+    def navegar_para_aba(self, tab_name):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         icon_mapping = {
             "dashboard": (ft.icons.Icons.DASHBOARD_ROUNDED, render_dashboard),
             "investimentos": (ft.icons.Icons.SAVINGS_ROUNDED, render_investimentos),
@@ -13056,7 +18695,98 @@ def main(page: ft.Page):
             )
             page.update()
 
-    def iniciar_tutorial_usuario(primeira_vez=False):
+
+    def iniciar_tutorial_usuario(self, primeira_vez=False):
+        page = self.page
+        _t = self._t
+        get_colors = self.get_colors
+        all_t = self.all_t
+        base_dir = self.base_dir
+        body = self.body
+        categorias_por_pilar = self.categorias_por_pilar
+        cats_data = self.cats_data
+        colors = self.colors
+        dashboard_view = self.dashboard_view
+        data_str = self.data_str
+        db = self.db
+        db_path = self.db_path
+        despesas_colors = self.despesas_colors
+        first_run = self.first_run
+        hoje = self.hoje
+        ico_path = self.ico_path
+        logo_path = self.logo_path
+        logo_widget = self.logo_widget
+        m_idx = self.m_idx
+        main_row = self.main_row
+        meses_pt = self.meses_pt
+        original_prod_path = self.original_prod_path
+        overlay_stack = self.overlay_stack
+        pref_theme = self.pref_theme
+        receitas_colors = self.receitas_colors
+        sidebar = self.sidebar
+        state = self.state
+        trans_iniciais = self.trans_iniciais
+        _criar_backup_sessao = self._criar_backup_sessao
+        on_window_event = self.on_window_event
+        update_use_sandbox_preference = self.update_use_sandbox_preference
+        _t = self._t
+        build_safe_date = self.build_safe_date
+        get_colors = self.get_colors
+        on_nav_click = self.on_nav_click
+        refresh_current_view = self.refresh_current_view
+        build_sidebar_controls = self.build_sidebar_controls
+        abrir_reordenar_menu = self.abrir_reordenar_menu
+        abrir_criar_categoria_modal = self.abrir_criar_categoria_modal
+        atualizar_textos_globais = self.atualizar_textos_globais
+        criar_seletor_perfil = self.criar_seletor_perfil
+        criar_tab_header = self.criar_tab_header
+        criar_card_resumo = self.criar_card_resumo
+        get_icone_categoria = self.get_icone_categoria
+        abrir_detalhes_categoria_dialog = self.abrir_detalhes_categoria_dialog
+        criar_lista_transacoes = self.criar_lista_transacoes
+        prev_month = self.prev_month
+        next_month = self.next_month
+        change_chart_left = self.change_chart_left
+        change_chart_right = self.change_chart_right
+        criar_painel_grafico = self.criar_painel_grafico
+        gerar_grafico_base64 = self.gerar_grafico_base64
+        gerar_grafico_donut_base64 = self.gerar_grafico_donut_base64
+        gerar_grafico_evolucao_patrimonio_base64 = self.gerar_grafico_evolucao_patrimonio_base64
+        gerar_grafico_linhas_rentabilidade_base64 = self.gerar_grafico_linhas_rentabilidade_base64
+        gerar_grafico_barras_proventos_base64 = self.gerar_grafico_barras_proventos_base64
+        gerar_grafico_aportes_base64 = self.gerar_grafico_aportes_base64
+        toggle_fab = self.toggle_fab
+        contrair_fab = self.contrair_fab
+        expandir_fab = self.expandir_fab
+        fechar_overlay = self.fechar_overlay
+        abrir_overlay = self.abrir_overlay
+        populate_formulario_receita = self.populate_formulario_receita
+        populate_formulario_despesa = self.populate_formulario_despesa
+        render_dashboard = self.render_dashboard
+        render_resumo_anual = self.render_resumo_anual
+        render_cartoes = self.render_cartoes
+        render_investimentos = self.render_investimentos
+        render_transacoes = self.render_transacoes
+        set_transacoes_view_mode = self.set_transacoes_view_mode
+        set_transacoes_tab = self.set_transacoes_tab
+        render_financiamentos = self.render_financiamentos
+        render_recorrencias = self.render_recorrencias
+        render_veiculos = self.render_veiculos
+        render_pets = self.render_pets
+        render_saude = self.render_saude
+        abrir_form_transacao_entidade = self.abrir_form_transacao_entidade
+        abrir_form_config_recorrencia = self.abrir_form_config_recorrencia
+        abrir_edit_ocorrencia = self.abrir_edit_ocorrencia
+        abrir_delete_ocorrencia = self.abrir_delete_ocorrencia
+        abrir_delete_config = self.abrir_delete_config
+        render_configuracoes = self.render_configuracoes
+        abrir_edit_parcela_individual = self.abrir_edit_parcela_individual
+        empurrar_parcela = self.empurrar_parcela
+        puxar_parcela = self.puxar_parcela
+        confirmar_mover_parcela = self.confirmar_mover_parcela
+        render_parcelamentos = self.render_parcelamentos
+        navegar_para_aba = self.navegar_para_aba
+        iniciar_tutorial_usuario = self.iniciar_tutorial_usuario
         steps = [
             {
                 "tab": "dashboard",
@@ -13200,35 +18930,9 @@ def main(page: ft.Page):
         else:
             ir_para_passo(0)
 
-    main_row = ft.Row(
-        expand=True,
-        spacing=0,
-        controls=[
-            sidebar,
-            body
-        ]
-    )
-    overlay_stack = ft.Stack(
-        expand=True,
-        alignment=ft.Alignment(0, 0),
-        controls=[]
-    )
-    
-    page.add(overlay_stack)
-    render_dashboard()
-    overlay_stack.controls = [main_row]
-    # Aplica a cor do tema na barra lateral no carregamento inicial
-    colors = get_colors()
-    sidebar.bgcolor = colors["sidebar"]
-    page.update()
 
-    # Exibe caixa de diálogo de tutorial na primeira abertura do app pós-instalação
-    try:
-        first_run = db.get_preferencia("tutorial_v2_shown", "False")
-        if first_run == "False":
-            iniciar_tutorial_usuario(primeira_vez=True)
-    except Exception as ex:
-        print(f"Erro ao verificar primeira execução do tutorial: {ex}")
+def main(page: ft.Page):
+    app = SentinelFinanceApp(page)
 
 if __name__ == "__main__":
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
