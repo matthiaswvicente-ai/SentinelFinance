@@ -9,7 +9,7 @@ import tempfile
 from logger import logger
 
 class UpdateManager:
-    def __init__(self, current_version="1.2.0", repo="Matthiaswvicente-ai/SentinelFinance"):
+    def __init__(self, current_version="1.3.0", repo="Matthiaswvicente-ai/SentinelFinance"):
         self.current_version = current_version
         self.repo = repo
         self.update_info = None

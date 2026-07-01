@@ -306,6 +306,48 @@ class Database:
             
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_div_reco ON Divisoes_Recorrencia(recorrencia_id)")
 
+            # Tabela de Veículos
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS Veiculos (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    placa TEXT NOT NULL,
+                    modelo TEXT NOT NULL,
+                    perfil TEXT DEFAULT 'Eu'
+                )
+            ''')
+            
+            # Tabela de Pets
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS Pets (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    nome TEXT NOT NULL,
+                    raca TEXT,
+                    perfil TEXT DEFAULT 'Eu'
+                )
+            ''')
+            
+            # Tabela de Saúde
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS Saude (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    nome TEXT NOT NULL,
+                    descricao TEXT,
+                    perfil TEXT DEFAULT 'Eu'
+                )
+            ''')
+
+            # Garante que as colunas veiculo_id, pet_id, saude_id existam em Transacoes
+            for col in ['veiculo_id', 'pet_id', 'saude_id']:
+                try:
+                    cursor.execute(f"ALTER TABLE Transacoes ADD COLUMN {col} INTEGER")
+                except sqlite3.OperationalError:
+                    pass
+
+            # Cria índices para performance
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_trans_veiculo ON Transacoes(veiculo_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_trans_pet ON Transacoes(pet_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_trans_saude ON Transacoes(saude_id)")
+
             # Atualiza métodos de pagamento antigos para consistência com o restante do app
             try:
                 cursor.execute("UPDATE Config_Recorrencias SET metodo_pagamento = 'Cartão' WHERE metodo_pagamento = 'Cartão de Crédito'")
@@ -435,19 +477,81 @@ class Database:
             return False, str(e)
             
     def atualizar_categoria(self, cat_id, novo_nome, tipo=None, parent_id=None):
-        has_sub = 1 if parent_id is None else 0
         try:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
+                
+                # 1. Obter informações atuais da categoria
+                cursor.execute("SELECT parent_id, tipo FROM Categorias WHERE id = ?", (cat_id,))
+                row = cursor.fetchone()
+                if not row:
+                    return False, "Categoria não encontrada."
+                old_parent_id, old_tipo = row
+                
+                # 2. Se parent_id for fornecido e mudou:
+                #    A subcategoria herda o tipo do novo pai.
+                if parent_id is not None and parent_id != old_parent_id:
+                    # Obter tipo do novo pai
+                    cursor.execute("SELECT tipo FROM Categorias WHERE id = ?", (parent_id,))
+                    row_p = cursor.fetchone()
+                    if row_p:
+                        tipo = row_p[0] # Herda o tipo do novo pai!
+                        
+                # 3. Atualizar a própria categoria
+                # Se parent_id for None (categoria principal), mantemos parent_id = None
+                # Se parent_id for fornecido e diferente de None, atualizamos.
                 if tipo is not None:
-                    cursor.execute("UPDATE Categorias SET nome = ?, tipo = ?, parent_id = ?, has_subcategories = ? WHERE id = ?", 
-                                   (novo_nome, tipo, parent_id, has_sub, cat_id))
+                    cursor.execute("""
+                        UPDATE Categorias 
+                        SET nome = ?, tipo = ?, parent_id = ?, has_subcategories = ? 
+                        WHERE id = ?
+                    """, (novo_nome, tipo, parent_id, 0 if parent_id is not None else 1, cat_id))
                 else:
                     cursor.execute("UPDATE Categorias SET nome = ? WHERE id = ?", (novo_nome, cat_id))
+                
+                # 4. Propagar tipo para subcategorias se for categoria principal
+                if old_parent_id is None and tipo is not None and tipo != old_tipo:
+                    cursor.execute("UPDATE Categorias SET tipo = ? WHERE parent_id = ?", (tipo, cat_id))
+                    
+                # 5. Atualizar tipo_transacao de todas as transações associadas
+                # Se for categoria principal (old_parent_id is None), atualizamos as transações dela
+                # e também de todas as suas subcategorias!
+                if tipo is not None and tipo != old_tipo:
+                    if old_parent_id is None:
+                        # Categoria principal: pega IDs das subcategorias
+                        cursor.execute("SELECT id FROM Categorias WHERE parent_id = ?", (cat_id,))
+                        sub_ids = [r[0] for r in cursor.fetchall()]
+                        all_ids = [cat_id] + sub_ids
+                        
+                        # Atualiza transações
+                        placeholders = ",".join("?" for _ in all_ids)
+                        cursor.execute(f"""
+                            UPDATE Transacoes 
+                            SET tipo_transacao = ? 
+                            WHERE categoria_id IN ({placeholders})
+                        """, [tipo] + all_ids)
+                        
+                        # Atualiza recorrências
+                        cursor.execute(f"""
+                            UPDATE Config_Recorrencias 
+                            SET tipo_transacao = ? 
+                            WHERE categoria_id IN ({placeholders})
+                        """, [tipo] + all_ids)
+                    else:
+                        # Subcategoria: atualiza apenas as dela
+                        cursor.execute("UPDATE Transacoes SET tipo_transacao = ? WHERE categoria_id = ?", (tipo, cat_id))
+                        cursor.execute("UPDATE Config_Recorrencias SET tipo_transacao = ? WHERE categoria_id = ?", (tipo, cat_id))
+                
+                # 6. Se moveu de subcategoria (parent_id mudou) e tipo não mudou, mas o tipo do pai mudou
+                # (ex: mudou de pai A para pai B de tipos diferentes)
+                if parent_id is not None and parent_id != old_parent_id and tipo is not None:
+                    cursor.execute("UPDATE Transacoes SET tipo_transacao = ? WHERE categoria_id = ?", (tipo, cat_id))
+                    cursor.execute("UPDATE Config_Recorrencias SET tipo_transacao = ? WHERE categoria_id = ?", (tipo, cat_id))
+
                 conn.commit()
-                return True, "Categoria atualizada."
+                return True, "Categoria atualizada com sucesso."
         except Exception as e:
-            logger.error('Erro no BD', exc_info=True)
+            logger.error('Erro no BD ao atualizar categoria', exc_info=True)
             return False, str(e)
             
     def get_preferencia(self, chave, default=None):
@@ -498,7 +602,8 @@ class Database:
         return cursor.lastrowid
 
     def inserir_transacao(self, conta_id, categoria_id, descricao, data_ini, valor_total, tipo_transacao, 
-                          metodo="Dinheiro", parcelas=1, bandeira="", dono="", recorrencia=None, divisoes=None, observacao="", data_real=None):
+                          metodo="Dinheiro", parcelas=1, bandeira="", dono="", recorrencia=None, divisoes=None, observacao="", data_real=None,
+                          veiculo_id=None, pet_id=None, saude_id=None):
         """
         Insere uma ou mais transações (em caso de parcelamento).
         divisoes: Lista de dicionários, um para cada parcela, contendo {nome_usuario: valor_cota}
@@ -568,10 +673,10 @@ class Database:
                 cursor.execute('''
                     INSERT INTO Transacoes (conta_id, categoria_id, descricao, data, data_real, valor_total, tipo_transacao, 
                                             metodo_pagamento, parcela_atual, total_parcelas, bandeira_cartao, 
-                                            dono_cartao, recorrencia, grupo_id, observacao)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                            dono_cartao, recorrencia, grupo_id, observacao, veiculo_id, pet_id, saude_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (conta_id, categoria_id, descricao, data_str, data_real, val_parcela, tipo_transacao, 
-                      metodo, i+1, parcelas, bandeira, dono, recorrencia, grupo_id, observacao))
+                      metodo, i+1, parcelas, bandeira, dono, recorrencia, grupo_id, observacao, veiculo_id, pet_id, saude_id))
                 
                 transacao_id = cursor.lastrowid
 
@@ -630,7 +735,8 @@ class Database:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT t.id, t.categoria_id, t.descricao, t.data, t.valor_total, t.tipo_transacao, 
-                       t.metodo_pagamento, t.total_parcelas, t.bandeira_cartao, t.dono_cartao, t.observacao, c.nome, c.parent_id, t.data_real
+                       t.metodo_pagamento, t.total_parcelas, t.bandeira_cartao, t.dono_cartao, t.observacao, 
+                       c.nome, c.parent_id, t.data_real, t.veiculo_id, t.pet_id, t.saude_id
                 FROM Transacoes t
                 LEFT JOIN Categorias c ON t.categoria_id = c.id
                 WHERE t.id = ?
@@ -652,16 +758,25 @@ class Database:
                 "valor_total": t_row[4], "tipo_transacao": t_row[5], "metodo_pagamento": t_row[6],
                 "total_parcelas": t_row[7], "bandeira_cartao": t_row[8], "dono_cartao": t_row[9],
                 "observacao": t_row[10], "categoria_nome": t_row[11], "parent_id": t_row[12], "divisoes": divs,
-                "data_real": t_row[13]
+                "data_real": t_row[13], "veiculo_id": t_row[14], "pet_id": t_row[15], "saude_id": t_row[16]
             }
 
     def atualizar_transacao(self, transacao_id, categoria_id, descricao, data, valor_total, tipo_transacao, 
-                            metodo, bandeira, dono, observacao, divisoes, data_real=None, atualizar_grupo=True):
+                            metodo, bandeira, dono, observacao, divisoes, data_real=None, atualizar_grupo=True,
+                            veiculo_id=None, pet_id=None, saude_id=None, keep_entity_links=True):
         if data_real is None:
             data_real = data
         try:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
+                
+                if keep_entity_links:
+                    cursor.execute("SELECT veiculo_id, pet_id, saude_id FROM Transacoes WHERE id = ?", (transacao_id,))
+                    row_links = cursor.fetchone()
+                    if row_links:
+                        if veiculo_id is None: veiculo_id = row_links[0]
+                        if pet_id is None: pet_id = row_links[1]
+                        if saude_id is None: saude_id = row_links[2]
                 
                 # Buscar o grupo_id e a data antiga da transação
                 cursor.execute("SELECT grupo_id, data FROM Transacoes WHERE id = ?", (transacao_id,))
@@ -731,9 +846,11 @@ class Database:
                         cursor.execute('''
                             UPDATE Transacoes 
                             SET categoria_id=?, descricao=?, data=?, data_real=?, valor_total=?, tipo_transacao=?, 
-                                metodo_pagamento=?, bandeira_cartao=?, dono_cartao=?, observacao=?
+                                metodo_pagamento=?, bandeira_cartao=?, dono_cartao=?, observacao=?,
+                                veiculo_id=?, pet_id=?, saude_id=?
                             WHERE id=?
-                        ''', (categoria_id, descricao, new_g_data, data_real, valor_total, tipo_transacao, metodo, bandeira, dono, observacao, g_id))
+                        ''', (categoria_id, descricao, new_g_data, data_real, valor_total, tipo_transacao, metodo, bandeira, dono, observacao,
+                              veiculo_id, pet_id, saude_id, g_id))
                         
                         cursor.execute("DELETE FROM Divisoes_Transacao WHERE transacao_id = ?", (g_id,))
                         if divisoes:
@@ -749,9 +866,11 @@ class Database:
                     cursor.execute('''
                         UPDATE Transacoes 
                         SET categoria_id=?, descricao=?, data=?, data_real=?, valor_total=?, tipo_transacao=?, 
-                            metodo_pagamento=?, bandeira_cartao=?, dono_cartao=?, observacao=?
+                            metodo_pagamento=?, bandeira_cartao=?, dono_cartao=?, observacao=?,
+                            veiculo_id=?, pet_id=?, saude_id=?
                         WHERE id=?
-                    ''', (categoria_id, descricao, data, data_real, valor_total, tipo_transacao, metodo, bandeira, dono, observacao, transacao_id))
+                    ''', (categoria_id, descricao, data, data_real, valor_total, tipo_transacao, metodo, bandeira, dono, observacao,
+                          veiculo_id, pet_id, saude_id, transacao_id))
                     
                     cursor.execute("DELETE FROM Divisoes_Transacao WHERE transacao_id = ?", (transacao_id,))
                     if divisoes:
@@ -782,11 +901,17 @@ class Database:
                        t.bandeira_cartao,
                        (SELECT COUNT(*) FROM Divisoes_Transacao WHERE transacao_id = t.id) as num_divisoes,
                        t.observacao,
-                       t.valor_total
+                       t.valor_total,
+                       v.modelo, v.placa,
+                       p.nome,
+                       s.nome
                 FROM Transacoes t 
                 JOIN Categorias c ON t.categoria_id = c.id
                 LEFT JOIN Divisoes_Transacao d ON t.id = d.transacao_id
                 LEFT JOIN Usuarios_Familia u ON d.usuario_id = u.id
+                LEFT JOIN Veiculos v ON t.veiculo_id = v.id
+                LEFT JOIN Pets p ON t.pet_id = p.id
+                LEFT JOIN Saude s ON t.saude_id = s.id
                 WHERE (u.nome = ? OR (d.id IS NULL AND ? = 'Eu'))
             """
             params = [perfil_nome, perfil_nome]
@@ -1428,15 +1553,58 @@ class Database:
             if not res:
                 return False, "Perfil não encontrado."
             u_id = res[0]
-            cursor.execute("SELECT COUNT(*) FROM Divisoes_Transacao WHERE usuario_id = ?", (u_id,))
-            count = cursor.fetchone()[0]
-            if count > 0:
-                return False, f"Este perfil possui {count} transações associadas e não pode ser excluído."
+            
+            # Obter o id do perfil principal 'Eu'
+            cursor.execute("SELECT id FROM Usuarios_Familia WHERE nome = 'Eu'")
+            res_eu = cursor.fetchone()
+            if not res_eu:
+                cursor.execute("INSERT INTO Usuarios_Familia (nome) VALUES ('Eu')")
+                eu_id = cursor.lastrowid
+            else:
+                eu_id = res_eu[0]
+                
+            # Transferir todas as divisões do usuário excluído para 'Eu'
+            # 1. Divisões de Transações
+            cursor.execute("""
+                SELECT d_del.transacao_id, d_del.valor_cota, d_eu.id
+                FROM Divisoes_Transacao d_del
+                LEFT JOIN Divisoes_Transacao d_eu ON d_del.transacao_id = d_eu.transacao_id AND d_eu.usuario_id = ?
+                WHERE d_del.usuario_id = ?
+            """, (eu_id, u_id))
+            divs_to_transfer = cursor.fetchall()
+            
+            for trans_id, cota, eu_div_id in divs_to_transfer:
+                if eu_div_id:
+                    cursor.execute("UPDATE Divisoes_Transacao SET valor_cota = valor_cota + ? WHERE id = ?", (cota, eu_div_id))
+                else:
+                    cursor.execute("INSERT INTO Divisoes_Transacao (transacao_id, usuario_id, valor_cota) VALUES (?, ?, ?)", (trans_id, eu_id, cota))
+            
+            cursor.execute("DELETE FROM Divisoes_Transacao WHERE usuario_id = ?", (u_id,))
+            
+            # 2. Divisões de Recorrências
+            cursor.execute("""
+                SELECT d_del.recorrencia_id, d_del.valor_cota, d_eu.id
+                FROM Divisoes_Recorrencia d_del
+                LEFT JOIN Divisoes_Recorrencia d_eu ON d_del.recorrencia_id = d_eu.recorrencia_id AND d_eu.usuario_id = ?
+                WHERE d_del.usuario_id = ?
+            """, (eu_id, u_id))
+            rec_divs_to_transfer = cursor.fetchall()
+            
+            for rec_id, cota, eu_rec_div_id in rec_divs_to_transfer:
+                if eu_rec_div_id:
+                    cursor.execute("UPDATE Divisoes_Recorrencia SET valor_cota = valor_cota + ? WHERE id = ?", (cota, eu_rec_div_id))
+                else:
+                    cursor.execute("INSERT INTO Divisoes_Recorrencia (recorrencia_id, usuario_id, valor_cota) VALUES (?, ?, ?)", (rec_id, eu_id, cota))
+            
+            cursor.execute("DELETE FROM Divisoes_Recorrencia WHERE usuario_id = ?", (u_id,))
+            
+            # E agora podemos excluir o perfil
             cursor.execute("DELETE FROM Usuarios_Familia WHERE id = ?", (u_id,))
             conn.commit()
-            return True, "Perfil excluído com sucesso."
+            return True, "Perfil excluído com sucesso e suas compras foram transferidas para 'Eu'."
         except Exception as e:
             logger.error("Erro ao excluir usuário", exc_info=True)
+            conn.rollback()
             return False, str(e)
         finally:
             conn.close()
@@ -2487,6 +2655,410 @@ class Database:
             """
             cursor.execute(query, (grupo_id, perfil_nome, perfil_nome))
             return cursor.fetchall()
+
+    # ==========================================
+    # VEÍCULOS, PETS E SAÚDE
+    # ==========================================
+
+    def get_veiculos(self, perfil="Eu"):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT id, placa, modelo, perfil FROM Veiculos WHERE perfil = ? ORDER BY modelo", (perfil,))
+                return cursor.fetchall()
+        except Exception as e:
+            logger.error("Erro ao buscar veículos", exc_info=True)
+            return []
+
+    def add_veiculo(self, placa, modelo, perfil="Eu"):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("INSERT INTO Veiculos (placa, modelo, perfil) VALUES (?, ?, ?)", (placa, modelo, perfil))
+                conn.commit()
+                return True, cursor.lastrowid
+        except Exception as e:
+            logger.error("Erro ao adicionar veículo", exc_info=True)
+            return False, str(e)
+
+    def update_veiculo(self, veiculo_id, placa, modelo):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("UPDATE Veiculos SET placa = ?, modelo = ? WHERE id = ?", (placa, modelo, veiculo_id))
+                conn.commit()
+                return True, "Veículo atualizado."
+        except Exception as e:
+            logger.error("Erro ao atualizar veículo", exc_info=True)
+            return False, str(e)
+
+    def delete_veiculo(self, veiculo_id):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                # Remove referências nas transações (ou mantém desvinculadas)
+                cursor.execute("UPDATE Transacoes SET veiculo_id = NULL WHERE veiculo_id = ?", (veiculo_id,))
+                cursor.execute("DELETE FROM Veiculos WHERE id = ?", (veiculo_id,))
+                conn.commit()
+                return True, "Veículo excluído."
+        except Exception as e:
+            logger.error("Erro ao excluir veículo", exc_info=True)
+            return False, str(e)
+
+    def get_pets(self, perfil="Eu"):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT id, nome, raca, perfil FROM Pets WHERE perfil = ? ORDER BY nome", (perfil,))
+                return cursor.fetchall()
+        except Exception as e:
+            logger.error("Erro ao buscar pets", exc_info=True)
+            return []
+
+    def add_pet(self, nome, raca, perfil="Eu"):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("INSERT INTO Pets (nome, raca, perfil) VALUES (?, ?, ?)", (nome, raca, perfil))
+                conn.commit()
+                return True, cursor.lastrowid
+        except Exception as e:
+            logger.error("Erro ao adicionar pet", exc_info=True)
+            return False, str(e)
+
+    def update_pet(self, pet_id, nome, raca):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("UPDATE Pets SET nome = ?, raca = ? WHERE id = ?", (nome, raca, pet_id))
+                conn.commit()
+                return True, "Pet atualizado."
+        except Exception as e:
+            logger.error("Erro ao atualizar pet", exc_info=True)
+            return False, str(e)
+
+    def delete_pet(self, pet_id):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("UPDATE Transacoes SET pet_id = NULL WHERE pet_id = ?", (pet_id,))
+                cursor.execute("DELETE FROM Pets WHERE id = ?", (pet_id,))
+                conn.commit()
+                return True, "Pet excluído."
+        except Exception as e:
+            logger.error("Erro ao excluir pet", exc_info=True)
+            return False, str(e)
+
+    def get_saude(self, perfil="Eu"):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT id, nome, descricao, perfil FROM Saude WHERE perfil = ? ORDER BY nome", (perfil,))
+                return cursor.fetchall()
+        except Exception as e:
+            logger.error("Erro ao buscar itens de saúde", exc_info=True)
+            return []
+
+    def add_saude(self, nome, descricao, perfil="Eu"):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("INSERT INTO Saude (nome, descricao, perfil) VALUES (?, ?, ?)", (nome, descricao, perfil))
+                conn.commit()
+                return True, cursor.lastrowid
+        except Exception as e:
+            logger.error("Erro ao adicionar item de saúde", exc_info=True)
+            return False, str(e)
+
+    def update_saude(self, saude_id, nome, descricao):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("UPDATE Saude SET nome = ?, descricao = ? WHERE id = ?", (nome, descricao, saude_id))
+                conn.commit()
+                return True, "Item de saúde atualizado."
+        except Exception as e:
+            logger.error("Erro ao atualizar item de saúde", exc_info=True)
+            return False, str(e)
+
+    def delete_saude(self, saude_id):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("UPDATE Transacoes SET saude_id = NULL WHERE saude_id = ?", (saude_id,))
+                cursor.execute("DELETE FROM Saude WHERE id = ?", (saude_id,))
+                conn.commit()
+                return True, "Item de saúde excluído."
+        except Exception as e:
+            logger.error("Erro ao excluir item de saúde", exc_info=True)
+            return False, str(e)
+
+    def get_transacoes_veiculo(self, veiculo_id, perfil_nome="Eu"):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            if veiculo_id == "geral":
+                cursor.execute("SELECT id FROM Categorias WHERE UPPER(nome) = 'VEÍCULO'")
+                row_p = cursor.fetchone()
+                parent_id = row_p[0] if row_p else None
+                query = """
+                    SELECT t.id, COALESCE(t.data_real, t.data) as data, t.descricao, 
+                           CASE WHEN d.id IS NULL THEN t.valor_total ELSE d.valor_cota END as valor_exibido, 
+                           c.nome, t.tipo_transacao, 
+                           t.parcela_atual, t.total_parcelas, t.metodo_pagamento, t.dono_cartao,
+                           t.bandeira_cartao,
+                           (SELECT COUNT(*) FROM Divisoes_Transacao WHERE transacao_id = t.id) as num_divisoes,
+                           t.observacao,
+                           t.valor_total
+                    FROM Transacoes t 
+                    JOIN Categorias c ON t.categoria_id = c.id
+                    LEFT JOIN Divisoes_Transacao d ON t.id = d.transacao_id
+                    LEFT JOIN Usuarios_Familia u ON d.usuario_id = u.id
+                    WHERE t.veiculo_id IS NULL 
+                      AND (c.parent_id = ? OR c.id = ?)
+                      AND (u.nome = ? OR (d.id IS NULL AND ? = 'Eu'))
+                    ORDER BY substr(t.data, 7, 4) DESC, substr(t.data, 4, 2) DESC, substr(t.data, 1, 2) DESC
+                """
+                cursor.execute(query, (parent_id, parent_id, perfil_nome, perfil_nome))
+                return cursor.fetchall()
+            else:
+                query = """
+                    SELECT t.id, COALESCE(t.data_real, t.data) as data, t.descricao, 
+                           CASE WHEN d.id IS NULL THEN t.valor_total ELSE d.valor_cota END as valor_exibido, 
+                           c.nome, t.tipo_transacao, 
+                           t.parcela_atual, t.total_parcelas, t.metodo_pagamento, t.dono_cartao,
+                           t.bandeira_cartao,
+                           (SELECT COUNT(*) FROM Divisoes_Transacao WHERE transacao_id = t.id) as num_divisoes,
+                           t.observacao,
+                           t.valor_total
+                    FROM Transacoes t 
+                    JOIN Categorias c ON t.categoria_id = c.id
+                    LEFT JOIN Divisoes_Transacao d ON t.id = d.transacao_id
+                    LEFT JOIN Usuarios_Familia u ON d.usuario_id = u.id
+                    WHERE t.veiculo_id = ? AND (u.nome = ? OR (d.id IS NULL AND ? = 'Eu'))
+                    ORDER BY substr(t.data, 7, 4) DESC, substr(t.data, 4, 2) DESC, substr(t.data, 1, 2) DESC
+                """
+                cursor.execute(query, (veiculo_id, perfil_nome, perfil_nome))
+                return cursor.fetchall()
+
+    def get_transacoes_pet(self, pet_id, perfil_nome="Eu"):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            if pet_id == "geral":
+                cursor.execute("SELECT id FROM Categorias WHERE UPPER(nome) = 'PET'")
+                row_p = cursor.fetchone()
+                parent_id = row_p[0] if row_p else None
+                query = """
+                    SELECT t.id, COALESCE(t.data_real, t.data) as data, t.descricao, 
+                           CASE WHEN d.id IS NULL THEN t.valor_total ELSE d.valor_cota END as valor_exibido, 
+                           c.nome, t.tipo_transacao, 
+                           t.parcela_atual, t.total_parcelas, t.metodo_pagamento, t.dono_cartao,
+                           t.bandeira_cartao,
+                           (SELECT COUNT(*) FROM Divisoes_Transacao WHERE transacao_id = t.id) as num_divisoes,
+                           t.observacao,
+                           t.valor_total
+                    FROM Transacoes t 
+                    JOIN Categorias c ON t.categoria_id = c.id
+                    LEFT JOIN Divisoes_Transacao d ON t.id = d.transacao_id
+                    LEFT JOIN Usuarios_Familia u ON d.usuario_id = u.id
+                    WHERE t.pet_id IS NULL 
+                      AND (c.parent_id = ? OR c.id = ?)
+                      AND (u.nome = ? OR (d.id IS NULL AND ? = 'Eu'))
+                    ORDER BY substr(t.data, 7, 4) DESC, substr(t.data, 4, 2) DESC, substr(t.data, 1, 2) DESC
+                """
+                cursor.execute(query, (parent_id, parent_id, perfil_nome, perfil_nome))
+                return cursor.fetchall()
+            else:
+                query = """
+                    SELECT t.id, COALESCE(t.data_real, t.data) as data, t.descricao, 
+                           CASE WHEN d.id IS NULL THEN t.valor_total ELSE d.valor_cota END as valor_exibido, 
+                           c.nome, t.tipo_transacao, 
+                           t.parcela_atual, t.total_parcelas, t.metodo_pagamento, t.dono_cartao,
+                           t.bandeira_cartao,
+                           (SELECT COUNT(*) FROM Divisoes_Transacao WHERE transacao_id = t.id) as num_divisoes,
+                           t.observacao,
+                           t.valor_total
+                    FROM Transacoes t 
+                    JOIN Categorias c ON t.categoria_id = c.id
+                    LEFT JOIN Divisoes_Transacao d ON t.id = d.transacao_id
+                    LEFT JOIN Usuarios_Familia u ON d.usuario_id = u.id
+                    WHERE t.pet_id = ? AND (u.nome = ? OR (d.id IS NULL AND ? = 'Eu'))
+                    ORDER BY substr(t.data, 7, 4) DESC, substr(t.data, 4, 2) DESC, substr(t.data, 1, 2) DESC
+                """
+                cursor.execute(query, (pet_id, perfil_nome, perfil_nome))
+                return cursor.fetchall()
+
+    def get_transacoes_saude(self, saude_id, perfil_nome="Eu"):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            if saude_id == "geral":
+                cursor.execute("SELECT id FROM Categorias WHERE UPPER(nome) = 'SAÚDE'")
+                row_p = cursor.fetchone()
+                parent_id = row_p[0] if row_p else None
+                query = """
+                    SELECT t.id, COALESCE(t.data_real, t.data) as data, t.descricao, 
+                           CASE WHEN d.id IS NULL THEN t.valor_total ELSE d.valor_cota END as valor_exibido, 
+                           c.nome, t.tipo_transacao, 
+                           t.parcela_atual, t.total_parcelas, t.metodo_pagamento, t.dono_cartao,
+                           t.bandeira_cartao,
+                           (SELECT COUNT(*) FROM Divisoes_Transacao WHERE transacao_id = t.id) as num_divisoes,
+                           t.observacao,
+                           t.valor_total
+                    FROM Transacoes t 
+                    JOIN Categorias c ON t.categoria_id = c.id
+                    LEFT JOIN Divisoes_Transacao d ON t.id = d.transacao_id
+                    LEFT JOIN Usuarios_Familia u ON d.usuario_id = u.id
+                    WHERE t.saude_id IS NULL 
+                      AND (c.parent_id = ? OR c.id = ?)
+                      AND (u.nome = ? OR (d.id IS NULL AND ? = 'Eu'))
+                    ORDER BY substr(t.data, 7, 4) DESC, substr(t.data, 4, 2) DESC, substr(t.data, 1, 2) DESC
+                """
+                cursor.execute(query, (parent_id, parent_id, perfil_nome, perfil_nome))
+                return cursor.fetchall()
+            else:
+                query = """
+                    SELECT t.id, COALESCE(t.data_real, t.data) as data, t.descricao, 
+                           CASE WHEN d.id IS NULL THEN t.valor_total ELSE d.valor_cota END as valor_exibido, 
+                           c.nome, t.tipo_transacao, 
+                           t.parcela_atual, t.total_parcelas, t.metodo_pagamento, t.dono_cartao,
+                           t.bandeira_cartao,
+                           (SELECT COUNT(*) FROM Divisoes_Transacao WHERE transacao_id = t.id) as num_divisoes,
+                           t.observacao,
+                           t.valor_total
+                    FROM Transacoes t 
+                    JOIN Categorias c ON t.categoria_id = c.id
+                    LEFT JOIN Divisoes_Transacao d ON t.id = d.transacao_id
+                    LEFT JOIN Usuarios_Familia u ON d.usuario_id = u.id
+                    WHERE t.saude_id = ? AND (u.nome = ? OR (d.id IS NULL AND ? = 'Eu'))
+                    ORDER BY substr(t.data, 7, 4) DESC, substr(t.data, 4, 2) DESC, substr(t.data, 1, 2) DESC
+                """
+                cursor.execute(query, (saude_id, perfil_nome, perfil_nome))
+                return cursor.fetchall()
+
+    def get_subcategorias_por_pai(self, pai_nome):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT id FROM Categorias WHERE UPPER(nome) = UPPER(?) AND parent_id IS NULL", (pai_nome,))
+                row = cursor.fetchone()
+                if not row:
+                    return []
+                parent_id = row[0]
+                cursor.execute("SELECT id, nome FROM Categorias WHERE parent_id = ? ORDER BY nome", (parent_id,))
+                return cursor.fetchall()
+        except Exception as e:
+            logger.error("Erro ao buscar subcategorias por pai", exc_info=True)
+            return []
+
+    def migrar_transacoes_gerais_veiculo(self, veiculo_id, perfil="Eu"):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT id FROM Categorias WHERE UPPER(nome) = 'VEÍCULO'")
+                row_p = cursor.fetchone()
+                if not row_p:
+                    return False, "Categoria VEÍCULO não encontrada."
+                parent_id = row_p[0]
+                cursor.execute("SELECT id FROM Categorias WHERE parent_id = ? OR id = ?", (parent_id, parent_id))
+                cats = [r[0] for r in cursor.fetchall()]
+                if not cats:
+                    return True, "Nenhuma categoria para migrar."
+                placeholders = ",".join("?" for _ in cats)
+                query = f"""
+                    UPDATE Transacoes 
+                    SET veiculo_id = ? 
+                    WHERE veiculo_id IS NULL AND categoria_id IN ({placeholders})
+                """
+                cursor.execute(query, [veiculo_id] + cats)
+                conn.commit()
+                return True, "Transações migradas com sucesso."
+        except Exception as e:
+            logger.error("Erro ao migrar transações para veículo", exc_info=True)
+            return False, str(e)
+
+    def migrar_transacoes_gerais_pet(self, pet_id, perfil="Eu"):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT id FROM Categorias WHERE UPPER(nome) = 'PET'")
+                row_p = cursor.fetchone()
+                if not row_p:
+                    return False, "Categoria PET não encontrada."
+                parent_id = row_p[0]
+                cursor.execute("SELECT id FROM Categorias WHERE parent_id = ? OR id = ?", (parent_id, parent_id))
+                cats = [r[0] for r in cursor.fetchall()]
+                if not cats:
+                    return True, "Nenhuma categoria para migrar."
+                placeholders = ",".join("?" for _ in cats)
+                query = f"""
+                    UPDATE Transacoes 
+                    SET pet_id = ? 
+                    WHERE pet_id IS NULL AND categoria_id IN ({placeholders})
+                """
+                cursor.execute(query, [pet_id] + cats)
+                conn.commit()
+                return True, "Transações migradas com sucesso."
+        except Exception as e:
+            logger.error("Erro ao migrar transações para pet", exc_info=True)
+            return False, str(e)
+
+    def migrar_transacoes_gerais_saude(self, saude_id, perfil="Eu"):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT id FROM Categorias WHERE UPPER(nome) = 'SAÚDE'")
+                row_p = cursor.fetchone()
+                if not row_p:
+                    return False, "Categoria SAÚDE não encontrada."
+                parent_id = row_p[0]
+                cursor.execute("SELECT id FROM Categorias WHERE parent_id = ? OR id = ?", (parent_id, parent_id))
+                cats = [r[0] for r in cursor.fetchall()]
+                if not cats:
+                    return True, "Nenhuma categoria para migrar."
+                placeholders = ",".join("?" for _ in cats)
+                query = f"""
+                    UPDATE Transacoes 
+                    SET saude_id = ? 
+                    WHERE saude_id IS NULL AND categoria_id IN ({placeholders})
+                """
+                cursor.execute(query, [saude_id] + cats)
+                conn.commit()
+                return True, "Transações migradas com sucesso."
+        except Exception as e:
+            logger.error("Erro ao migrar transações para saúde", exc_info=True)
+            return False, str(e)
+
+    def atualizar_transacao_veiculo(self, transacao_id, veiculo_id):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("UPDATE Transacoes SET veiculo_id = ? WHERE id = ?", (veiculo_id, transacao_id))
+                conn.commit()
+                return True, "Sucesso"
+        except Exception as e:
+            logger.error("Erro ao atualizar veículo da transação", exc_info=True)
+            return False, str(e)
+
+    def atualizar_transacao_pet(self, transacao_id, pet_id):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("UPDATE Transacoes SET pet_id = ? WHERE id = ?", (pet_id, transacao_id))
+                conn.commit()
+                return True, "Sucesso"
+        except Exception as e:
+            logger.error("Erro ao atualizar pet da transação", exc_info=True)
+            return False, str(e)
+
+    def atualizar_transacao_saude(self, transacao_id, saude_id):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("UPDATE Transacoes SET saude_id = ? WHERE id = ?", (saude_id, transacao_id))
+                conn.commit()
+                return True, "Sucesso"
+        except Exception as e:
+            logger.error("Erro ao atualizar saúde da transação", exc_info=True)
+            return False, str(e)
 
 if __name__ == "__main__":
     db = Database()

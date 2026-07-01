@@ -1379,6 +1379,12 @@ def main(page: ft.Page):
             render_recorrencias()
         elif active == "resumo_anual":
             render_resumo_anual()
+        elif active == "veiculos":
+            render_veiculos()
+        elif active == "pets":
+            render_pets()
+        elif active == "saude":
+            render_saude()
         else:
             render_dashboard()
 
@@ -1776,6 +1782,9 @@ def main(page: ft.Page):
             ("resumo_anual", ft.icons.Icons.ANALYTICS_ROUNDED,   _t("Resumo Anual")),
             ("recorrencias", ft.icons.Icons.AUTORENEW_ROUNDED,   _t("Recorrências")),
             ("parcelamentos", ft.icons.Icons.CREDIT_CARD_ROUNDED, _t("Parcelamentos")),
+            ("veiculos",     ft.icons.Icons.DIRECTIONS_CAR_ROUNDED, _t("Veículos")),
+            ("pets",         ft.icons.Icons.PETS_ROUNDED,        _t("Pet")),
+            ("saude",        ft.icons.Icons.LOCAL_HOSPITAL_ROUNDED, _t("Saúde")),
         ]
 
         tab_widgets = []
@@ -1830,7 +1839,7 @@ def main(page: ft.Page):
         )
 
 
-    def criar_card_resumo(titulo, valor, cor_valor=None, cor_fundo=None, small=False, subtexto=None):
+    def criar_card_resumo(titulo, valor, cor_valor=None, cor_fundo=None, small=False, subtexto=None, is_currency=True):
         colors = get_colors()
         if cor_fundo is None:
             cor_fundo = colors["surface"]
@@ -1840,9 +1849,14 @@ def main(page: ft.Page):
         t_sz = 11 if small else 14
         v_sz = 18 if small else 28
         
+        if is_currency:
+            valor_str = f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        else:
+            valor_str = str(valor)
+            
         controls = [
             ft.Text(titulo, size=t_sz, color=colors["subtext"], weight=ft.FontWeight.W_500),
-            ft.Text(f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), size=v_sz, color=cor_valor, weight=ft.FontWeight.BOLD)
+            ft.Text(valor_str, size=v_sz, color=cor_valor, weight=ft.FontWeight.BOLD)
         ]
         if subtexto:
             controls.append(ft.Text(subtexto, size=10, color=colors["subtext"]))
@@ -1917,6 +1931,25 @@ def main(page: ft.Page):
 
             if t_divisoes and t_divisoes > 1:
                 meta_parts.append("Dividido 👥")
+
+            vinculo_parts = []
+            if len(t) > 15:
+                v_mod = t[14]
+                v_pla = t[15]
+                p_nome = t[16]
+                s_nome = t[17]
+                if v_mod or v_pla:
+                    v_str = "🚗 "
+                    if v_mod: v_str += v_mod
+                    if v_pla: v_str += f" ({v_pla})"
+                    vinculo_parts.append(v_str)
+                if p_nome:
+                    vinculo_parts.append(f"🐾 {p_nome}")
+                if s_nome:
+                    vinculo_parts.append(f"🏥 {s_nome}")
+            
+            if vinculo_parts:
+                meta_parts.append(" • ".join(vinculo_parts))
 
             sub_text = " • ".join(meta_parts)
             valor_formatado = f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
@@ -2157,6 +2190,12 @@ def main(page: ft.Page):
             render_investimentos()
         elif state["active_tab"] == "financiamentos":
             render_financiamentos()
+        elif state["active_tab"] == "veiculos":
+            render_veiculos()
+        elif state["active_tab"] == "pets":
+            render_pets()
+        elif state["active_tab"] == "saude":
+            render_saude()
         else:
             render_dashboard()
         
@@ -2177,6 +2216,12 @@ def main(page: ft.Page):
             render_investimentos()
         elif state["active_tab"] == "financiamentos":
             render_financiamentos()
+        elif state["active_tab"] == "veiculos":
+            render_veiculos()
+        elif state["active_tab"] == "pets":
+            render_pets()
+        elif state["active_tab"] == "saude":
+            render_saude()
         else:
             render_dashboard()
 
@@ -2535,6 +2580,26 @@ def main(page: ft.Page):
                     tipo = "investimento"
                 else:
                     tipo = "receita"
+                
+                # Configura entidade vinculada na edição a partir do histórico geral
+                if details.get("veiculo_id"):
+                    state["overlay_entity_type"] = "veiculo"
+                    state["overlay_entity_id"] = details["veiculo_id"]
+                elif details.get("pet_id"):
+                    state["overlay_entity_type"] = "pet"
+                    state["overlay_entity_id"] = details["pet_id"]
+                elif details.get("saude_id"):
+                    state["overlay_entity_type"] = "saude"
+                    state["overlay_entity_id"] = details["saude_id"]
+                else:
+                    if state.get("active_tab") not in ["veiculos", "pets", "saude"]:
+                        state["overlay_entity_type"] = None
+                        state["overlay_entity_id"] = None
+        else:
+            # Novo lançamento: se não vier de uma aba específica, limpa as entidades do state
+            if state.get("active_tab") not in ["veiculos", "pets", "saude"]:
+                state["overlay_entity_type"] = None
+                state["overlay_entity_id"] = None
 
         shield = ft.Container(
             expand=True,
@@ -2595,7 +2660,15 @@ def main(page: ft.Page):
         )
 
         if tipo == "despesa":
-            populate_formulario_despesa(form_container, details=details)
+            ent_type = state.get("overlay_entity_type")
+            locked_pilar = None
+            if ent_type == "veiculo":
+                locked_pilar = "Despesa Variável"
+            elif ent_type == "pet":
+                locked_pilar = "Despesa Variável"
+            elif ent_type == "saude":
+                locked_pilar = "Despesa Fixa"
+            populate_formulario_despesa(form_container, details=details, locked_pilar=locked_pilar)
         elif tipo == "investimento":
             populate_formulario_receita(form_container, details=details, locked_pilar="Investimento")
         else:
@@ -2964,6 +3037,8 @@ def main(page: ft.Page):
                     ft.Container(width=15)
                 ]
             ),
+            row_vinculos,
+            drop_vinculo_row,
             ft.Row(
                 controls=[
                     ft.Container(expand=True, content=txt_valor),
@@ -2988,7 +3063,7 @@ def main(page: ft.Page):
         else:
             update_cats_receita()
 
-    def populate_formulario_despesa(container, details=None):
+    def populate_formulario_despesa(container, details=None, locked_pilar=None):
         txt_desc = ft.TextField(
             label=_t("Descrição"), 
             hint_text="Ex: Compras Supermercado", 
@@ -3052,7 +3127,8 @@ def main(page: ft.Page):
                 ft.dropdown.Option(key="Despesa Variável", text=_t("Despesa Variável")),
                 ft.dropdown.Option(key="Despesa Fixa", text=_t("Despesa Fixa"))
             ],
-            value="Despesa Variável",
+            value=locked_pilar if locked_pilar else "Despesa Variável",
+            disabled=(locked_pilar is not None),
             on_select=lambda e: update_cats_despesa()
         )
 
@@ -3079,6 +3155,94 @@ def main(page: ft.Page):
             expand=True,
             content_padding=ft.Padding(10, 5, 10, 5),
             bgcolor=get_colors()["bg"]
+        )
+
+        perfil_ativo = state.get("perfil", "Eu")
+        veiculos_list = db.get_veiculos(perfil_ativo)
+        pets_list = db.get_pets(perfil_ativo)
+        saude_list = db.get_saude(perfil_ativo)
+
+        drop_veiculo = ft.Dropdown(
+            label=_t("Veículo Vinculado"),
+            border_color="#374151",
+            focused_border_color="#ef4444",
+            text_style=ft.TextStyle(color=get_colors()["text"], size=14),
+            label_style=ft.TextStyle(size=12),
+            height=48,
+            expand=True,
+            content_padding=ft.Padding(10, 5, 10, 5),
+            bgcolor=get_colors()["bg"],
+            options=[ft.dropdown.Option(key="sem_vinculo", text=_t("Sem Vínculo / Geral"))] + [
+                ft.dropdown.Option(key=str(v[0]), text=f"{v[2]} ({v[1]})" if v[1] else v[2]) for v in veiculos_list
+            ],
+            value="sem_vinculo",
+            visible=False
+        )
+
+        drop_pet = ft.Dropdown(
+            label=_t("Pet Vinculado"),
+            border_color="#374151",
+            focused_border_color="#ef4444",
+            text_style=ft.TextStyle(color=get_colors()["text"], size=14),
+            label_style=ft.TextStyle(size=12),
+            height=48,
+            expand=True,
+            content_padding=ft.Padding(10, 5, 10, 5),
+            bgcolor=get_colors()["bg"],
+            options=[ft.dropdown.Option(key="sem_vinculo", text=_t("Sem Vínculo / Geral"))] + [
+                ft.dropdown.Option(key=str(p[0]), text=p[1]) for p in pets_list
+            ],
+            value="sem_vinculo",
+            visible=False
+        )
+
+        drop_saude = ft.Dropdown(
+            label=_t("Item de Saúde Vinculado"),
+            border_color="#374151",
+            focused_border_color="#ef4444",
+            text_style=ft.TextStyle(color=get_colors()["text"], size=14),
+            label_style=ft.TextStyle(size=12),
+            height=48,
+            expand=True,
+            content_padding=ft.Padding(10, 5, 10, 5),
+            bgcolor=get_colors()["bg"],
+            options=[ft.dropdown.Option(key="sem_vinculo", text=_t("Sem Vínculo / Geral"))] + [
+                ft.dropdown.Option(key=str(s[0]), text=s[1]) for s in saude_list
+            ],
+            value="sem_vinculo",
+            visible=False
+        )
+
+        row_vinculos = ft.Row(
+            visible=False,
+            controls=[
+                ft.Container(expand=True, content=drop_veiculo),
+                ft.Container(expand=True, content=drop_pet),
+                ft.Container(expand=True, content=drop_saude),
+                ft.Container(width=15)
+            ]
+        )
+
+        drop_vinculo = ft.Dropdown(
+            label="",
+            border_color="#374151",
+            focused_border_color="#ef4444",
+            text_style=ft.TextStyle(color=get_colors()["text"], size=14),
+            label_style=ft.TextStyle(size=12),
+            height=48,
+            expand=True,
+            content_padding=ft.Padding(10, 5, 10, 5),
+            bgcolor=get_colors()["bg"],
+            options=[],
+            visible=False
+        )
+
+        drop_vinculo_row = ft.Row(
+            controls=[
+                ft.Container(expand=True, content=drop_vinculo),
+                ft.Container(width=15)
+            ],
+            visible=False
         )
 
         drop_metodo = ft.Dropdown(
@@ -3512,6 +3676,10 @@ def main(page: ft.Page):
         def update_cats_despesa(set_initial=None):
             pilar = drop_pilar.value
             cats = categorias_por_pilar.get(pilar, {})
+            ent_type = state.get("overlay_entity_type")
+            if ent_type:
+                target_root = "VEÍCULO" if ent_type == "veiculo" else ("PET" if ent_type == "pet" else "SAÚDE")
+                cats = {cid: info for cid, info in cats.items() if info["nome"].upper() == target_root}
             drop_cat.options = [ft.dropdown.Option(key=str(cid), text=info["nome"]) for cid, info in cats.items()]
             if cats:
                 if set_initial and str(set_initial) in cats:
@@ -3527,6 +3695,56 @@ def main(page: ft.Page):
             toggle_lote_visibility()
             page.update()
 
+        def update_vinculo_dropdown(set_initial_val=None):
+            pilar = drop_pilar.value
+            try:
+                parent_id = int(drop_cat.value)
+            except:
+                drop_vinculo.visible = False
+                drop_vinculo_row.visible = False
+                return
+            
+            cats = categorias_por_pilar.get(pilar, {})
+            cat_info = cats.get(parent_id, {})
+            root_name = cat_info.get("nome", "").upper()
+            
+            if root_name in ("VEÍCULO", "PET", "SAÚDE"):
+                drop_vinculo.options = [
+                    ft.dropdown.Option(key="geral", text=_t("Geral / Sem vínculo"))
+                ]
+                
+                if root_name == "VEÍCULO":
+                    drop_vinculo.label = _t("Veículo Vinculado")
+                    veiculos_list = db.get_veiculos(state["perfil"])
+                    for v in veiculos_list:
+                        label_text = f"{v[2]} ({v[1]})" if v[1] else v[2]
+                        drop_vinculo.options.append(ft.dropdown.Option(key=str(v[0]), text=label_text))
+                elif root_name == "PET":
+                    drop_vinculo.label = _t("Pet Vinculado")
+                    pets_list = db.get_pets(state["perfil"])
+                    for p in pets_list:
+                        label_text = f"{p[1]} ({p[2]})" if p[2] else p[1]
+                        drop_vinculo.options.append(ft.dropdown.Option(key=str(p[0]), text=label_text))
+                elif root_name == "SAÚDE":
+                    drop_vinculo.label = _t("Profissional / Serviço de Saúde")
+                    saude_list = db.get_saude(state["perfil"])
+                    for s in saude_list:
+                        label_text = f"{s[1]} ({s[2]})" if s[2] else s[1]
+                        drop_vinculo.options.append(ft.dropdown.Option(key=str(s[0]), text=label_text))
+                
+                if set_initial_val is not None:
+                    drop_vinculo.value = str(set_initial_val)
+                elif state.get("overlay_entity_type") == root_name.lower().replace("veículo", "veiculo") and state.get("overlay_entity_id"):
+                    drop_vinculo.value = str(state.get("overlay_entity_id"))
+                else:
+                    drop_vinculo.value = "geral"
+                    
+                drop_vinculo.visible = True
+                drop_vinculo_row.visible = True
+            else:
+                drop_vinculo.visible = False
+                drop_vinculo_row.visible = False
+
         def update_subs_despesa(set_initial=None):
             pilar = drop_pilar.value
             try:
@@ -3534,6 +3752,7 @@ def main(page: ft.Page):
             except:
                 drop_sub.options = [ft.dropdown.Option(key="Geral", text="Geral")]
                 drop_sub.value = "Geral"
+                update_vinculo_dropdown()
                 page.update()
                 return
             cats = categorias_por_pilar.get(pilar, {})
@@ -3552,6 +3771,17 @@ def main(page: ft.Page):
             else:
                 drop_sub.options = [ft.dropdown.Option(key="Geral", text="Geral")]
                 drop_sub.value = "Geral"
+
+            initial_vinculo_val = "geral"
+            if details:
+                if details.get("veiculo_id"):
+                    initial_vinculo_val = details["veiculo_id"]
+                elif details.get("pet_id"):
+                    initial_vinculo_val = details["pet_id"]
+                elif details.get("saude_id"):
+                    initial_vinculo_val = details["saude_id"]
+
+            update_vinculo_dropdown(set_initial_val=initial_vinculo_val)
             page.update()
 
         def toggle_metodo_fields():
@@ -3772,6 +4002,54 @@ def main(page: ft.Page):
                 try: final_cat_id = int(sub_id_str)
                 except: pass
 
+            v_id = None
+            p_id = None
+            s_id = None
+
+            if drop_vinculo.visible:
+                val = drop_vinculo.value
+                if val and val != "geral":
+                    pilar = drop_pilar.value
+                    try:
+                        parent_id = int(drop_cat.value)
+                        cats = categorias_por_pilar.get(pilar, {})
+                        cat_info = cats.get(parent_id, {})
+                        root_name = cat_info.get("nome", "").upper()
+                        
+                        selected_entity_id = int(val)
+                        if root_name == "VEÍCULO":
+                            v_id = selected_entity_id
+                        elif root_name == "PET":
+                            p_id = selected_entity_id
+                        elif root_name == "SAÚDE":
+                            s_id = selected_entity_id
+                    except:
+                        pass
+            else:            v_id = None
+            p_id = None
+            s_id = None
+
+            try:
+                parent_id = int(drop_cat.value)
+                cats = categorias_por_pilar.get(pilar, {})
+                cat_name = cats.get(parent_id, {}).get("nome", "").upper()
+            except:
+                cat_name = ""
+
+            if cat_name == "VEÍCULO":
+                if drop_veiculo.value and drop_veiculo.value != "sem_vinculo":
+                    try: v_id = int(drop_veiculo.value)
+                    except: pass
+            elif cat_name == "PET":
+                if drop_pet.value and drop_pet.value != "sem_vinculo":
+                    try: p_id = int(drop_pet.value)
+                    except: pass
+            elif cat_name == "SAÚDE":
+                if drop_saude.value and drop_saude.value != "sem_vinculo":
+                    try: s_id = int(drop_saude.value)
+                    except: pass
+
+
             if details:
                 success, msg = db.atualizar_transacao(
                     transacao_id=details["id"],
@@ -3784,7 +4062,11 @@ def main(page: ft.Page):
                     bandeira=bandeira,
                     dono=dono,
                     observacao=obs,
-                    divisoes=divisoes
+                    divisoes=divisoes,
+                    veiculo_id=v_id,
+                    pet_id=p_id,
+                    saude_id=s_id,
+                    keep_entity_links=False
                 )
             else:
                 success, msg = db.inserir_transacao(
@@ -3800,7 +4082,10 @@ def main(page: ft.Page):
                     dono=dono,
                     recorrencia=None,
                     divisoes=divisoes,
-                    observacao=obs
+                    observacao=obs,
+                    veiculo_id=v_id,
+                    pet_id=p_id,
+                    saude_id=s_id
                 )
 
             if success:
@@ -3816,6 +4101,12 @@ def main(page: ft.Page):
                     render_transacoes()
                 elif state["active_tab"] == "financiamentos":
                     render_financiamentos()
+                elif state["active_tab"] == "veiculos":
+                    render_veiculos()
+                elif state["active_tab"] == "pets":
+                    render_pets()
+                elif state["active_tab"] == "saude":
+                    render_saude()
                 else:
                     render_dashboard()
             else:
@@ -3887,6 +4178,26 @@ def main(page: ft.Page):
             if has_other_members:
                 chk_compartilhar.value = True
                 sharing_container.visible = True
+                
+            # Pré-preenche vínculos se existirem
+            if details.get("veiculo_id"):
+                drop_veiculo.value = str(details["veiculo_id"])
+            if details.get("pet_id"):
+                drop_pet.value = str(details["pet_id"])
+            if details.get("saude_id"):
+                drop_saude.value = str(details["saude_id"])
+        else:
+            # Caso seja um novo lançamento originado de uma aba específica
+            ent_type = state.get("overlay_entity_type")
+            ent_id = state.get("overlay_entity_id")
+            if ent_type == "veiculo" and ent_id and ent_id != "geral":
+                drop_veiculo.value = str(ent_id)
+            elif ent_type == "pet" and ent_id and ent_id != "geral":
+                drop_pet.value = str(ent_id)
+            elif ent_type == "saude" and ent_id and ent_id != "geral":
+                drop_saude.value = str(ent_id)
+
+        update_vinculo_dropdown()
 
         # Action buttons layout
         action_buttons = []
@@ -5022,9 +5333,9 @@ def main(page: ft.Page):
 
         tipo_cores = {
             "Ação": "#3b82f6", "FII": "#10b981", "ETF": "#a78bfa",
-            "Tesouro": "#fbbf24", "CDB": "#fb923c", "Cripto": "#f472b6",
+            "Tesouro": "#fbbf24", "CDB": "#fb923c", "RDB": "#ec4899", "Cripto": "#f472b6",
         }
-        tipo_ordem = ["Ação", "FII", "ETF", "Tesouro", "CDB", "Cripto"]
+        tipo_ordem = ["Ação", "FII", "ETF", "Tesouro", "CDB", "RDB", "Cripto"]
         meses_nomes_curtos = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
 
         # ── DISPARAR BUSCA DE CDI MENSAL ──────────────────────────────
@@ -7295,10 +7606,28 @@ def main(page: ft.Page):
                             else:
                                 if t_metodo:
                                     subtitle_parts.append(t_metodo)
-
+                            
                             if t_divisoes and t_divisoes > 1:
                                 subtitle_parts.append("Dividido 👥")
 
+                            vinculo_parts = []
+                            if len(t) > 15:
+                                v_mod = t[14]
+                                v_pla = t[15]
+                                p_nome = t[16]
+                                s_nome = t[17]
+                                if v_mod or v_pla:
+                                    v_str = "🚗 "
+                                    if v_mod: v_str += v_mod
+                                    if v_pla: v_str += f" ({v_pla})"
+                                    vinculo_parts.append(v_str)
+                                if p_nome:
+                                    vinculo_parts.append(f"🐾 {p_nome}")
+                                if s_nome:
+                                    vinculo_parts.append(f"🏥 {s_nome}")
+                            
+                            if vinculo_parts:
+                                subtitle_parts.append(" • ".join(vinculo_parts))
                             subtitle_text = " • ".join(subtitle_parts)
 
                             if locked:
@@ -7503,10 +7832,28 @@ def main(page: ft.Page):
                             else:
                                 if t_metodo:
                                     subtitle_parts.append(t_metodo)
-
+                            
                             if t_divisoes and t_divisoes > 1:
                                 subtitle_parts.append("Dividido 👥")
 
+                            vinculo_parts = []
+                            if len(t) > 15:
+                                v_mod = t[14]
+                                v_pla = t[15]
+                                p_nome = t[16]
+                                s_nome = t[17]
+                                if v_mod or v_pla:
+                                    v_str = "🚗 "
+                                    if v_mod: v_str += v_mod
+                                    if v_pla: v_str += f" ({v_pla})"
+                                    vinculo_parts.append(v_str)
+                                if p_nome:
+                                    vinculo_parts.append(f"🐾 {p_nome}")
+                                if s_nome:
+                                    vinculo_parts.append(f"🏥 {s_nome}")
+                            
+                            if vinculo_parts:
+                                subtitle_parts.append(" • ".join(vinculo_parts))
                             subtitle_text = " • ".join(subtitle_parts)
 
                             if locked:
@@ -9453,6 +9800,2004 @@ def main(page: ft.Page):
         body.content = dashboard_layout
         page.update()
 
+    def render_veiculos():
+        veiculos = db.get_veiculos(state["perfil"])
+        veiculos = [("geral", "", _t("Geral / Sem vínculo"), state["perfil"])] + veiculos
+        
+        if "veiculos_selected_ids" not in state:
+            state["veiculos_selected_ids"] = set()
+        selected_trans_ids = state["veiculos_selected_ids"]
+        
+        def fmt(val):
+            if val is None: return "R$ 0,00"
+            return f"R$ {val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        
+        def on_change_perfil_veic(e):
+            state["perfil"] = e.control.value
+            render_veiculos()
+
+        seletor_perfil_veic = criar_seletor_perfil(on_change_perfil_veic)
+
+        def abrir_form_veiculo(e, veic_to_edit=None):
+            txt_mod = ft.TextField(
+                label=_t("Modelo do Veículo"),
+                value=veic_to_edit[2] if veic_to_edit else "",
+                border_color="#475569", focused_border_color="#3b82f6",
+                label_style=ft.TextStyle(color="#94a3b8"), text_style=ft.TextStyle(color=get_colors()["text"]),
+                bgcolor=get_colors()["bg"], height=48, text_size=12
+            )
+            txt_placa = ft.TextField(
+                label=_t("Placa (ex: ABC-1234)"),
+                value=veic_to_edit[1] if veic_to_edit else "",
+                border_color="#475569", focused_border_color="#3b82f6",
+                label_style=ft.TextStyle(color="#94a3b8"), text_style=ft.TextStyle(color=get_colors()["text"]),
+                bgcolor=get_colors()["bg"], height=48, text_size=12
+            )
+            chk_migrar = ft.Checkbox(
+                label=_t("Vincular gastos 'Geral / Sem vínculo' a este veículo"),
+                value=False,
+                label_style=ft.TextStyle(size=11, color=get_colors()["text"]),
+                visible=(veic_to_edit is None)
+            )
+            
+            def salvar_veiculo(e):
+                mod = txt_mod.value.strip()
+                placa = txt_placa.value.strip().upper()
+                if not mod or not placa:
+                    page.snack_bar = ft.SnackBar(ft.Text(_t("Preencha todos os campos!"), color="white"), bgcolor="#ef4444")
+                    page.snack_bar.open = True
+                    page.update()
+                    return
+                if veic_to_edit:
+                    success, msg = db.update_veiculo(veic_to_edit[0], placa, mod)
+                else:
+                    success, msg = db.add_veiculo(placa, mod, state["perfil"])
+                    if success and isinstance(msg, int):
+                        if chk_migrar.value:
+                            db.migrar_transacoes_gerais_veiculo(msg, state["perfil"])
+                        callback = state.pop("post_create_veiculo_callback", None)
+                        if callback:
+                            callback(msg)
+                if success:
+                    page.snack_bar = ft.SnackBar(ft.Text(_t("Veículo salvo com sucesso!"), color="white"), bgcolor="#10b981")
+                    page.pop_dialog()
+                    if not veic_to_edit and isinstance(msg, int):
+                        state["active_veiculo_id"] = msg
+                    render_veiculos()
+                else:
+                    page.snack_bar = ft.SnackBar(ft.Text(f"{_t('Erro ao salvar:')} {msg}", color="white"), bgcolor="#ef4444")
+                    page.snack_bar.open = True
+                    page.update()
+                    
+            dialog = ft.AlertDialog(
+                modal=True,
+                title=ft.Text(_t("Editar Veículo") if veic_to_edit else _t("Adicionar Veículo"), size=16, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+                content=ft.Column([txt_mod, txt_placa, chk_migrar], tight=True, spacing=10),
+                bgcolor=get_colors()["surface"],
+                actions=[
+                    ft.TextButton(_t("CANCELAR"), on_click=lambda e: page.pop_dialog(), style=ft.ButtonStyle(color="white")),
+                    ft.ElevatedButton(_t("SALVAR"), on_click=salvar_veiculo, bgcolor="#3b82f6", color="white", style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)))
+                ],
+                actions_alignment=ft.MainAxisAlignment.END,
+            )
+            page.show_dialog(dialog)
+
+        def abrir_excluir_veiculo(veic_id):
+            def confirmar_exclusao(e):
+                success, msg = db.delete_veiculo(veic_id)
+                if success:
+                    page.snack_bar = ft.SnackBar(ft.Text(_t("Veículo excluído com sucesso!"), color="white"), bgcolor="#10b981")
+                    if state.get("active_veiculo_id") == veic_id:
+                        state["active_veiculo_id"] = None
+                    page.pop_dialog()
+                    render_veiculos()
+                else:
+                    page.snack_bar = ft.SnackBar(ft.Text(f"{_t('Erro ao excluir:')} {msg}", color="white"), bgcolor="#ef4444")
+                    page.snack_bar.open = True
+                    page.update()
+            dialog = ft.AlertDialog(
+                title=ft.Text(_t("Excluir Veículo?")),
+                content=ft.Text(_t("As transações continuarão no histórico, mas serão desvinculadas deste veículo.")),
+                bgcolor=get_colors()["surface"],
+                actions=[
+                    ft.TextButton(_t("CANCELAR"), on_click=lambda e: page.pop_dialog(), style=ft.ButtonStyle(color="white")),
+                    ft.ElevatedButton(_t("EXCLUIR"), on_click=confirmar_exclusao, bgcolor="#ef4444", color="white")
+                ],
+                actions_alignment=ft.MainAxisAlignment.END,
+            )
+            page.show_dialog(dialog)
+
+        btn_novo_veic = ft.ElevatedButton(
+            content=ft.Row([
+                ft.Icon(ft.icons.Icons.ADD_ROUNDED, size=16, color="white"),
+                ft.Text(_t("NOVO VEÍCULO"), size=11, color="white", weight=ft.FontWeight.BOLD)
+            ], spacing=5),
+            bgcolor="#3b82f6",
+            style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=6)),
+            on_click=lambda e: abrir_form_veiculo(e)
+        )
+        
+        tab_header = criar_tab_header(
+            "veiculos",
+            seletor_perfil_veic,
+            subcontroles=[btn_novo_veic]
+        )
+
+        active_id = state.get("active_veiculo_id")
+        if active_id not in [v[0] for v in veiculos]:
+            active_id = veiculos[0][0]
+            state["active_veiculo_id"] = active_id
+            
+        active_veiculo = next((v for v in veiculos if v[0] == active_id), veiculos[0])
+        state["active_veiculo_id"] = active_veiculo[0]
+        
+        transacoes_veiculo = db.get_transacoes_veiculo(active_veiculo[0], state["perfil"])
+        
+        # Apply Month/Year Filters
+        import datetime
+        now = datetime.datetime.now()
+        
+        def parse_date(d):
+            if d is None:
+                return datetime.datetime.min
+            if isinstance(d, datetime.datetime):
+                return d
+            if isinstance(d, datetime.date):
+                return datetime.datetime.combine(d, datetime.time.min)
+            d_str = str(d).strip()
+            if not d_str:
+                return datetime.datetime.min
+            d_str = d_str.split()[0]
+            for fmt in ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y", "%Y/%m/%d"):
+                try:
+                    return datetime.datetime.strptime(d_str, fmt)
+                except:
+                    pass
+            return datetime.datetime.min
+            
+        vf = state.get("veiculos_filter", "todos")
+        
+        def _match_filter_veic(date_str):
+            if vf == "todos":
+                return True
+            dt = parse_date(date_str)
+            if dt == datetime.datetime.min:
+                return vf == "todos"
+            if vf.startswith("ano_"):
+                return str(dt.year) == vf[4:]
+            if vf.startswith("mes_"):
+                parts = vf[4:].split("_")
+                return f"{dt.month:02d}" == parts[0] and str(dt.year) == parts[1]
+            return True
+            
+        filtered_trans = [t for t in transacoes_veiculo if _match_filter_veic(t[1])]
+                    
+        # Apply Sorting
+        sort_mode = state.get("veiculos_sort", "date_desc")
+        if sort_mode == "date_desc":
+            filtered_trans.sort(key=lambda t: (parse_date(t[1]), t[0] if isinstance(t[0], int) else 0), reverse=True)
+        elif sort_mode == "date_asc":
+            filtered_trans.sort(key=lambda t: (parse_date(t[1]), t[0] if isinstance(t[0], int) else 0))
+        elif sort_mode == "cat":
+            filtered_trans.sort(key=lambda t: ((t[4] or "").lower(), parse_date(t[1])))
+        elif sort_mode == "val_desc":
+            filtered_trans.sort(key=lambda t: (t[3] or 0), reverse=True)
+        elif sort_mode == "val_asc":
+            filtered_trans.sort(key=lambda t: (t[3] or 0))
+            
+        total_gasto = sum(t[3] for t in filtered_trans)
+        
+        if vf != "todos":
+            gasto_mes_atual = total_gasto
+        else:
+            gasto_mes_atual = sum(
+                t[3] for t in transacoes_veiculo
+                if parse_date(t[1]).month == now.month and parse_date(t[1]).year == now.year
+            )
+            
+        card_label_mes = _t("Gasto Mês Atual") if vf == "todos" else _t("Gasto no Período")
+        card_total = criar_card_resumo(_t("Total Gasto"), total_gasto, "#ef4444", get_colors()["surface"], small=True)
+        card_mes = criar_card_resumo(card_label_mes, gasto_mes_atual, "#fb923c", get_colors()["surface"], small=True)
+        card_qtd = criar_card_resumo(_t("Qtd Lançamentos"), len(filtered_trans), "#3b82f6", get_colors()["surface"], small=True, is_currency=False)
+
+        # ── Month Navigator (dashboard-style) ──────────────────────────────
+        if vf.startswith("mes_"):
+            _p = vf[4:].split("_")
+            nav_month, nav_year = int(_p[0]), int(_p[1])
+        elif vf.startswith("ano_"):
+            nav_month, nav_year = 0, int(vf[4:])
+        else:
+            nav_month, nav_year = now.month, now.year
+        
+        _meses_abrev = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+                        "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
+        
+        if vf.startswith("mes_"):
+            nav_label = f"{_meses_abrev[nav_month-1]} {nav_year}"
+        elif vf.startswith("ano_"):
+            nav_label = str(nav_year)
+        else:
+            nav_label = _t("Todos")
+        
+        def prev_veic_period(e):
+            nonlocal vf
+            if vf == "todos":
+                state["veiculos_filter"] = f"mes_{now.month:02d}_{now.year}"
+            elif vf.startswith("ano_"):
+                yr = int(vf[4:])
+                state["veiculos_filter"] = f"ano_{yr - 1}"
+            else:
+                _p = vf[4:].split("_"); m, y = int(_p[0]), int(_p[1])
+                m -= 1
+                if m < 1: m, y = 12, y - 1
+                state["veiculos_filter"] = f"mes_{m:02d}_{y}"
+            render_veiculos()
+            
+        def next_veic_period(e):
+            nonlocal vf
+            if vf == "todos":
+                state["veiculos_filter"] = f"mes_{now.month:02d}_{now.year}"
+            elif vf.startswith("ano_"):
+                yr = int(vf[4:])
+                state["veiculos_filter"] = f"ano_{yr + 1}"
+            else:
+                _p = vf[4:].split("_"); m, y = int(_p[0]), int(_p[1])
+                m += 1
+                if m > 12: m, y = 1, y + 1
+                state["veiculos_filter"] = f"mes_{m:02d}_{y}"
+            render_veiculos()
+        
+        def set_veic_year(e):
+            state["veiculos_filter"] = f"ano_{nav_year}"
+            render_veiculos()
+        
+        def set_veic_todos(e):
+            state["veiculos_filter"] = "todos"
+            render_veiculos()
+        
+        btn_prev_v = ft.IconButton(ft.icons.Icons.CHEVRON_LEFT_ROUNDED, on_click=prev_veic_period,
+                                   icon_color="#94a3b8", icon_size=20, style=ft.ButtonStyle(padding=4))
+        btn_next_v = ft.IconButton(ft.icons.Icons.CHEVRON_RIGHT_ROUNDED, on_click=next_veic_period,
+                                   icon_color="#94a3b8", icon_size=20, style=ft.ButtonStyle(padding=4))
+        lbl_period_v = ft.Text(nav_label, size=13, weight=ft.FontWeight.BOLD, color=get_colors()["text"], width=110, text_align=ft.TextAlign.CENTER)
+        
+        btn_ano_v = ft.TextButton(
+            _t("Ano Completo"),
+            on_click=set_veic_year,
+            style=ft.ButtonStyle(color="white" if vf.startswith("ano_") else "#64748b", padding=ft.Padding(8, 3, 8, 3))
+        )
+        btn_todos_v = ft.TextButton(
+            _t("Todos"),
+            on_click=set_veic_todos,
+            style=ft.ButtonStyle(color="white" if vf == "todos" else "#64748b", padding=ft.Padding(8, 3, 8, 3))
+        )
+        
+        sort_options = [
+            ("date_desc", _t("Mais recentes")),
+            ("date_asc", _t("Mais antigas")),
+            ("cat", _t("Tipo / Categoria")),
+            ("val_desc", _t("Valor (Maior)")),
+            ("val_asc", _t("Valor (Menor)")),
+        ]
+        drop_sort = ft.Dropdown(
+            label=_t("Ordenar por"),
+            options=[ft.dropdown.Option(key=so[0], text=so[1]) for so in sort_options],
+            value=state.get("veiculos_sort", "date_desc"),
+            width=165,
+            height=38,
+            text_size=11,
+            content_padding=ft.Padding(8, 2, 8, 2),
+            bgcolor=get_colors()["bg"],
+            border_color="#374151",
+            focused_border_color="#3b82f6"
+        )
+        def on_change_veiculos_sort(e):
+            state["veiculos_sort"] = e.control.value
+            render_veiculos()
+        drop_sort.on_change = on_change_veiculos_sort
+        
+        filtros_row = ft.Row([
+            ft.Icon(ft.icons.Icons.CALENDAR_MONTH_ROUNDED, color="#64748b", size=16),
+            btn_prev_v, lbl_period_v, btn_next_v,
+            ft.Container(width=8),
+            btn_ano_v,
+            btn_todos_v,
+            ft.Container(expand=True),
+            drop_sort
+        ], spacing=2, alignment=ft.MainAxisAlignment.START, vertical_alignment=ft.CrossAxisAlignment.CENTER)
+        
+        cards_row = ft.Row(
+            controls=[card_total, card_mes, card_qtd],
+            spacing=15
+        )
+        
+        config_buttons = []
+        for v in veiculos:
+            is_selected = (v[0] == active_veiculo[0])
+            is_virtual = (v[0] == "geral")
+            
+            def make_click_veiculo(vid):
+                return lambda e: [selected_trans_ids.clear(), state.update({"active_veiculo_id": vid, "veiculos_migration_mode": False}), render_veiculos()]
+                
+            config_buttons.append(
+                ft.Container(
+                    content=ft.Row([
+                        ft.Container(
+                            content=ft.Row([
+                                ft.Icon(ft.icons.Icons.DIRECTIONS_CAR_ROUNDED, color="#3b82f6" if is_selected else "#64748b", size=16),
+                                ft.Column([
+                                    ft.Text(v[2], size=12, color="white" if is_selected else get_colors()["text"], weight=ft.FontWeight.BOLD),
+                                    ft.Text(v[1] or _t("Geral"), size=10, color="#cbd5e1" if is_selected else "#64748b")
+                                ], spacing=2, tight=True, expand=True),
+                            ], spacing=8),
+                            expand=True,
+                            on_click=make_click_veiculo(v[0])
+                        ),
+                        ft.Row([
+                            ft.IconButton(ft.icons.Icons.EDIT_ROUNDED, icon_color="white" if is_selected else "#3b82f6", icon_size=14, on_click=lambda e, v_item=v: abrir_form_veiculo(e, v_item), tooltip=_t("Editar")),
+                            ft.IconButton(ft.icons.Icons.DELETE_ROUNDED, icon_color="white" if is_selected else "#ef4444", icon_size=14, on_click=lambda e, vid=v[0]: abrir_excluir_veiculo(vid), tooltip=_t("Excluir")),
+                        ], spacing=0, visible=not is_virtual)
+                    ], spacing=8, expand=True),
+                    bgcolor="#3b82f6" if is_selected else get_colors()["surface"],
+                    border=ft.border.all(1, "#3b82f6" if is_selected else get_colors()["border"]),
+                    border_radius=8,
+                    padding=ft.Padding(10, 8, 10, 8),
+                    width=260
+                )
+            )
+            
+        config_selector_panel = ft.Container(
+            padding=20,
+            bgcolor=get_colors()["surface"],
+            border_radius=12,
+            border=ft.border.all(1, get_colors()["border"]),
+            content=ft.Column([
+                ft.Text(_t("Veículos Cadastrados"), size=15, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+                ft.Container(height=5),
+                ft.Column(controls=config_buttons, spacing=8)
+            ], spacing=10),
+            width=300
+        )
+        
+        def abrir_excluir_transacao(t_id):
+            def confirmar_exclusao(e):
+                success = db.deletar_transacao(t_id)
+                if success:
+                    page.snack_bar = ft.SnackBar(ft.Text(_t("Lançamento excluído com sucesso!"), color="white"), bgcolor="#10b981")
+                    page.pop_dialog()
+                    render_veiculos()
+                else:
+                    page.snack_bar = ft.SnackBar(ft.Text(_t("Erro ao excluir!"), color="white"), bgcolor="#ef4444")
+                    page.snack_bar.open = True
+                    page.update()
+            dialog = ft.AlertDialog(
+                title=ft.Text(_t("Excluir Lançamento?")),
+                content=ft.Text(_t("Esta ação excluirá permanentemente esta transação do histórico e do saldo.")),
+                bgcolor=get_colors()["surface"],
+                actions=[
+                    ft.TextButton(_t("CANCELAR"), on_click=lambda e: page.pop_dialog(), style=ft.ButtonStyle(color="white")),
+                    ft.ElevatedButton(_t("EXCLUIR"), on_click=confirmar_exclusao, bgcolor="#ef4444", color="white")
+                ],
+                actions_alignment=ft.MainAxisAlignment.END,
+            )
+            page.show_dialog(dialog)
+
+        row_refs_v = {}
+
+        def make_on_select_changed(tid):
+            def handler(e):
+                is_selected = False
+                if hasattr(e, "selected") and e.selected is not None:
+                    is_selected = bool(e.selected)
+                elif hasattr(e, "data") and e.data is not None:
+                    is_selected = str(e.data).lower() in ("true", "1")
+                else:
+                    is_selected = tid not in selected_trans_ids
+                
+                if is_selected:
+                    selected_trans_ids.add(tid)
+                else:
+                    selected_trans_ids.discard(tid)
+                
+                e.control.selected = is_selected
+                e.control.update()
+            return handler
+
+        rows = []
+        for t in filtered_trans:
+            t_id, t_data, t_desc, t_valor, t_cat, t_tipo, t_part, t_tot_part, t_metodo, t_dono, t_band, t_divs, t_obs, t_val_real = t
+            
+            def make_edit_click(t_item):
+                return lambda e: [state.update({"overlay_entity_type": "veiculo", "overlay_entity_id": active_veiculo[0]}), abrir_overlay("despesa", editing_trans_id=t_item[0])]
+                
+            def make_delete_click(tid):
+                return lambda e: abrir_excluir_transacao(tid)
+                
+            row = ft.DataRow(
+                    selected=(t_id in selected_trans_ids),
+                    on_select_change=make_on_select_changed(t_id),
+                    cells=[
+                        ft.DataCell(ft.Text(t_data, color=get_colors()["text"])),
+                        ft.DataCell(ft.Text(t_desc, color=get_colors()["text"])),
+                        ft.DataCell(ft.Text(t_cat, color=get_colors()["text"])),
+                        ft.DataCell(ft.Text(fmt(t_valor), color=get_colors()["text"], weight=ft.FontWeight.BOLD)),
+                        ft.DataCell(ft.Text(t_metodo or "Outros", color=get_colors()["text"])),
+                        ft.DataCell(
+                            ft.Row([
+                                ft.IconButton(ft.icons.Icons.EDIT_ROUNDED, icon_color="#3b82f6", icon_size=18, tooltip=_t("Editar"), on_click=make_edit_click(t)),
+                                ft.IconButton(ft.icons.Icons.DELETE_ROUNDED, icon_color="#ef4444", icon_size=18, tooltip=_t("Excluir"), on_click=make_delete_click(t_id)),
+                            ], spacing=5)
+                        )
+                    ]
+                )
+            row_refs_v[t_id] = row
+            rows.append(row)
+
+        other_veiculos = [v for v in veiculos if v[0] != active_veiculo[0]]
+        options = [ft.dropdown.Option(key=str(ov[0]), text=f"{ov[2]} ({ov[1]})" if ov[1] else ov[2]) for ov in other_veiculos]
+        options.append(ft.dropdown.Option(key="novo", text=_t("+ Novo Item")))
+        
+        drop_dest = ft.Dropdown(
+            label=_t("Destino"),
+            options=options,
+            width=150,
+            height=38,
+            text_size=11,
+            content_padding=ft.Padding(8, 2, 8, 2),
+            bgcolor=get_colors()["bg"],
+            border_color="#374151",
+            focused_border_color="#3b82f6"
+        )
+        if options:
+            drop_dest.value = options[0].key
+
+        def confirmar_migracao(e):
+            if not selected_trans_ids:
+                page.snack_bar = ft.SnackBar(ft.Text(_t("Selecione pelo menos um lançamento!"), color="white"), bgcolor="#ef4444")
+                page.snack_bar.open = True
+                page.update()
+                return
+                
+            dest_val = drop_dest.value
+            if dest_val == "novo":
+                def post_create_callback(new_vid):
+                    for tid in selected_trans_ids:
+                        db.atualizar_transacao_veiculo(tid, new_vid)
+                    selected_trans_ids.clear()
+                    state["veiculos_migration_mode"] = False
+                    render_veiculos()
+                    
+                state["post_create_veiculo_callback"] = post_create_callback
+                abrir_form_veiculo(e)
+            else:
+                target_id = None if dest_val == "geral" else int(dest_val)
+                for tid in selected_trans_ids:
+                    db.atualizar_transacao_veiculo(tid, target_id)
+                selected_trans_ids.clear()
+                state["veiculos_migration_mode"] = False
+                render_veiculos()
+
+        tabela_veiculos = ft.DataTable(
+            show_checkbox_column=state.get("veiculos_migration_mode", False),
+            columns=[
+                ft.DataColumn(ft.Text(_t("Mês/Data"))),
+                ft.DataColumn(ft.Text(_t("Descrição"))),
+                ft.DataColumn(ft.Text(_t("Categoria"))),
+                ft.DataColumn(ft.Text(_t("Valor"))),
+                ft.DataColumn(ft.Text(_t("Método"))),
+                ft.DataColumn(ft.Text(_t("Ações"))),
+            ],
+            rows=rows,
+            border_radius=8,
+            border=ft.border.all(0.5, get_colors()["border"]),
+            heading_row_color=get_colors()["surface"],
+            expand=True
+        )
+        tabela = tabela_veiculos
+
+        def selecionar_todos_veiculos(e):
+            all_ids = {t[0] for t in filtered_trans}
+            if all_ids.issubset(selected_trans_ids):
+                for tid in all_ids:
+                    selected_trans_ids.discard(tid)
+                    if tid in row_refs_v: row_refs_v[tid].selected = False
+            else:
+                for tid in all_ids:
+                    selected_trans_ids.add(tid)
+                    if tid in row_refs_v: row_refs_v[tid].selected = True
+            tabela_veiculos.update()
+        
+        all_sel_veic = bool(filtered_trans) and {t[0] for t in filtered_trans}.issubset(selected_trans_ids)
+        
+        tabela_header_row = ft.Row([
+            ft.Row([
+                ft.Text(_t("Selecione as transações para migrar:"), size=13, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+                ft.TextButton(
+                    _t("Desmarcar Todos") if all_sel_veic else _t("Selecionar Todos"),
+                    on_click=selecionar_todos_veiculos,
+                    style=ft.ButtonStyle(color="#3b82f6", padding=ft.Padding(6, 2, 6, 2))
+                ),
+            ], spacing=8),
+            ft.Row([
+                drop_dest,
+                ft.IconButton(ft.icons.Icons.CHECK_ROUNDED, icon_color="#10b981", tooltip=_t("Confirmar Migração"), on_click=confirmar_migracao),
+                ft.IconButton(ft.icons.Icons.CLOSE_ROUNDED, icon_color="#ef4444", tooltip=_t("Cancelar"), on_click=lambda e: [selected_trans_ids.clear(), state.update({"veiculos_migration_mode": False}), render_veiculos()]),
+            ], spacing=5)
+        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN) if state.get("veiculos_migration_mode") else ft.Row([
+            ft.Text(f"{_t('Gastos de')} {active_veiculo[2]} ({active_veiculo[1]})" if active_veiculo[1] else f"{_t('Gastos de')} {active_veiculo[2]}", size=15, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+            ft.Row([
+                ft.ElevatedButton(
+                    content=ft.Row([
+                        ft.Icon(ft.icons.Icons.MOVE_UP_ROUNDED, size=16, color="white"),
+                        ft.Text(_t("MIGRAR PARA..."), size=11, color="white", weight=ft.FontWeight.BOLD)
+                    ], spacing=5),
+                    bgcolor="#3b82f6",
+                    style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=6)),
+                    on_click=lambda e: [state.update({"veiculos_migration_mode": True}), render_veiculos()]
+                ),
+                ft.ElevatedButton(
+                    content=ft.Row([
+                        ft.Icon(ft.icons.Icons.ADD_ROUNDED, size=16, color="white"),
+                        ft.Text(_t("NOVO GASTO"), size=11, color="white", weight=ft.FontWeight.BOLD)
+                    ], spacing=5),
+                    bgcolor="#10b981",
+                    style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=6)),
+                    on_click=lambda e: [state.update({"overlay_entity_type": "veiculo", "overlay_entity_id": active_veiculo[0]}), abrir_overlay("despesa")]
+                )
+            ], spacing=10)
+        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
+
+        tabela_container = ft.Container(
+            padding=20,
+            bgcolor=get_colors()["surface"],
+            border_radius=12,
+            border=ft.border.all(1, get_colors()["border"]),
+            expand=True,
+            content=ft.Column([
+                tabela_header_row,
+                filtros_row,
+                ft.Container(height=5),
+                ft.Row([tabela_veiculos], scroll=ft.ScrollMode.ADAPTIVE, expand=True)
+            ], spacing=10)
+        )
+        
+        dashboard_layout = ft.Column(
+            expand=True,
+            controls=[
+                tab_header,
+                ft.Container(height=5),
+                cards_row,
+                ft.Container(height=10),
+                ft.Row([
+                    config_selector_panel,
+                    tabela_container
+                ], alignment=ft.MainAxisAlignment.START, vertical_alignment=ft.CrossAxisAlignment.START, expand=True)
+            ],
+            spacing=10,
+            scroll=ft.ScrollMode.ADAPTIVE
+        )
+        
+        page.floating_action_button = None
+        body.content = dashboard_layout
+        page.update()
+
+    def render_pets():
+        pets = db.get_pets(state["perfil"])
+        pets = [("geral", _t("Geral / Sem vínculo"), "", state["perfil"])] + pets
+        
+        if "pets_selected_ids" not in state:
+            state["pets_selected_ids"] = set()
+        selected_trans_ids = state["pets_selected_ids"]
+        
+        def fmt(val):
+            if val is None: return "R$ 0,00"
+            return f"R$ {val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        
+        def on_change_perfil_pet(e):
+            state["perfil"] = e.control.value
+            render_pets()
+
+        seletor_perfil_pet = criar_seletor_perfil(on_change_perfil_pet)
+
+        def abrir_form_pet(e, pet_to_edit=None):
+            txt_nome = ft.TextField(
+                label=_t("Nome do Pet"),
+                value=pet_to_edit[1] if pet_to_edit else "",
+                border_color="#475569", focused_border_color="#3b82f6",
+                label_style=ft.TextStyle(color="#94a3b8"), text_style=ft.TextStyle(color=get_colors()["text"]),
+                bgcolor=get_colors()["bg"], height=48, text_size=12
+            )
+            txt_raca = ft.TextField(
+                label=_t("Espécie / Raça"),
+                value=pet_to_edit[2] if pet_to_edit else "",
+                border_color="#475569", focused_border_color="#3b82f6",
+                label_style=ft.TextStyle(color="#94a3b8"), text_style=ft.TextStyle(color=get_colors()["text"]),
+                bgcolor=get_colors()["bg"], height=48, text_size=12
+            )
+            chk_migrar = ft.Checkbox(
+                label=_t("Vincular gastos 'Geral / Sem vínculo' a este pet"),
+                value=False,
+                label_style=ft.TextStyle(size=11, color=get_colors()["text"]),
+                visible=(pet_to_edit is None)
+            )
+            
+            def salvar_pet(e):
+                nome = txt_nome.value.strip()
+                raca = txt_raca.value.strip()
+                if not nome:
+                    page.snack_bar = ft.SnackBar(ft.Text(_t("Preencha o nome do pet!"), color="white"), bgcolor="#ef4444")
+                    page.snack_bar.open = True
+                    page.update()
+                    return
+                if pet_to_edit:
+                    success, msg = db.update_pet(pet_to_edit[0], nome, raca)
+                else:
+                    success, msg = db.add_pet(nome, raca, state["perfil"])
+                    if success and isinstance(msg, int):
+                        if chk_migrar.value:
+                            db.migrar_transacoes_gerais_pet(msg, state["perfil"])
+                        callback = state.pop("post_create_pet_callback", None)
+                        if callback:
+                            callback(msg)
+                if success:
+                    page.snack_bar = ft.SnackBar(ft.Text(_t("Pet salvo com sucesso!"), color="white"), bgcolor="#10b981")
+                    page.pop_dialog()
+                    if not pet_to_edit and isinstance(msg, int):
+                        state["active_pet_id"] = msg
+                    render_pets()
+                else:
+                    page.snack_bar = ft.SnackBar(ft.Text(f"{_t('Erro ao salvar:')} {msg}", color="white"), bgcolor="#ef4444")
+                    page.snack_bar.open = True
+                    page.update()
+                    
+            dialog = ft.AlertDialog(
+                modal=True,
+                title=ft.Text(_t("Editar Pet") if pet_to_edit else _t("Adicionar Pet"), size=16, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+                content=ft.Column([txt_nome, txt_raca, chk_migrar], tight=True, spacing=10),
+                bgcolor=get_colors()["surface"],
+                actions=[
+                    ft.TextButton(_t("CANCELAR"), on_click=lambda e: page.pop_dialog(), style=ft.ButtonStyle(color="white")),
+                    ft.ElevatedButton(_t("SALVAR"), on_click=salvar_pet, bgcolor="#3b82f6", color="white", style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)))
+                ],
+                actions_alignment=ft.MainAxisAlignment.END,
+            )
+            page.show_dialog(dialog)
+
+        def abrir_excluir_pet(pet_id):
+            def confirmar_exclusao(e):
+                success, msg = db.delete_pet(pet_id)
+                if success:
+                    page.snack_bar = ft.SnackBar(ft.Text(_t("Pet excluído com sucesso!"), color="white"), bgcolor="#10b981")
+                    if state.get("active_pet_id") == pet_id:
+                        state["active_pet_id"] = None
+                    page.pop_dialog()
+                    render_pets()
+                else:
+                    page.snack_bar = ft.SnackBar(ft.Text(f"{_t('Erro ao excluir:')} {msg}", color="white"), bgcolor="#ef4444")
+                    page.snack_bar.open = True
+                    page.update()
+            dialog = ft.AlertDialog(
+                title=ft.Text(_t("Excluir Pet?")),
+                content=ft.Text(_t("As transações continuarão no histórico, mas serão desvinculadas deste pet.")),
+                bgcolor=get_colors()["surface"],
+                actions=[
+                    ft.TextButton(_t("CANCELAR"), on_click=lambda e: page.pop_dialog(), style=ft.ButtonStyle(color="white")),
+                    ft.ElevatedButton(_t("EXCLUIR"), on_click=confirmar_exclusao, bgcolor="#ef4444", color="white")
+                ],
+                actions_alignment=ft.MainAxisAlignment.END,
+            )
+            page.show_dialog(dialog)
+
+        btn_novo_pet = ft.ElevatedButton(
+            content=ft.Row([
+                ft.Icon(ft.icons.Icons.ADD_ROUNDED, size=16, color="white"),
+                ft.Text(_t("NOVO PET"), size=11, color="white", weight=ft.FontWeight.BOLD)
+            ], spacing=5),
+            bgcolor="#3b82f6",
+            style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=6)),
+            on_click=lambda e: abrir_form_pet(e)
+        )
+        
+        tab_header = criar_tab_header(
+            "pets",
+            seletor_perfil_pet,
+            subcontroles=[btn_novo_pet]
+        )
+
+        active_id = state.get("active_pet_id")
+        if active_id not in [p[0] for p in pets]:
+            active_id = pets[0][0]
+            state["active_pet_id"] = active_id
+            
+        active_pet = next((p for p in pets if p[0] == active_id), pets[0])
+        state["active_pet_id"] = active_pet[0]
+        
+        transacoes_pet = db.get_transacoes_pet(active_pet[0], state["perfil"])
+        
+        # Apply Month/Year Filters
+        import datetime
+        now = datetime.datetime.now()
+        
+        def parse_date(d):
+            if d is None:
+                return datetime.datetime.min
+            if isinstance(d, datetime.datetime):
+                return d
+            if isinstance(d, datetime.date):
+                return datetime.datetime.combine(d, datetime.time.min)
+            d_str = str(d).strip()
+            if not d_str:
+                return datetime.datetime.min
+            d_str = d_str.split()[0]
+            for fmt in ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y", "%Y/%m/%d"):
+                try:
+                    return datetime.datetime.strptime(d_str, fmt)
+                except:
+                    pass
+            return datetime.datetime.min
+            
+        pf = state.get("pets_filter", "todos")
+        
+        def _match_filter_pet(date_str):
+            if pf == "todos":
+                return True
+            dt = parse_date(date_str)
+            if dt == datetime.datetime.min:
+                return pf == "todos"
+            if pf.startswith("ano_"):
+                return str(dt.year) == pf[4:]
+            if pf.startswith("mes_"):
+                parts = pf[4:].split("_")
+                return f"{dt.month:02d}" == parts[0] and str(dt.year) == parts[1]
+            return True
+            
+        filtered_trans = [t for t in transacoes_pet if _match_filter_pet(t[1])]
+                    
+        # Apply Sorting
+        sort_mode = state.get("pets_sort", "date_desc")
+        if sort_mode == "date_desc":
+            filtered_trans.sort(key=lambda t: (parse_date(t[1]), t[0] if isinstance(t[0], int) else 0), reverse=True)
+        elif sort_mode == "date_asc":
+            filtered_trans.sort(key=lambda t: (parse_date(t[1]), t[0] if isinstance(t[0], int) else 0))
+        elif sort_mode == "cat":
+            filtered_trans.sort(key=lambda t: ((t[4] or "").lower(), parse_date(t[1])))
+        elif sort_mode == "val_desc":
+            filtered_trans.sort(key=lambda t: (t[3] or 0), reverse=True)
+        elif sort_mode == "val_asc":
+            filtered_trans.sort(key=lambda t: (t[3] or 0))
+            
+        total_gasto = sum(t[3] for t in filtered_trans)
+        
+        if pf != "todos":
+            gasto_mes_atual = total_gasto
+        else:
+            gasto_mes_atual = sum(
+                t[3] for t in transacoes_pet
+                if parse_date(t[1]).month == now.month and parse_date(t[1]).year == now.year
+            )
+            
+        card_label_mes = _t("Gasto Mês Atual") if pf == "todos" else _t("Gasto no Período")
+        card_total = criar_card_resumo(_t("Total Gasto"), total_gasto, "#ef4444", get_colors()["surface"], small=True)
+        card_mes = criar_card_resumo(card_label_mes, gasto_mes_atual, "#fb923c", get_colors()["surface"], small=True)
+        card_qtd = criar_card_resumo(_t("Qtd Lançamentos"), len(filtered_trans), "#3b82f6", get_colors()["surface"], small=True, is_currency=False)
+
+        # ── Month Navigator (dashboard-style) ──────────────────────────────
+        if pf.startswith("mes_"):
+            _p = pf[4:].split("_")
+            nav_month, nav_year = int(_p[0]), int(_p[1])
+        elif pf.startswith("ano_"):
+            nav_month, nav_year = 0, int(pf[4:])
+        else:
+            nav_month, nav_year = now.month, now.year
+        
+        _meses_abrev = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+                        "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
+        
+        if pf.startswith("mes_"):
+            nav_label = f"{_meses_abrev[nav_month-1]} {nav_year}"
+        elif pf.startswith("ano_"):
+            nav_label = str(nav_year)
+        else:
+            nav_label = _t("Todos")
+        
+        def prev_pet_period(e):
+            nonlocal pf
+            if pf == "todos":
+                state["pets_filter"] = f"mes_{now.month:02d}_{now.year}"
+            elif pf.startswith("ano_"):
+                yr = int(pf[4:])
+                state["pets_filter"] = f"ano_{yr - 1}"
+            else:
+                _p = pf[4:].split("_"); m, y = int(_p[0]), int(_p[1])
+                m -= 1
+                if m < 1: m, y = 12, y - 1
+                state["pets_filter"] = f"mes_{m:02d}_{y}"
+            render_pets()
+            
+        def next_pet_period(e):
+            nonlocal pf
+            if pf == "todos":
+                state["pets_filter"] = f"mes_{now.month:02d}_{now.year}"
+            elif pf.startswith("ano_"):
+                yr = int(pf[4:])
+                state["pets_filter"] = f"ano_{yr + 1}"
+            else:
+                _p = pf[4:].split("_"); m, y = int(_p[0]), int(_p[1])
+                m += 1
+                if m > 12: m, y = 1, y + 1
+                state["pets_filter"] = f"mes_{m:02d}_{y}"
+            render_pets()
+        
+        def set_pet_year(e):
+            state["pets_filter"] = f"ano_{nav_year}"
+            render_pets()
+        
+        def set_pet_todos(e):
+            state["pets_filter"] = "todos"
+            render_pets()
+        
+        btn_prev_p = ft.IconButton(ft.icons.Icons.CHEVRON_LEFT_ROUNDED, on_click=prev_pet_period,
+                                   icon_color="#94a3b8", icon_size=20, style=ft.ButtonStyle(padding=4))
+        btn_next_p = ft.IconButton(ft.icons.Icons.CHEVRON_RIGHT_ROUNDED, on_click=next_pet_period,
+                                   icon_color="#94a3b8", icon_size=20, style=ft.ButtonStyle(padding=4))
+        lbl_period_p = ft.Text(nav_label, size=13, weight=ft.FontWeight.BOLD, color=get_colors()["text"], width=110, text_align=ft.TextAlign.CENTER)
+        
+        btn_ano_p = ft.TextButton(
+            _t("Ano Completo"),
+            on_click=set_pet_year,
+            style=ft.ButtonStyle(color="white" if pf.startswith("ano_") else "#64748b", padding=ft.Padding(8, 3, 8, 3))
+        )
+        btn_todos_p = ft.TextButton(
+            _t("Todos"),
+            on_click=set_pet_todos,
+            style=ft.ButtonStyle(color="white" if pf == "todos" else "#64748b", padding=ft.Padding(8, 3, 8, 3))
+        )
+        
+        sort_options = [
+            ("date_desc", _t("Mais recentes")),
+            ("date_asc", _t("Mais antigas")),
+            ("cat", _t("Tipo / Categoria")),
+            ("val_desc", _t("Valor (Maior)")),
+            ("val_asc", _t("Valor (Menor)")),
+        ]
+        drop_sort = ft.Dropdown(
+            label=_t("Ordenar por"),
+            options=[ft.dropdown.Option(key=so[0], text=so[1]) for so in sort_options],
+            value=state.get("pets_sort", "date_desc"),
+            width=165,
+            height=38,
+            text_size=11,
+            content_padding=ft.Padding(8, 2, 8, 2),
+            bgcolor=get_colors()["bg"],
+            border_color="#374151",
+            focused_border_color="#3b82f6"
+        )
+        def on_change_pets_sort(e):
+            state["pets_sort"] = e.control.value
+            render_pets()
+        drop_sort.on_change = on_change_pets_sort
+        
+        filtros_row = ft.Row([
+            ft.Icon(ft.icons.Icons.CALENDAR_MONTH_ROUNDED, color="#64748b", size=16),
+            btn_prev_p, lbl_period_p, btn_next_p,
+            ft.Container(width=8),
+            btn_ano_p,
+            btn_todos_p,
+            ft.Container(expand=True),
+            drop_sort
+        ], spacing=2, alignment=ft.MainAxisAlignment.START, vertical_alignment=ft.CrossAxisAlignment.CENTER)
+        
+        cards_row = ft.Row(
+            controls=[card_total, card_mes, card_qtd],
+            spacing=15
+        )
+        
+        config_buttons = []
+        for p in pets:
+            is_selected = (p[0] == active_pet[0])
+            is_virtual = (p[0] == "geral")
+            
+            def make_click_pet(pid):
+                return lambda e: [selected_trans_ids.clear(), state.update({"active_pet_id": pid, "pets_migration_mode": False}), render_pets()]
+                
+            config_buttons.append(
+                ft.Container(
+                    content=ft.Row([
+                        ft.Container(
+                            content=ft.Row([
+                                ft.Icon(ft.icons.Icons.PETS_ROUNDED, color="#3b82f6" if is_selected else "#64748b", size=16),
+                                ft.Column([
+                                    ft.Text(p[1], size=12, color="white" if is_selected else get_colors()["text"], weight=ft.FontWeight.BOLD),
+                                    ft.Text(p[2] or _t("Geral"), size=10, color="#cbd5e1" if is_selected else "#64748b")
+                                ], spacing=2, tight=True, expand=True),
+                            ], spacing=8),
+                            expand=True,
+                            on_click=make_click_pet(p[0])
+                        ),
+                        ft.Row([
+                            ft.IconButton(ft.icons.Icons.EDIT_ROUNDED, icon_color="white" if is_selected else "#3b82f6", icon_size=14, on_click=lambda e, p_item=p: abrir_form_pet(e, p_item), tooltip=_t("Editar")),
+                            ft.IconButton(ft.icons.Icons.DELETE_ROUNDED, icon_color="white" if is_selected else "#ef4444", icon_size=14, on_click=lambda e, pid=p[0]: abrir_excluir_pet(pid), tooltip=_t("Excluir")),
+                        ], spacing=0, visible=not is_virtual)
+                    ], spacing=8, expand=True),
+                    bgcolor="#3b82f6" if is_selected else get_colors()["surface"],
+                    border=ft.border.all(1, "#3b82f6" if is_selected else get_colors()["border"]),
+                    border_radius=8,
+                    padding=ft.Padding(10, 8, 10, 8),
+                    width=260
+                )
+            )
+            
+        config_selector_panel = ft.Container(
+            padding=20,
+            bgcolor=get_colors()["surface"],
+            border_radius=12,
+            border=ft.border.all(1, get_colors()["border"]),
+            content=ft.Column([
+                ft.Text(_t("Pets Cadastrados"), size=15, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+                ft.Container(height=5),
+                ft.Column(controls=config_buttons, spacing=8)
+            ], spacing=10),
+            width=300
+        )
+        
+        def abrir_excluir_transacao(t_id):
+            def confirmar_exclusao(e):
+                success = db.deletar_transacao(t_id)
+                if success:
+                    page.snack_bar = ft.SnackBar(ft.Text(_t("Lançamento excluído com sucesso!"), color="white"), bgcolor="#10b981")
+                    page.pop_dialog()
+                    render_pets()
+                else:
+                    page.snack_bar = ft.SnackBar(ft.Text(_t("Erro ao excluir!"), color="white"), bgcolor="#ef4444")
+                    page.snack_bar.open = True
+                    page.update()
+            dialog = ft.AlertDialog(
+                title=ft.Text(_t("Excluir Lançamento?")),
+                content=ft.Text(_t("Esta ação excluirá permanentemente esta transação do histórico e do saldo.")),
+                bgcolor=get_colors()["surface"],
+                actions=[
+                    ft.TextButton(_t("CANCELAR"), on_click=lambda e: page.pop_dialog(), style=ft.ButtonStyle(color="white")),
+                    ft.ElevatedButton(_t("EXCLUIR"), on_click=confirmar_exclusao, bgcolor="#ef4444", color="white")
+                ],
+                actions_alignment=ft.MainAxisAlignment.END,
+            )
+            page.show_dialog(dialog)
+
+        row_refs_p = {}
+
+        def make_on_select_changed(tid):
+            def handler(e):
+                is_selected = False
+                if hasattr(e, "selected") and e.selected is not None:
+                    is_selected = bool(e.selected)
+                elif hasattr(e, "data") and e.data is not None:
+                    is_selected = str(e.data).lower() in ("true", "1")
+                else:
+                    is_selected = tid not in selected_trans_ids
+                
+                if is_selected:
+                    selected_trans_ids.add(tid)
+                else:
+                    selected_trans_ids.discard(tid)
+                
+                e.control.selected = is_selected
+                e.control.update()
+            return handler
+
+        rows = []
+        for t in filtered_trans:
+            t_id, t_data, t_desc, t_valor, t_cat, t_tipo, t_part, t_tot_part, t_metodo, t_dono, t_band, t_divs, t_obs, t_val_real = t
+            
+            def make_edit_click(t_item):
+                return lambda e: [state.update({"overlay_entity_type": "pet", "overlay_entity_id": active_pet[0]}), abrir_overlay("despesa", editing_trans_id=t_item[0])]
+                
+            def make_delete_click(tid):
+                return lambda e: abrir_excluir_transacao(tid)
+                
+            row = ft.DataRow(
+                    selected=(t_id in selected_trans_ids),
+                    on_select_change=make_on_select_changed(t_id),
+                    cells=[
+                        ft.DataCell(ft.Text(t_data, color=get_colors()["text"])),
+                        ft.DataCell(ft.Text(t_desc, color=get_colors()["text"])),
+                        ft.DataCell(ft.Text(t_cat, color=get_colors()["text"])),
+                        ft.DataCell(ft.Text(fmt(t_valor), color=get_colors()["text"], weight=ft.FontWeight.BOLD)),
+                        ft.DataCell(ft.Text(t_metodo or "Outros", color=get_colors()["text"])),
+                        ft.DataCell(
+                            ft.Row([
+                                ft.IconButton(ft.icons.Icons.EDIT_ROUNDED, icon_color="#3b82f6", icon_size=18, tooltip=_t("Editar"), on_click=make_edit_click(t)),
+                                ft.IconButton(ft.icons.Icons.DELETE_ROUNDED, icon_color="#ef4444", icon_size=18, tooltip=_t("Excluir"), on_click=make_delete_click(t_id)),
+                            ], spacing=5)
+                        )
+                    ]
+                )
+            row_refs_p[t_id] = row
+            rows.append(row)
+
+        other_pets = [p for p in pets if p[0] != active_pet[0]]
+        options = [ft.dropdown.Option(key=str(op[0]), text=op[1]) for op in other_pets]
+        options.append(ft.dropdown.Option(key="novo", text=_t("+ Novo Item")))
+        
+        drop_dest = ft.Dropdown(
+            label=_t("Destino"),
+            options=options,
+            width=150,
+            height=38,
+            text_size=11,
+            content_padding=ft.Padding(8, 2, 8, 2),
+            bgcolor=get_colors()["bg"],
+            border_color="#374151",
+            focused_border_color="#3b82f6"
+        )
+        if options:
+            drop_dest.value = options[0].key
+
+        def confirmar_migracao(e):
+            if not selected_trans_ids:
+                page.snack_bar = ft.SnackBar(ft.Text(_t("Selecione pelo menos um lançamento!"), color="white"), bgcolor="#ef4444")
+                page.snack_bar.open = True
+                page.update()
+                return
+                
+            dest_val = drop_dest.value
+            if dest_val == "novo":
+                def post_create_callback(new_pid):
+                    for tid in selected_trans_ids:
+                        db.atualizar_transacao_pet(tid, new_pid)
+                    selected_trans_ids.clear()
+                    state["pets_migration_mode"] = False
+                    render_pets()
+                    
+                state["post_create_pet_callback"] = post_create_callback
+                abrir_form_pet(e)
+            else:
+                target_id = None if dest_val == "geral" else int(dest_val)
+                for tid in selected_trans_ids:
+                    db.atualizar_transacao_pet(tid, target_id)
+                selected_trans_ids.clear()
+                state["pets_migration_mode"] = False
+                render_pets()
+
+        tabela_pets = ft.DataTable(
+            show_checkbox_column=state.get("pets_migration_mode", False),
+            columns=[
+                ft.DataColumn(ft.Text(_t("Mês/Data"))),
+                ft.DataColumn(ft.Text(_t("Descrição"))),
+                ft.DataColumn(ft.Text(_t("Categoria"))),
+                ft.DataColumn(ft.Text(_t("Valor"))),
+                ft.DataColumn(ft.Text(_t("Método"))),
+                ft.DataColumn(ft.Text(_t("Ações"))),
+            ],
+            rows=rows,
+            border_radius=8,
+            border=ft.border.all(0.5, get_colors()["border"]),
+            heading_row_color=get_colors()["surface"],
+            expand=True
+        )
+        tabela = tabela_pets
+
+        def selecionar_todos_pets(e):
+            all_ids = {t[0] for t in filtered_trans}
+            if all_ids.issubset(selected_trans_ids):
+                for tid in all_ids:
+                    selected_trans_ids.discard(tid)
+                    if tid in row_refs_p: row_refs_p[tid].selected = False
+            else:
+                for tid in all_ids:
+                    selected_trans_ids.add(tid)
+                    if tid in row_refs_p: row_refs_p[tid].selected = True
+            tabela_pets.update()
+        
+        all_sel_pets = bool(filtered_trans) and {t[0] for t in filtered_trans}.issubset(selected_trans_ids)
+        
+        tabela_header_row = ft.Row([
+            ft.Row([
+                ft.Text(_t("Selecione as transações para migrar:"), size=13, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+                ft.TextButton(
+                    _t("Desmarcar Todos") if all_sel_pets else _t("Selecionar Todos"),
+                    on_click=selecionar_todos_pets,
+                    style=ft.ButtonStyle(color="#3b82f6", padding=ft.Padding(6, 2, 6, 2))
+                ),
+            ], spacing=8),
+            ft.Row([
+                drop_dest,
+                ft.IconButton(ft.icons.Icons.CHECK_ROUNDED, icon_color="#10b981", tooltip=_t("Confirmar Migração"), on_click=confirmar_migracao),
+                ft.IconButton(ft.icons.Icons.CLOSE_ROUNDED, icon_color="#ef4444", tooltip=_t("Cancelar"), on_click=lambda e: [selected_trans_ids.clear(), state.update({"pets_migration_mode": False}), render_pets()]),
+            ], spacing=5)
+        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN) if state.get("pets_migration_mode") else ft.Row([
+            ft.Text(f"{_t('Gastos de')} {active_pet[1]}", size=15, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+            ft.Row([
+                ft.ElevatedButton(
+                    content=ft.Row([
+                        ft.Icon(ft.icons.Icons.MOVE_UP_ROUNDED, size=16, color="white"),
+                        ft.Text(_t("MIGRAR PARA..."), size=11, color="white", weight=ft.FontWeight.BOLD)
+                    ], spacing=5),
+                    bgcolor="#3b82f6",
+                    style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=6)),
+                    on_click=lambda e: [state.update({"pets_migration_mode": True}), render_pets()]
+                ),
+                ft.ElevatedButton(
+                    content=ft.Row([
+                        ft.Icon(ft.icons.Icons.ADD_ROUNDED, size=16, color="white"),
+                        ft.Text(_t("NOVO GASTO"), size=11, color="white", weight=ft.FontWeight.BOLD)
+                    ], spacing=5),
+                    bgcolor="#10b981",
+                    style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=6)),
+                    on_click=lambda e: [state.update({"overlay_entity_type": "pet", "overlay_entity_id": active_pet[0]}), abrir_overlay("despesa")]
+                )
+            ], spacing=10)
+        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
+
+        tabela_container = ft.Container(
+            padding=20,
+            bgcolor=get_colors()["surface"],
+            border_radius=12,
+            border=ft.border.all(1, get_colors()["border"]),
+            expand=True,
+            content=ft.Column([
+                tabela_header_row,
+                filtros_row,
+                ft.Container(height=5),
+                ft.Row([tabela_pets], scroll=ft.ScrollMode.ADAPTIVE, expand=True)
+            ], spacing=10)
+        )
+        
+        dashboard_layout = ft.Column(
+            expand=True,
+            controls=[
+                tab_header,
+                ft.Container(height=5),
+                cards_row,
+                ft.Container(height=10),
+                ft.Row([
+                    config_selector_panel,
+                    tabela_container
+                ], alignment=ft.MainAxisAlignment.START, vertical_alignment=ft.CrossAxisAlignment.START, expand=True)
+            ],
+            spacing=10,
+            scroll=ft.ScrollMode.ADAPTIVE
+        )
+        
+        page.floating_action_button = None
+        body.content = dashboard_layout
+        page.update()
+
+    def render_saude():
+        saude_list = db.get_saude(state["perfil"])
+        
+        def on_change_perfil_saude(e):
+            state["perfil"] = e.control.value
+            render_saude()
+
+        seletor_perfil_saude = criar_seletor_perfil(on_change_perfil_saude)
+
+        def abrir_form_saude(e, saude_to_edit=None):
+            txt_nome = ft.TextField(
+                label=_t("Nome / Pessoa / Serviço"),
+                value=saude_to_edit[1] if saude_to_edit else "",
+                border_color="#475569", focused_border_color="#3b82f6",
+                label_style=ft.TextStyle(color="#94a3b8"), text_style=ft.TextStyle(color=get_colors()["text"]),
+                bgcolor=get_colors()["bg"], height=48, text_size=12
+            )
+            txt_desc = ft.TextField(
+                label=_t("Descrição / Detalhes"),
+                value=saude_to_edit[2] if saude_to_edit else "",
+                border_color="#475569", focused_border_color="#3b82f6",
+                label_style=ft.TextStyle(color="#94a3b8"), text_style=ft.TextStyle(color=get_colors()["text"]),
+                bgcolor=get_colors()["bg"], height=48, text_size=12
+            )
+            chk_migrar = ft.Checkbox(
+                label=_t("Vincular gastos 'Geral / Sem vínculo' a este item de saúde"),
+                value=False,
+                label_style=ft.TextStyle(size=11, color=get_colors()["text"]),
+                visible=(saude_to_edit is None)
+            )
+            
+            def salvar_saude(e):
+                nome = txt_nome.value.strip()
+                descricao = txt_desc.value.strip()
+                if not nome:
+                    page.snack_bar = ft.SnackBar(ft.Text(_t("Preencha o nome!"), color="white"), bgcolor="#ef4444")
+                    page.snack_bar.open = True
+                    page.update()
+                    return
+                if saude_to_edit:
+                    success, msg = db.update_saude(saude_to_edit[0], nome, descricao)
+                else:
+                    success, msg = db.add_saude(nome, descricao, state["perfil"])
+                    if success and isinstance(msg, int):
+                        if chk_migrar.value:
+                            db.migrar_transacoes_gerais_saude(msg, state["perfil"])
+                        callback = state.pop("post_create_saude_callback", None)
+                        if callback:
+                            callback(msg)
+                if success:
+                    page.snack_bar = ft.SnackBar(ft.Text(_t("Item de saúde salvo com sucesso!"), color="white"), bgcolor="#10b981")
+                    page.pop_dialog()
+                    if not saude_to_edit and isinstance(msg, int):
+                        state["active_saude_id"] = msg
+                    render_saude()
+                else:
+                    page.snack_bar = ft.SnackBar(ft.Text(f"{_t('Erro ao salvar:')} {msg}", color="white"), bgcolor="#ef4444")
+                    page.snack_bar.open = True
+                    page.update()
+                    
+            dialog = ft.AlertDialog(
+                modal=True,
+                title=ft.Text(_t("Editar Item de Saúde") if saude_to_edit else _t("Adicionar Item de Saúde"), size=16, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+                content=ft.Column([txt_nome, txt_desc, chk_migrar], tight=True, spacing=10),
+                bgcolor=get_colors()["surface"],
+                actions=[
+                    ft.TextButton(_t("CANCELAR"), on_click=lambda e: page.pop_dialog(), style=ft.ButtonStyle(color="white")),
+                    ft.ElevatedButton(_t("SALVAR"), on_click=salvar_saude, bgcolor="#3b82f6", color="white", style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)))
+                ],
+                actions_alignment=ft.MainAxisAlignment.END,
+            )
+            page.show_dialog(dialog)
+
+        def abrir_excluir_saude(saude_id):
+            def confirmar_exclusao(e):
+                success, msg = db.delete_saude(saude_id)
+                if success:
+                    page.snack_bar = ft.SnackBar(ft.Text(_t("Item de saúde excluído com sucesso!"), color="white"), bgcolor="#10b981")
+                    if state.get("active_saude_id") == saude_id:
+                        state["active_saude_id"] = None
+                    page.pop_dialog()
+                    render_saude()
+                else:
+                    page.snack_bar = ft.SnackBar(ft.Text(f"{_t('Erro ao excluir:')} {msg}", color="white"), bgcolor="#ef4444")
+                    page.snack_bar.open = True
+                    page.update()
+            dialog = ft.AlertDialog(
+                title=ft.Text(_t("Excluir Item de Saúde?")),
+                content=ft.Text(_t("As transações continuarão no histórico, mas serão desvinculadas deste item.")),
+                bgcolor=get_colors()["surface"],
+                actions=[
+                    ft.TextButton(_t("CANCELAR"), on_click=lambda e: page.pop_dialog(), style=ft.ButtonStyle(color="white")),
+                    ft.ElevatedButton(_t("EXCLUIR"), on_click=confirmar_exclusao, bgcolor="#ef4444", color="white")
+                ],
+                actions_alignment=ft.MainAxisAlignment.END,
+            )
+            page.show_dialog(dialog)
+
+        btn_novo_saude = ft.ElevatedButton(
+            content=ft.Row([
+                ft.Icon(ft.icons.Icons.ADD_ROUNDED, size=16, color="white"),
+                ft.Text(_t("NOVO LANÇAMENTO"), size=11, color="white", weight=ft.FontWeight.BOLD)
+            ], spacing=5),
+            bgcolor="#3b82f6",
+            style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=6)),
+            on_click=lambda e: abrir_form_saude(e)
+        )
+        
+        tab_header = criar_tab_header(
+            "saude",
+            seletor_perfil_saude,
+            subcontroles=[btn_novo_saude]
+        )
+        
+        if not saude_list:
+            empty_state = ft.Container(
+                alignment=ft.Alignment(0, 0),
+                expand=True,
+                padding=40,
+                content=ft.Column(
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    controls=[
+                        ft.Icon(ft.icons.Icons.LOCAL_HOSPITAL_ROUNDED, size=80, color="#64748b"),
+                        ft.Text(_t("Nenhum item de saúde cadastrado"), size=18, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+                        ft.Text(_t("Cadastre itens de saúde (como membros da família, convênios ou categorias de gastos) para gerenciar."), size=14, color="#64748b", text_align=ft.TextAlign.CENTER),
+                        ft.Container(height=10),
+                        ft.ElevatedButton(
+                            _t("CADASTRAR PRIMEIRA ITEM"),
+                            on_click=lambda e: abrir_form_saude(e),
+                            bgcolor="#3b82f6",
+                            color="white"
+                        )
+                    ]
+                )
+            )
+            body.content = ft.Column(expand=True, controls=[tab_header, ft.Divider(color="#1f2937", height=20), empty_state])
+            page.update()
+            return
+
+        active_id = state.get("active_saude_id")
+        if active_id not in [s[0] for s in saude_list]:
+            active_id = saude_list[0][0]
+            state["active_saude_id"] = active_id
+            
+        active_saude = next((s for s in saude_list if s[0] == active_id), saude_list[0])
+        state["active_saude_id"] = active_saude[0]
+        
+        transacoes_saude = db.get_transacoes_saude(active_saude[0], state["perfil"])
+        
+        # Apply Month/Year Filters
+        import datetime
+        now = datetime.datetime.now()
+        
+        def parse_date(d):
+            if d is None:
+                return datetime.datetime.min
+            if isinstance(d, datetime.datetime):
+                return d
+            if isinstance(d, datetime.date):
+                return datetime.datetime.combine(d, datetime.time.min)
+            d_str = str(d).strip()
+            if not d_str:
+                return datetime.datetime.min
+            d_str = d_str.split()[0]
+            for fmt in ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y", "%Y/%m/%d"):
+                try:
+                    return datetime.datetime.strptime(d_str, fmt)
+                except:
+                    pass
+            return datetime.datetime.min
+        
+        # ── Filter state: "todos" | "ano_YYYY" | "mes_MM_YYYY"
+        sf = state.get("saude_filter", "todos")
+        
+        def _match_filter_saude(date_str):
+            if sf == "todos":
+                return True
+            dt = parse_date(date_str)
+            if dt == datetime.datetime.min:
+                return sf == "todos"
+            if sf.startswith("ano_"):
+                return str(dt.year) == sf[4:]
+            if sf.startswith("mes_"):
+                parts = sf[4:].split("_")
+                return f"{dt.month:02d}" == parts[0] and str(dt.year) == parts[1]
+            return True
+        
+        filtered_trans = [t for t in transacoes_saude if _match_filter_saude(t[1])]
+            
+        # Apply Sorting
+        sort_mode = state.get("saude_sort", "date_desc")
+        if sort_mode == "date_desc":
+            filtered_trans.sort(key=lambda t: (parse_date(t[1]), t[0] if isinstance(t[0], int) else 0), reverse=True)
+        elif sort_mode == "date_asc":
+            filtered_trans.sort(key=lambda t: (parse_date(t[1]), t[0] if isinstance(t[0], int) else 0))
+        elif sort_mode == "cat":
+            filtered_trans.sort(key=lambda t: ((t[4] or "").lower(), parse_date(t[1])))
+        elif sort_mode == "val_desc":
+            filtered_trans.sort(key=lambda t: (t[3] or 0), reverse=True)
+        elif sort_mode == "val_asc":
+            filtered_trans.sort(key=lambda t: (t[3] or 0))
+            
+        total_gasto = sum(t[3] for t in filtered_trans)
+        
+        if sf != "todos":
+            gasto_mes_atual = total_gasto
+        else:
+            gasto_mes_atual = sum(
+                t[3] for t in transacoes_saude
+                if parse_date(t[1]).month == now.month and parse_date(t[1]).year == now.year
+            )
+        
+        card_label_mes = _t("Gasto Mês Atual") if sf == "todos" else _t("Gasto no Período")
+        card_total = criar_card_resumo(_t("Total Gasto"), total_gasto, "#ef4444", get_colors()["surface"], small=True)
+        card_mes = criar_card_resumo(card_label_mes, gasto_mes_atual, "#fb923c", get_colors()["surface"], small=True)
+        card_qtd = criar_card_resumo(_t("Qtd Lançamentos"), len(filtered_trans), "#3b82f6", get_colors()["surface"], small=True, is_currency=False)
+        
+        # ── Month Navigator (dashboard-style) ──────────────────────────────
+        if sf.startswith("mes_"):
+            _p = sf[4:].split("_")
+            nav_month, nav_year = int(_p[0]), int(_p[1])
+        elif sf.startswith("ano_"):
+            nav_month, nav_year = 0, int(sf[4:])
+        else:
+            nav_month, nav_year = now.month, now.year
+        
+        _meses_abrev = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+                        "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
+        
+        if sf.startswith("mes_"):
+            nav_label = f"{_meses_abrev[nav_month-1]} {nav_year}"
+        elif sf.startswith("ano_"):
+            nav_label = str(nav_year)
+        else:
+            nav_label = _t("Todos")
+        
+        def prev_saude_period(e):
+            nonlocal sf
+            if sf == "todos":
+                state["saude_filter"] = f"mes_{now.month:02d}_{now.year}"
+            elif sf.startswith("ano_"):
+                yr = int(sf[4:])
+                state["saude_filter"] = f"ano_{yr - 1}"
+            else:
+                _p = sf[4:].split("_"); m, y = int(_p[0]), int(_p[1])
+                m -= 1
+                if m < 1: m, y = 12, y - 1
+                state["saude_filter"] = f"mes_{m:02d}_{y}"
+            render_saude()
+            
+        def next_saude_period(e):
+            nonlocal sf
+            if sf == "todos":
+                state["saude_filter"] = f"mes_{now.month:02d}_{now.year}"
+            elif sf.startswith("ano_"):
+                yr = int(sf[4:])
+                state["saude_filter"] = f"ano_{yr + 1}"
+            else:
+                _p = sf[4:].split("_"); m, y = int(_p[0]), int(_p[1])
+                m += 1
+                if m > 12: m, y = 1, y + 1
+                state["saude_filter"] = f"mes_{m:02d}_{y}"
+            render_saude()
+        
+        def set_saude_year(e):
+            state["saude_filter"] = f"ano_{nav_year}"
+            render_saude()
+        
+        def set_saude_todos(e):
+            state["saude_filter"] = "todos"
+            render_saude()
+        
+        btn_prev_s = ft.IconButton(ft.icons.Icons.CHEVRON_LEFT_ROUNDED, on_click=prev_saude_period,
+                                   icon_color="#94a3b8", icon_size=20, style=ft.ButtonStyle(padding=4))
+        btn_next_s = ft.IconButton(ft.icons.Icons.CHEVRON_RIGHT_ROUNDED, on_click=next_saude_period,
+                                   icon_color="#94a3b8", icon_size=20, style=ft.ButtonStyle(padding=4))
+        lbl_period_s = ft.Text(nav_label, size=13, weight=ft.FontWeight.BOLD, color=get_colors()["text"], width=110, text_align=ft.TextAlign.CENTER)
+        
+        btn_ano_s = ft.TextButton(
+            _t("Ano Completo"),
+            on_click=set_saude_year,
+            style=ft.ButtonStyle(color="white" if sf.startswith("ano_") else "#64748b", padding=ft.Padding(8, 3, 8, 3))
+        )
+        btn_todos_s = ft.TextButton(
+            _t("Todos"),
+            on_click=set_saude_todos,
+            style=ft.ButtonStyle(color="white" if sf == "todos" else "#64748b", padding=ft.Padding(8, 3, 8, 3))
+        )
+        
+        sort_options = [
+            ("date_desc", _t("Mais recentes")),
+            ("date_asc", _t("Mais antigas")),
+            ("cat", _t("Tipo / Categoria")),
+            ("val_desc", _t("Valor (Maior)")),
+            ("val_asc", _t("Valor (Menor)")),
+        ]
+        drop_sort = ft.Dropdown(
+            label=_t("Ordenar por"),
+            options=[ft.dropdown.Option(key=so[0], text=so[1]) for so in sort_options],
+            value=state.get("saude_sort", "date_desc"),
+            width=165,
+            height=38,
+            text_size=11,
+            content_padding=ft.Padding(8, 2, 8, 2),
+            bgcolor=get_colors()["bg"],
+            border_color="#374151",
+            focused_border_color="#3b82f6"
+        )
+        def on_change_saude_sort(e):
+            state["saude_sort"] = e.control.value
+            render_saude()
+        drop_sort.on_change = on_change_saude_sort
+        
+        filtros_row = ft.Row([
+            ft.Icon(ft.icons.Icons.CALENDAR_MONTH_ROUNDED, color="#64748b", size=16),
+            btn_prev_s, lbl_period_s, btn_next_s,
+            ft.Container(width=8),
+            btn_ano_s,
+            btn_todos_s,
+            ft.Container(expand=True),
+            drop_sort
+        ], spacing=2, alignment=ft.MainAxisAlignment.START, vertical_alignment=ft.CrossAxisAlignment.CENTER)
+        
+        cards_row = ft.Row(
+            controls=[card_total, card_mes, card_qtd],
+            spacing=15
+        )
+
+        
+        config_buttons = []
+        for s in saude_list:
+            is_selected = (s[0] == active_saude[0])
+            is_virtual = (s[0] == "geral")
+            
+            def make_click_saude(sid):
+                return lambda e: [selected_trans_ids.clear(), state.update({"active_saude_id": sid, "saude_migration_mode": False}), render_saude()]
+                
+            config_buttons.append(
+                ft.Container(
+                    content=ft.Row([
+                        ft.Container(
+                            content=ft.Row([
+                                ft.Icon(ft.icons.Icons.LOCAL_HOSPITAL_ROUNDED, color="#3b82f6" if is_selected else "#64748b", size=16),
+                                ft.Column([
+                                    ft.Text(s[1], size=12, color="white" if is_selected else get_colors()["text"], weight=ft.FontWeight.BOLD),
+                                    ft.Text(s[2] or _t("Geral"), size=10, color="#cbd5e1" if is_selected else "#64748b")
+                                ], spacing=2, tight=True, expand=True),
+                            ], spacing=8),
+                            expand=True,
+                            on_click=make_click_saude(s[0])
+                        ),
+                        ft.Row([
+                            ft.IconButton(ft.icons.Icons.EDIT_ROUNDED, icon_color="white" if is_selected else "#3b82f6", icon_size=14, on_click=lambda e, s_item=s: abrir_form_saude(e, s_item), tooltip=_t("Editar")),
+                            ft.IconButton(ft.icons.Icons.DELETE_ROUNDED, icon_color="white" if is_selected else "#ef4444", icon_size=14, on_click=lambda e, sid=s[0]: abrir_excluir_saude(sid), tooltip=_t("Excluir")),
+                        ], spacing=0, visible=not is_virtual)
+                    ], spacing=8, expand=True),
+                    bgcolor="#3b82f6" if is_selected else get_colors()["surface"],
+                    border=ft.border.all(1, "#3b82f6" if is_selected else get_colors()["border"]),
+                    border_radius=8,
+                    padding=ft.Padding(10, 8, 10, 8),
+                    width=260
+                )
+            )
+            
+        config_selector_panel = ft.Container(
+            padding=20,
+            bgcolor=get_colors()["surface"],
+            border_radius=12,
+            border=ft.border.all(1, get_colors()["border"]),
+            content=ft.Column([
+                ft.Text(_t("Itens de Saúde Cadastrados"), size=15, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+                ft.Container(height=5),
+                ft.Column(controls=config_buttons, spacing=8)
+            ], spacing=10),
+            width=300
+        )
+        
+        def abrir_excluir_transacao(t_id):
+            def confirmar_exclusao(e):
+                success = db.deletar_transacao(t_id)
+                if success:
+                    page.snack_bar = ft.SnackBar(ft.Text(_t("Lançamento excluído com sucesso!"), color="white"), bgcolor="#10b981")
+                    page.pop_dialog()
+                    render_saude()
+                else:
+                    page.snack_bar = ft.SnackBar(ft.Text(_t("Erro ao excluir!"), color="white"), bgcolor="#ef4444")
+                    page.snack_bar.open = True
+                    page.update()
+            dialog = ft.AlertDialog(
+                title=ft.Text(_t("Excluir Lançamento?")),
+                content=ft.Text(_t("Esta ação excluirá permanentemente esta transação do histórico e do saldo.")),
+                bgcolor=get_colors()["surface"],
+                actions=[
+                    ft.TextButton(_t("CANCELAR"), on_click=lambda e: page.pop_dialog(), style=ft.ButtonStyle(color="white")),
+                    ft.ElevatedButton(_t("EXCLUIR"), on_click=confirmar_exclusao, bgcolor="#ef4444", color="white")
+                ],
+                actions_alignment=ft.MainAxisAlignment.END,
+            )
+            page.show_dialog(dialog)
+
+        # Map tid -> DataRow reference, so on_select_change can update in-place
+        row_refs = {}
+
+        row_refs_p = {}
+
+        row_refs_s = {}
+        row_map_saude = row_refs
+
+        def make_on_select_changed(tid):
+            def handler(e):
+                is_selected = False
+                if hasattr(e, "selected") and e.selected is not None:
+                    is_selected = bool(e.selected)
+                elif hasattr(e, "data") and e.data is not None:
+                    is_selected = str(e.data).lower() in ("true", "1")
+                else:
+                    is_selected = tid not in selected_trans_ids
+                
+                if is_selected:
+                    selected_trans_ids.add(tid)
+                else:
+                    selected_trans_ids.discard(tid)
+                
+                e.control.selected = is_selected
+                e.control.update()
+            return handler
+
+        rows = []
+        for t in filtered_trans:
+            t_id, t_data, t_desc, t_valor, t_cat, t_tipo, t_part, t_tot_part, t_metodo, t_dono, t_band, t_divs, t_obs, t_val_real = t
+            
+            def make_edit_click(t_item):
+                return lambda e: [state.update({"overlay_entity_type": "saude", "overlay_entity_id": active_saude[0]}), abrir_overlay("despesa", editing_trans_id=t_item[0])]
+                
+            def make_delete_click(tid):
+                return lambda e: abrir_excluir_transacao(tid)
+                
+            row = ft.DataRow(
+                    selected=(t_id in selected_trans_ids),
+                    on_select_change=make_on_select_changed(t_id),
+                    cells=[
+                        ft.DataCell(ft.Text(t_data, color=get_colors()["text"])),
+                        ft.DataCell(ft.Text(t_desc, color=get_colors()["text"])),
+                        ft.DataCell(ft.Text(t_cat, color=get_colors()["text"])),
+                        ft.DataCell(ft.Text(fmt(t_valor), color=get_colors()["text"], weight=ft.FontWeight.BOLD)),
+                        ft.DataCell(ft.Text(t_metodo or "Outros", color=get_colors()["text"])),
+                        ft.DataCell(
+                            ft.Row([
+                                ft.IconButton(ft.icons.Icons.EDIT_ROUNDED, icon_color="#3b82f6", icon_size=18, tooltip=_t("Editar"), on_click=make_edit_click(t)),
+                                ft.IconButton(ft.icons.Icons.DELETE_ROUNDED, icon_color="#ef4444", icon_size=18, tooltip=_t("Excluir"), on_click=make_delete_click(t_id)),
+                            ], spacing=5)
+                        )
+                    ]
+                )
+            row_refs[t_id] = row
+            rows.append(row)
+            
+        # Dropdown options for target saude
+        other_saude = [s for s in saude_list if s[0] != active_saude[0]]
+        options = [ft.dropdown.Option(key=str(os[0]), text=os[1]) for os in other_saude]
+        options.append(ft.dropdown.Option(key="novo", text=_t("+ Novo Item")))
+        
+        drop_dest = ft.Dropdown(
+            label=_t("Destino"),
+            options=options,
+            width=150,
+            height=38,
+            text_size=11,
+            content_padding=ft.Padding(8, 2, 8, 2),
+            bgcolor=get_colors()["bg"],
+            border_color="#374151",
+            focused_border_color="#3b82f6"
+        )
+        if options:
+            drop_dest.value = options[0].key
+
+        def confirmar_migracao(e):
+            if not selected_trans_ids:
+                page.snack_bar = ft.SnackBar(ft.Text(_t("Selecione pelo menos um lançamento!"), color="white"), bgcolor="#ef4444")
+                page.snack_bar.open = True
+                page.update()
+                return
+                
+            dest_val = drop_dest.value
+            if dest_val == "novo":
+                def post_create_callback(new_sid):
+                    for tid in selected_trans_ids:
+                        db.atualizar_transacao_saude(tid, new_sid)
+                    selected_trans_ids.clear()
+                    state["saude_migration_mode"] = False
+                    render_saude()
+                    
+                state["post_create_saude_callback"] = post_create_callback
+                abrir_form_saude(e)
+            else:
+                target_id = None if dest_val == "geral" else int(dest_val)
+                for tid in selected_trans_ids:
+                    db.atualizar_transacao_saude(tid, target_id)
+                selected_trans_ids.clear()
+                state["saude_migration_mode"] = False
+                render_saude()
+
+        tabela_saude = ft.DataTable(
+            show_checkbox_column=state.get("saude_migration_mode", False),
+            columns=[
+                ft.DataColumn(ft.Text(_t("Mês/Data"))),
+                ft.DataColumn(ft.Text(_t("Descrição"))),
+                ft.DataColumn(ft.Text(_t("Categoria"))),
+                ft.DataColumn(ft.Text(_t("Valor"))),
+                ft.DataColumn(ft.Text(_t("Método"))),
+                ft.DataColumn(ft.Text(_t("Ações"))),
+            ],
+            rows=rows,
+            border_radius=8,
+            border=ft.border.all(0.5, get_colors()["border"]),
+            heading_row_color=get_colors()["surface"],
+            expand=True
+        )
+        tabela = tabela_saude  # alias for on_select_change closures
+        
+        def selecionar_todos_saude(e):
+            all_ids = {t[0] for t in filtered_trans}
+            if all_ids.issubset(selected_trans_ids):
+                for tid in all_ids:
+                    selected_trans_ids.discard(tid)
+                    if tid in row_map_saude: row_map_saude[tid].selected = False
+            else:
+                for tid in all_ids:
+                    selected_trans_ids.add(tid)
+                    if tid in row_map_saude: row_map_saude[tid].selected = True
+            tabela_saude.update()
+        
+        all_sel_saude = bool(filtered_trans) and {t[0] for t in filtered_trans}.issubset(selected_trans_ids)
+        
+        tabela_header_row = ft.Row([
+            ft.Row([
+                ft.Text(_t("Selecione as transações para migrar:"), size=13, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+                ft.TextButton(
+                    _t("Desmarcar Todos") if all_sel_saude else _t("Selecionar Todos"),
+                    on_click=selecionar_todos_saude,
+                    style=ft.ButtonStyle(color="#3b82f6", padding=ft.Padding(6, 2, 6, 2))
+                ),
+            ], spacing=8),
+            ft.Row([
+                drop_dest,
+                ft.IconButton(ft.icons.Icons.CHECK_ROUNDED, icon_color="#10b981", tooltip=_t("Confirmar Migração"), on_click=confirmar_migracao),
+                ft.IconButton(ft.icons.Icons.CLOSE_ROUNDED, icon_color="#ef4444", tooltip=_t("Cancelar"), on_click=lambda e: [selected_trans_ids.clear(), state.update({"saude_migration_mode": False}), render_saude()]),
+            ], spacing=5)
+        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN) if state.get("saude_migration_mode") else ft.Row([
+            ft.Text(f"{_t('Gastos de')} {active_saude[1]}", size=15, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+            ft.Row([
+                ft.ElevatedButton(
+                    content=ft.Row([
+                        ft.Icon(ft.icons.Icons.MOVE_UP_ROUNDED, size=16, color="white"),
+                        ft.Text(_t("MIGRAR PARA..."), size=11, color="white", weight=ft.FontWeight.BOLD)
+                    ], spacing=5),
+                    bgcolor="#3b82f6",
+                    style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=6)),
+                    on_click=lambda e: [state.update({"saude_migration_mode": True}), render_saude()]
+                ),
+                ft.ElevatedButton(
+                    content=ft.Row([
+                        ft.Icon(ft.icons.Icons.ADD_ROUNDED, size=16, color="white"),
+                        ft.Text(_t("NOVO GASTO"), size=11, color="white", weight=ft.FontWeight.BOLD)
+                    ], spacing=5),
+                    bgcolor="#10b981",
+                    style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=6)),
+                    on_click=lambda e: [state.update({"overlay_entity_type": "saude", "overlay_entity_id": active_saude[0]}), abrir_overlay("despesa")]
+                )
+            ], spacing=10)
+        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
+
+        tabela_container = ft.Container(
+            padding=20,
+            bgcolor=get_colors()["surface"],
+            border_radius=12,
+            border=ft.border.all(1, get_colors()["border"]),
+            expand=True,
+            content=ft.Column([
+                tabela_header_row,
+                filtros_row,
+                ft.Container(height=5),
+                ft.Row([tabela], scroll=ft.ScrollMode.ADAPTIVE, expand=True)
+            ], spacing=10)
+        )
+        
+        dashboard_layout = ft.Column(
+            expand=True,
+            controls=[
+                tab_header,
+                ft.Container(height=5),
+                cards_row,
+                ft.Container(height=10),
+                ft.Row([
+                    config_selector_panel,
+                    tabela_container
+                ], alignment=ft.MainAxisAlignment.START, vertical_alignment=ft.CrossAxisAlignment.START, expand=True)
+            ],
+            spacing=10,
+            scroll=ft.ScrollMode.ADAPTIVE
+        )
+        
+        page.floating_action_button = None
+        body.content = dashboard_layout
+        page.update()
+
+    def abrir_form_transacao_entidade(tipo_entidade, entidade_id, transacao_to_edit=None):
+        import datetime
+        now = datetime.datetime.now()
+        
+        pai_nome = "VEÍCULO" if tipo_entidade == "veiculo" else ("PET" if tipo_entidade == "pet" else "SAÚDE")
+        subcats = db.get_subcategorias_por_pai(pai_nome)
+        cat_options = [ft.dropdown.Option(str(sc[0]), sc[1]) for sc in subcats]
+        
+        if not cat_options:
+            parent_id = db.get_categoria_id_by_nome(pai_nome)
+            if parent_id:
+                cat_options = [ft.dropdown.Option(str(parent_id), pai_nome.title())]
+        
+        txt_desc = ft.TextField(
+            label=_t("Descrição"),
+            value=transacao_to_edit[2] if transacao_to_edit else "",
+            border_color="#475569", focused_border_color="#3b82f6",
+            label_style=ft.TextStyle(color="#94a3b8"), text_style=ft.TextStyle(color=get_colors()["text"]),
+            bgcolor=get_colors()["bg"], height=48, text_size=12
+        )
+        
+        txt_valor = ft.TextField(
+            label=_t("Valor (R$)"),
+            value=f"{transacao_to_edit[3]:.2f}".replace(".", ",") if transacao_to_edit else "",
+            border_color="#475569", focused_border_color="#3b82f6",
+            label_style=ft.TextStyle(color="#94a3b8"), text_style=ft.TextStyle(color=get_colors()["text"]),
+            bgcolor=get_colors()["bg"], height=48, text_size=12
+        )
+        
+        txt_data = ft.TextField(
+            label=_t("Data (DD/MM/AAAA)"),
+            value=transacao_to_edit[1] if transacao_to_edit else now.strftime("%d/%m/%Y"),
+            border_color="#475569", focused_border_color="#3b82f6",
+            label_style=ft.TextStyle(color="#94a3b8"), text_style=ft.TextStyle(color=get_colors()["text"]),
+            bgcolor=get_colors()["bg"], height=48, text_size=12
+        )
+        
+        drop_cat = ft.Dropdown(
+            label=_t("Categoria"),
+            options=cat_options,
+            value=str(transacao_to_edit[4]) if transacao_to_edit and any(str(opt.key) == str(transacao_to_edit[4]) for opt in cat_options) else (cat_options[0].key if cat_options else None),
+            border_color="#475569", focused_border_color="#3b82f6",
+            label_style=ft.TextStyle(color="#94a3b8"), text_style=ft.TextStyle(color=get_colors()["text"]),
+            bgcolor=get_colors()["bg"], height=48, text_size=12
+        )
+        
+        drop_metodo = ft.Dropdown(
+            label=_t("Método de Pagamento"),
+            options=[
+                ft.dropdown.Option("Boleto", _t("Boleto")),
+                ft.dropdown.Option("Pix", _t("Pix")),
+                ft.dropdown.Option("Dinheiro", _t("Dinheiro")),
+                ft.dropdown.Option("Cartão", _t("Cartão")),
+                ft.dropdown.Option("Outros", _t("Outros")),
+            ],
+            value=transacao_to_edit[8] if transacao_to_edit else "Boleto",
+            border_color="#475569", focused_border_color="#3b82f6",
+            label_style=ft.TextStyle(color="#94a3b8"), text_style=ft.TextStyle(color=get_colors()["text"]),
+            bgcolor=get_colors()["bg"], height=48, text_size=12
+        )
+        
+        cartoes = db.get_cartoes()
+        card_options = []
+        for c in cartoes:
+            card_id, c_nome, c_lim, c_fech, c_venc, c_cor, c_band, c_dono, c_dig = c
+            card_options.append(ft.dropdown.Option(
+                key=f"{c_band}|{c_dono}", 
+                text=f"{c_nome} ({c_band} - {c_dono} •••• {c_dig})"
+            ))
+
+        drop_cartao = ft.Dropdown(
+            label=_t("Selecione o Cartão"),
+            border_color="#475569",
+            focused_border_color="#2563eb",
+            text_style=ft.TextStyle(color=get_colors()["text"], size=12),
+            label_style=ft.TextStyle(size=11),
+            height=48,
+            bgcolor=get_colors()["bg"],
+            options=card_options
+        )
+        
+        if transacao_to_edit and transacao_to_edit[8] == "Cartão":
+            band = transacao_to_edit[10] or ""
+            dono = transacao_to_edit[9] or ""
+            key_val = f"{band}|{dono}"
+            if any(opt.key == key_val for opt in card_options):
+                drop_cartao.value = key_val
+                
+        cartao_container = ft.Container(
+            content=drop_cartao,
+            visible=drop_metodo.value == "Cartão"
+        )
+        
+        def on_metodo_change(e):
+            cartao_container.visible = (drop_metodo.value == "Cartão")
+            cartao_container.update()
+            
+        drop_metodo.on_change = on_metodo_change
+        
+        txt_obs = ft.TextField(
+            label=_t("Observação"),
+            value=transacao_to_edit[12] if transacao_to_edit else "",
+            border_color="#475569", focused_border_color="#3b82f6",
+            label_style=ft.TextStyle(color="#94a3b8"), text_style=ft.TextStyle(color=get_colors()["text"]),
+            bgcolor=get_colors()["bg"], height=48, text_size=12
+        )
+        
+        def salvar_transacao(e):
+            desc = txt_desc.value.strip()
+            val_str = txt_valor.value.strip().replace(",", ".")
+            data_str = txt_data.value.strip()
+            cat_id_str = drop_cat.value
+            metodo = drop_metodo.value
+            obs = txt_obs.value.strip()
+            
+            if not desc or not val_str or not data_str or not cat_id_str:
+                page.snack_bar = ft.SnackBar(ft.Text(_t("Preencha todos os campos obrigatórios!"), color="white"), bgcolor="#ef4444")
+                page.snack_bar.open = True
+                page.update()
+                return
+                
+            try:
+                valor = float(val_str)
+                if valor <= 0: raise ValueError()
+            except:
+                page.snack_bar = ft.SnackBar(ft.Text(_t("Digite um valor numérico válido maior que zero!"), color="white"), bgcolor="#ef4444")
+                page.snack_bar.open = True
+                page.update()
+                return
+                
+            try:
+                datetime.datetime.strptime(data_str, "%d/%m/%Y")
+            except:
+                page.snack_bar = ft.SnackBar(ft.Text(_t("Data inválida! Use o formato DD/MM/AAAA"), color="white"), bgcolor="#ef4444")
+                page.snack_bar.open = True
+                page.update()
+                return
+                
+            bandeira = ""
+            dono = ""
+            if metodo == "Cartão" and drop_cartao.value:
+                parts = drop_cartao.value.split("|")
+                if len(parts) == 2:
+                    bandeira, dono = parts[0], parts[1]
+            
+            pilar = "Despesa Fixa" if pai_nome == "SAÚDE" else "Despesa Variável"
+            cat_id = int(cat_id_str)
+            
+            v_id = entidade_id if tipo_entidade == "veiculo" else None
+            p_id = entidade_id if tipo_entidade == "pet" else None
+            s_id = entidade_id if tipo_entidade == "saude" else None
+            
+            if transacao_to_edit:
+                success, msg = db.atualizar_transacao(
+                    transacao_id=transacao_to_edit[0],
+                    categoria_id=cat_id,
+                    descricao=desc,
+                    data=data_str,
+                    valor_total=valor,
+                    tipo_transacao=pilar,
+                    metodo=metodo,
+                    bandeira=bandeira,
+                    dono=dono,
+                    observacao=obs,
+                    divisoes={"Eu": valor},
+                    veiculo_id=v_id,
+                    pet_id=p_id,
+                    saude_id=s_id,
+                    keep_entity_links=False
+                )
+            else:
+                success, msg = db.inserir_transacao(
+                    conta_id=None,
+                    categoria_id=cat_id,
+                    descricao=desc,
+                    data_ini=data_str,
+                    valor_total=valor,
+                    tipo_transacao=pilar,
+                    metodo=metodo,
+                    parcelas=1,
+                    bandeira=bandeira,
+                    dono=dono,
+                    recorrencia=None,
+                    divisoes={"Eu": valor},
+                    observacao=obs,
+                    veiculo_id=v_id,
+                    pet_id=p_id,
+                    saude_id=s_id
+                )
+                
+            if success:
+                page.snack_bar = ft.SnackBar(ft.Text(_t("Lançamento salvo com sucesso!"), color="white"), bgcolor="#10b981")
+                page.pop_dialog()
+                if tipo_entidade == "veiculo":
+                    render_veiculos()
+                elif tipo_entidade == "pet":
+                    render_pets()
+                else:
+                    render_saude()
+            else:
+                page.snack_bar = ft.SnackBar(ft.Text(f"{_t('Erro ao salvar:')} {msg}", color="white"), bgcolor="#ef4444")
+                page.snack_bar.open = True
+                page.update()
+                
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text(_t("Editar Lançamento") if transacao_to_edit else _t("Novo Lançamento"), size=16, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+            content=ft.Column(
+                controls=[
+                    txt_desc,
+                    txt_valor,
+                    txt_data,
+                    drop_cat,
+                    drop_metodo,
+                    cartao_container,
+                    txt_obs
+                ],
+                spacing=10,
+                scroll=ft.ScrollMode.ADAPTIVE
+            ),
+            bgcolor=get_colors()["surface"],
+            actions=[
+                ft.TextButton(_t("CANCELAR"), on_click=lambda e: page.pop_dialog(), style=ft.ButtonStyle(color="white")),
+                ft.ElevatedButton(_t("SALVAR"), on_click=salvar_transacao, bgcolor="#3b82f6", color="white", style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)))
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        page.show_dialog(dialog)
+
     def abrir_form_config_recorrencia(e, config_to_edit=None):
         txt_nome = ft.TextField(
             label=_t("Nome da Recorrência"),
@@ -10620,6 +12965,124 @@ def main(page: ft.Page):
                 page.snack_bar = ft.SnackBar(content=ft.Text(f"{_t('Erro:')} {msg}", color=get_colors()["text"]), bgcolor="#ef4444")
             page.snack_bar.open = True
             page.update()
+
+        def abrir_editar_categoria(cat_info):
+            cat_id = cat_info[0]
+            cat_nome = cat_info[1]
+            cat_tipo = cat_info[2]
+            cat_parent_id = cat_info[3]
+            
+            txt_edit_nome = ft.TextField(
+                label=_t("Nome da Categoria"),
+                value=cat_nome,
+                border_color="#475569", focused_border_color="#3b82f6",
+                label_style=ft.TextStyle(color="#94a3b8"), text_style=ft.TextStyle(color=get_colors()["text"]),
+                bgcolor=get_colors()["bg"], height=48, text_size=12
+            )
+            
+            tipos = [
+                ("Receita Fixa", _t("Receita Fixa")),
+                ("Receita Variável", _t("Receita Variável")),
+                ("Despesa Fixa", _t("Despesa Fixa")),
+                ("Despesa Variável", _t("Despesa Variável")),
+                ("Investimento", _t("Investimento"))
+            ]
+            
+            drop_edit_tipo = ft.Dropdown(
+                label=_t("Pilar / Tipo"),
+                options=[ft.dropdown.Option(t[0], t[1]) for t in tipos],
+                value=cat_tipo,
+                width=300,
+                height=48,
+                text_size=12,
+                bgcolor=get_colors()["bg"],
+                border_color="#475569",
+                focused_border_color="#3b82f6",
+                disabled=(cat_parent_id is not None)
+            )
+            
+            todos_pais = [c for c in categorias if c[3] is None and c[0] != cat_id]
+            options_p = [ft.dropdown.Option("None", _t("Nenhum (Tornar Categoria Principal)"))]
+            for p in todos_pais:
+                options_p.append(ft.dropdown.Option(str(p[0]), f"{p[1]} ({p[2]})"))
+                
+            drop_edit_parent = ft.Dropdown(
+                label=_t("Categoria Pai (opcional)"),
+                options=options_p,
+                value=str(cat_parent_id) if cat_parent_id is not None else "None",
+                width=300,
+                height=48,
+                text_size=12,
+                bgcolor=get_colors()["bg"],
+                border_color="#475569",
+                focused_border_color="#3b82f6"
+            )
+            
+            def on_parent_change(e):
+                sel_p = e.control.value
+                if sel_p == "None":
+                    drop_edit_tipo.disabled = False
+                else:
+                    drop_edit_tipo.disabled = True
+                    p_id = int(sel_p)
+                    parent_cat = next((c for c in categorias if c[0] == p_id), None)
+                    if parent_cat:
+                        drop_edit_tipo.value = parent_cat[2]
+                drop_edit_tipo.update()
+                
+            drop_edit_parent.on_change = on_parent_change
+            
+            lbl_info = ft.Text(
+                _t("Nota: Mudar o tipo ou mover subcategorias atualizará automaticamente todos os lançamentos existentes no banco de dados."),
+                size=10,
+                color="#facc15",
+                italic=True
+            )
+            
+            def salvar_edicao(e):
+                novo_n = txt_edit_nome.value.strip()
+                if not novo_n:
+                    page.snack_bar = ft.SnackBar(ft.Text(_t("Preencha o nome da categoria!"), color="white"), bgcolor="#ef4444")
+                    page.snack_bar.open = True
+                    page.update()
+                    return
+                    
+                sel_parent = drop_edit_parent.value
+                novo_parent_id = None if sel_parent == "None" else int(sel_parent)
+                
+                novo_tipo = drop_edit_tipo.value
+                if novo_parent_id is not None:
+                    parent_cat = next((c for c in categorias if c[0] == novo_parent_id), None)
+                    if parent_cat:
+                        novo_tipo = parent_cat[2]
+                
+                success, msg = db.atualizar_categoria(cat_id, novo_n, novo_tipo, novo_parent_id)
+                if success:
+                    page.snack_bar = ft.SnackBar(ft.Text(_t("Categoria atualizada com sucesso!"), color="white"), bgcolor="#10b981")
+                    page.pop_dialog()
+                    render_configuracoes()
+                else:
+                    page.snack_bar = ft.SnackBar(ft.Text(f"{_t('Erro ao salvar:')} {msg}", color="white"), bgcolor="#ef4444")
+                    page.snack_bar.open = True
+                    page.update()
+                    
+            dialog = ft.AlertDialog(
+                modal=True,
+                title=ft.Text(_t("Editar Categoria"), size=16, weight=ft.FontWeight.BOLD, color=get_colors()["text"]),
+                content=ft.Column([
+                    txt_edit_nome,
+                    drop_edit_parent,
+                    drop_edit_tipo,
+                    lbl_info
+                ], tight=True, spacing=12),
+                bgcolor=get_colors()["surface"],
+                actions=[
+                    ft.TextButton(_t("CANCELAR"), on_click=lambda e: page.pop_dialog(), style=ft.ButtonStyle(color="white")),
+                    ft.ElevatedButton(_t("SALVAR"), on_click=salvar_edicao, bgcolor="#3b82f6", color="white", style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)))
+                ],
+                actions_alignment=ft.MainAxisAlignment.END,
+            )
+            page.show_dialog(dialog)
             
         cats_grouped = {}
         for cat in categorias:
@@ -10637,6 +13100,13 @@ def main(page: ft.Page):
         category_rows = []
         for p_id, group in cats_grouped.items():
             p_info = group["info"]
+            
+            def make_edit_click(info_item):
+                return lambda e: abrir_editar_categoria(info_item)
+                
+            def make_delete_click(cid):
+                return lambda e: run_delete_category(cid)
+
             category_rows.append(
                 ft.Container(
                     bgcolor=get_colors()["bg"],
@@ -10656,13 +13126,22 @@ def main(page: ft.Page):
                                     content=ft.Text(p_info[2], size=8, color=get_colors()["subtext"])
                                 )
                             ], spacing=5),
-                            ft.IconButton(
-                                icon=ft.icons.Icons.DELETE_OUTLINE_ROUNDED,
-                                icon_color="#ef4444",
-                                icon_size=14,
-                                visible=len(group["children"]) == 0,
-                                on_click=lambda e, cid=p_info[0]: run_delete_category(cid)
-                            )
+                            ft.Row([
+                                ft.IconButton(
+                                    icon=ft.icons.Icons.EDIT_ROUNDED,
+                                    icon_color="#3b82f6",
+                                    icon_size=14,
+                                    tooltip=_t("Editar Categoria"),
+                                    on_click=make_edit_click(p_info)
+                                ),
+                                ft.IconButton(
+                                    icon=ft.icons.Icons.DELETE_ROUNDED,
+                                    icon_color="#ef4444",
+                                    icon_size=14,
+                                    visible=len(group["children"]) == 0,
+                                    on_click=make_delete_click(p_info[0])
+                                )
+                            ], spacing=2)
                         ]
                     )
                 )
@@ -10677,14 +13156,29 @@ def main(page: ft.Page):
                             controls=[
                                 ft.Row([
                                     ft.Icon(ft.icons.Icons.SUBDIRECTORY_ARROW_RIGHT_ROUNDED, color="#475569", size=12),
-                                    ft.Text(child[1], size=11, color=get_colors()["subtext"])
+                                    ft.Text(child[1], size=11, color=get_colors()["subtext"]),
+                                    ft.Container(
+                                        bgcolor=get_colors()["surface"],
+                                        padding=ft.Padding(3, 1, 3, 1),
+                                        border_radius=4,
+                                        content=ft.Text(child[2], size=8, color=get_colors()["subtext"])
+                                    )
                                 ], spacing=5),
-                                ft.IconButton(
-                                    icon=ft.icons.Icons.DELETE_OUTLINE_ROUNDED,
-                                    icon_color="#ef4444",
-                                    icon_size=13,
-                                    on_click=lambda e, cid=child[0]: run_delete_category(cid)
-                                )
+                                ft.Row([
+                                    ft.IconButton(
+                                        icon=ft.icons.Icons.EDIT_ROUNDED,
+                                        icon_color="#3b82f6",
+                                        icon_size=13,
+                                        tooltip=_t("Editar Subcategoria"),
+                                        on_click=make_edit_click(child)
+                                    ),
+                                    ft.IconButton(
+                                        icon=ft.icons.Icons.DELETE_ROUNDED,
+                                        icon_color="#ef4444",
+                                        icon_size=13,
+                                        on_click=make_delete_click(child[0])
+                                    )
+                                ], spacing=2)
                             ]
                         )
                     )
@@ -10862,7 +13356,7 @@ def main(page: ft.Page):
                 page.update()
                 
                 from update_manager import UpdateManager
-                updater = UpdateManager(current_version="1.2.0")
+                updater = UpdateManager(current_version="1.3.0")
                 tem_update, info = updater.check_for_updates()
                 
                 if tem_update and info:
@@ -10900,7 +13394,7 @@ def main(page: ft.Page):
                         
                     btn_apply_update.on_click = on_apply_click
                 else:
-                    lbl_status_update.value = "Seu aplicativo já está na versão mais recente (v1.2.0)."
+                    lbl_status_update.value = "Seu aplicativo já está na versão mais recente (v1.3.0)."
                     lbl_status_update.color = "#10b981"
                     
                 btn_check.disabled = False
@@ -10927,7 +13421,7 @@ def main(page: ft.Page):
                         ft.Divider(color="#334155"),
                         ft.Row([
                             ft.Text("Versão Atual:", size=12, color=get_colors()["subtext"]),
-                            ft.Text("v1.2.0 (Beta)", size=12, color="white", weight=ft.FontWeight.BOLD)
+                            ft.Text("v1.3.0", size=12, color="white", weight=ft.FontWeight.BOLD)
                         ]),
                         ft.Divider(color="#334155"),
                         lbl_status_update,
@@ -11842,7 +14336,10 @@ def main(page: ft.Page):
             "configuracoes": (ft.icons.Icons.SETTINGS_ROUNDED, render_configuracoes),
             "resumo_anual": (ft.icons.Icons.ANALYTICS_ROUNDED, render_resumo_anual),
             "recorrencias": (ft.icons.Icons.AUTORENEW_ROUNDED, render_recorrencias),
-            "parcelamentos": (ft.icons.Icons.CREDIT_CARD_ROUNDED, render_parcelamentos)
+            "parcelamentos": (ft.icons.Icons.CREDIT_CARD_ROUNDED, render_parcelamentos),
+            "veiculos": (ft.icons.Icons.DIRECTIONS_CAR_ROUNDED, render_veiculos),
+            "pets": (ft.icons.Icons.PETS_ROUNDED, render_pets),
+            "saude": (ft.icons.Icons.LOCAL_HOSPITAL_ROUNDED, render_saude)
         }
         
         target_icon, render_func = icon_mapping.get(tab_name, (None, None))
